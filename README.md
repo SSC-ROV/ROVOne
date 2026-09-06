@@ -1,36 +1,129 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ROV 隊伍任務平台
 
-## Getting Started
+給學校 ROV 團隊的任務看板、時間規劃、任務日曆與裝備管理網站。
+前後端完整、單機可跑，不需要註冊任何外部服務。
 
-First, run the development server:
+## 功能總覽
+
+| 頁面 | 內容 |
+|---|---|
+| 首頁 | 比賽日倒數、進行中／已逾期／本週截止統計、我的任務、近期活動 |
+| 看板 | 待辦／進行中／已完成三欄，拖曳改狀態；任務含負責人、組別、優先級、截止日、子任務、關聯比賽任務 |
+| 日曆 | 月曆同時顯示任務截止與活動（例會／水測／比賽），點日期看詳情，隊長可直接新增活動 |
+| 比賽任務 | 規則書任務對照表：每個比賽任務關聯工程任務，自動算完成度% |
+| 零件採買 | 需求 → **老師審批** → 下單 → 到貨全程追蹤，含預估／實際花費統計 |
+| 設備 | 設備借用登記（誰借走、應還日、逾期變紅）、維修狀態 |
+| 水測日誌 | 每次下水的測試內容、問題、修正、待驗證事項，一鍵轉成追蹤任務 |
+| 管理（隊長） | 隊名、比賽日期、成員開戶／重設密碼、Discord 通知、iCal 訂閱 |
+
+### 老師審批怎麼運作？
+
+不需要給老師帳號。零件送出後，隊長在「零件採買」頁按 **複製老師審批連結**，
+把連結用 LINE / Messenger 傳給老師；老師打開網頁就能看到申請內容，
+按「核准」或「駁回」（可留備註），結果自動寫回系統並推播到 Discord。
+每筆申請的連結都是一次性隨機 token，審完即失效。
+
+### 通知與訂閱
+
+- **Discord Webhook**（管理頁貼上網址 → 儲存 → 發送測試通知）：任務指派、
+  老師審批結果會自動推到頻道
+- **iCal 日曆訂閱**（管理頁複製連結）：隊員在手機／電腦日曆 App「訂閱日曆」
+  貼上，例會、水測、任務截止自動同步，不用開網站
+
+## 快速開始
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install   # 第一次才需要
+npm run dev   # 開發模式，開 http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+正式使用：
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run build
+npm start     # 開 http://localhost:3000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 預設帳號
 
-## Learn More
+| 帳號 | 密碼 | 角色 |
+|---|---|---|
+| `leader` | `rov2026` | 隊長 |
+| `member` | `rov2026` | 隊員（示範） |
 
-To learn more about Next.js, take a look at the following resources:
+> ⚠️ 第一次登入後請立刻到「帳號」頁改密碼，並在「管理」頁替隊員開帳號、
+> 把比賽日期改成實際日期。示範任務、零件、設備可以直接刪掉。
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 權限一覽
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| 操作 | 隊長 | 隊員 |
+|---|---|---|
+| 建立任務、改狀態、勾子任務、報名設備借用、寫日誌、申請零件 | ✅ | ✅ |
+| 編輯任務內容 | 任何任務 | 自己負責或建立的 |
+| 刪除任務／活動／設備／比賽任務、零件採買進度、隊伍設定、成員管理 | ✅ | ❌ |
 
-## Deploy on Vercel
+## 資料與備份
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- 所有資料在單一 SQLite 檔：`data/rov.db`（首次啟動自動建立並灌示範資料）
+- 備份 = 複製這個檔案；重置 = 刪掉 `data/` 資料夾再重啟
+- 建議每週把 `data/rov.db` 複製一份到雲端硬碟
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 完全上線指南（給零基礎）
+
+### 階段一：只在學校／隊內使用（最簡單，建議先這樣）
+
+1. 找一台可以 24 小時開著的電腦（舊筆電、社辦電腦、Raspberry Pi 都行）
+2. 裝 [Node.js LTS](https://nodejs.org)（一直按下一步就好）
+3. 把整個 `rov-team-hub` 資料夾複製過去，在資料夾開終端機執行：
+   ```bash
+   npm install
+   npm run build
+   npx pm2 start "npm start" --name rov-hub   # pm2 讓它掛在背景不會關
+   ```
+   （pm2 第一次用要先 `npm install -g pm2`）
+4. 查這台電腦的內網 IP（macOS：系統設定→Wi-Fi→詳細資訊；Windows：`ipconfig`）
+5. 隊友連 `http://<那台電腦的IP>:3000` 就能用了
+- 注意：學校 Wi-Fi 有可能阻擋設備互連（AP 隔離），測一下隊友手機開不開得了；
+  不行的話改用手機熱點或找資訊組開通
+
+### 階段二：校外也能連（需要「隧道」工具，免動網路設定）
+
+宿舍或家裡想連學校電腦，用 Cloudflare Tunnel（免費、不用申請公網 IP）：
+
+```bash
+brew install cloudflared          # 或從官網下載 Windows 版
+cloudflared tunnel --url http://localhost:3000
+```
+
+會給你一個 `https://xxxx.trycloudflare.com` 網址，丟給隊友即可。
+缺點：每次重開網址會換。要固定網址，需花約 US$10/年買網域
+（Namecheap / Cloudflare Registrar）+ 設定 named tunnel（照 Cloudflare 官網教學點一點）。
+
+ngrok 也是類似工具，免費版網址同樣會換，二選一即可。
+
+### 階段三：正規部署（之後有需求再說）
+
+租雲端主機（DigitalOcean / Hetzner / AWS Lightsail，每月約 US$4–6）+
+綁網域 + HTTPS。程式完全不用改，只是換台永遠開機的機器跑同樣的指令。
+**不建議 Vercel / Netlify**：這個專案用 SQLite 檔案資料庫，那類平台沒有
+永久磁碟，要改成 Turso/Supabase 才行（未來想改再找我）。
+
+### 上線檢查清單
+
+- [ ] 改掉 leader / member 預設密碼
+- [ ] 每位隊員都用自己帳號（管理頁開戶），出事才知道是誰改的
+- [ ] 管理 → 設定 Discord Webhook 並測試
+- [ ] 複製 iCal 連結給隊員訂閱
+- [ ] 設定每週備份 `data/rov.db`
+- [ ] 伺服器重開後要能自動啟動（pm2：`pm2 save` + `pm2 startup`）
+
+## 技術棧
+
+Next.js 16（App Router）· React 19 · Tailwind CSS 4 · better-sqlite3 ·
+原生 HTML5 拖曳 · cookie session（無外部依賴）
+
+## 之後可以加的
+
+1. 截止日自動提醒（需要排程器，例如 pm2 cron 或系統排程打 API）
+2. 檔案附件上傳（接線圖、3D 列印檔）
+3. 多隊／多屆資料切換

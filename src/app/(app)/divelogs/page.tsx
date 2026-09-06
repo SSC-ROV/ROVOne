@@ -1,0 +1,187 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { api } from "@/lib/api-client";
+import { BTN, INPUT_CLS } from "@/lib/ui";
+import { fmtMD, todayStr, weekdayCn } from "@/lib/date";
+import { useDialogs } from "@/components/ui/Dialogs";
+import type { DiveLog, Me } from "@/lib/types";
+
+export default function DiveLogsPage() {
+  const { confirm, toast } = useDialogs();
+  const [logs, setLogs] = useState<DiveLog[] | null>(null);
+  const [me, setMe] = useState<Me | null>(null);
+  const [error, setError] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({
+    date: todayStr(),
+    title: "",
+    participants: "",
+    tested: "",
+    issues: "",
+    fixes: "",
+    next_steps: "",
+  });
+  const [busy, setBusy] = useState(false);
+
+  async function load() {
+    const [l, u] = await Promise.all([
+      api<{ logs: DiveLog[] }>("/api/divelogs"),
+      api<{ user: Me | null }>("/api/auth/me"),
+    ]);
+    setLogs(l.logs);
+    setMe(u.user);
+  }
+
+  useEffect(() => {
+    load().catch((err: Error) => setError(err.message));
+  }, []);
+
+  if (error) {
+    return (
+      <p className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-300">{error}</p>
+    );
+  }
+  if (!logs || !me) {
+    return <p className="py-20 text-center text-sm text-slate-500">載入中…</p>;
+  }
+
+  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.title.trim()) return;
+    setBusy(true);
+    try {
+      await api("/api/divelogs", { method: "POST", body: JSON.stringify(form) });
+      setForm({ date: todayStr(), title: "", participants: "", tested: "", issues: "", fixes: "", next_steps: "" });
+      setShowForm(false);
+      toast("日誌已儲存");
+      await load();
+    } catch (err) {
+      toast((err as Error).message, "err");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function toTask(log: DiveLog) {
+    const ok = await confirm({
+      title: `把「${log.title}」的待驗證事項轉成任務？`,
+      message: "會建立一筆指派給你的高優先級任務，內容附上日誌重點。",
+      confirmText: "建立任務",
+    });
+    if (!ok) return;
+    try {
+      await api("/api/tasks", {
+        method: "POST",
+        body: JSON.stringify({
+          title: `驗證：${log.title} 的修正項`,
+          description: `來自水測日誌（${log.date}）\n測試：${log.tested}\n問題：${log.issues}\n修正：${log.fixes}\n待驗證：${log.next_steps}`,
+          subteam: "general",
+          priority: "high",
+          assignee_id: me!.id,
+        }),
+      });
+      toast("已建立任務，記得到看板補截止日與負責人");
+    } catch (err) {
+      toast((err as Error).message, "err");
+    }
+  }
+
+  async function remove(log: DiveLog) {
+    const ok = await confirm({
+      title: `刪除日誌「${log.title}」？`,
+      confirmText: "刪除",
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await api(`/api/divelogs/${log.id}`, { method: "DELETE" });
+      toast("已刪除");
+      await load();
+    } catch (err) {
+      toast((err as Error).message, "err");
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <h1 className="text-lg font-bold">水測日誌</h1>
+        <span className="text-sm text-slate-500">每次下水的問題與修正都留下紀錄，才不會踩同樣的坑</span>
+        <button className={`${BTN} ml-auto`} onClick={() => setShowForm(!showForm)}>
+          ＋ 新增日誌
+        </button>
+      </div>
+
+      {showForm && (
+        <form onSubmit={submit} className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <input className={INPUT_CLS} type="date" value={form.date} onChange={set("date")} />
+            <input className={INPUT_CLS} placeholder="標題，例如：水測 #3 *" value={form.title} onChange={set("title")} />
+            <input className={INPUT_CLS} placeholder="參與人員" value={form.participants} onChange={set("participants")} />
+          </div>
+          <textarea className={`${INPUT_CLS} min-h-16 resize-y`} placeholder="這次測了什麼？" value={form.tested} onChange={set("tested")} />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <textarea className={`${INPUT_CLS} min-h-16 resize-y`} placeholder="發現什麼問題？" value={form.issues} onChange={set("issues")} />
+            <textarea className={`${INPUT_CLS} min-h-16 resize-y`} placeholder="當場怎麼修正？" value={form.fixes} onChange={set("fixes")} />
+          </div>
+          <textarea className={`${INPUT_CLS} min-h-16 resize-y`} placeholder="下次要驗證什麼？" value={form.next_steps} onChange={set("next_steps")} />
+          <button className={BTN} disabled={busy || !form.title.trim()}>
+            {busy ? "儲存中…" : "儲存日誌"}
+          </button>
+        </form>
+      )}
+
+      <div className="space-y-3">
+        {logs.length === 0 && (
+          <p className="rounded-2xl border border-slate-800 bg-slate-900/40 py-12 text-center text-sm text-slate-500">
+            還沒有水測紀錄
+          </p>
+        )}
+        {logs.map((log) => (
+          <article key={log.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full border border-sky-500/40 bg-sky-500/10 px-2.5 py-0.5 text-xs text-sky-300">
+                {fmtMD(log.date)}（{weekdayCn(log.date)}）
+              </span>
+              <span className="font-bold">{log.title}</span>
+              {log.participants && <span className="text-sm text-slate-400">{log.participants}</span>}
+              <span className="ml-auto text-xs text-slate-500">記錄：{log.created_by_name ?? "—"}</span>
+            </div>
+            <dl className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
+              <Section title="測試內容" text={log.tested} />
+              <Section title="發現問題" text={log.issues} tone="text-rose-300" />
+              <Section title="當場修正" text={log.fixes} tone="text-emerald-300" />
+              <Section title="下次驗證" text={log.next_steps} tone="text-cyan-300" />
+            </dl>
+            <div className="mt-2 flex gap-3 text-xs">
+              {(log.next_steps || log.issues) && (
+                <button className="text-cyan-300 hover:underline" onClick={() => toTask(log)}>
+                  轉成追蹤任務
+                </button>
+              )}
+              {me.role === "leader" && (
+                <button className="ml-auto text-slate-500 transition hover:text-rose-400" onClick={() => remove(log)}>
+                  刪除
+                </button>
+              )}
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Section({ title, text, tone }: { title: string; text: string; tone?: string }) {
+  if (!text) return null;
+  return (
+    <div className="rounded-xl bg-slate-800/50 px-3 py-2">
+      <dt className="text-xs text-slate-500">{title}</dt>
+      <dd className={`whitespace-pre-wrap ${tone ?? "text-slate-300"}`}>{text}</dd>
+    </div>
+  );
+}
