@@ -175,6 +175,7 @@ Next.js 16（App Router）· React 19 · Tailwind CSS 4 · better-sqlite3 ·
 | 端點 | 方法 | 說明 |
 |---|---|---|
 | `/api/auth/login` `/logout` `/me` `/password` | POST/GET | 登入、登出、當前使用者、改密碼 |
+| `/api/auth/google/start` `/auth/google/callback` `/google/status` | GET | Google 帳號登入（OAuth）+ 是否已設定 |
 | `/api/tasks` `/api/tasks/[id]` `/api/tasks/[id]/items` `/api/items/[id]` | CRUD | 任務與子任務（可帶 `mission_id`、`cycle_id`） |
 | `/api/events` `/api/events/[id]` | CRUD | 日曆活動 |
 | `/api/cycles` `/api/cycles/[id]` | CRUD | 開發週期（`action: approve/reject/complete/resubmit`） |
@@ -185,9 +186,18 @@ Next.js 16（App Router）· React 19 · Tailwind CSS 4 · better-sqlite3 ·
 | `/api/divelogs` `/api/divelogs/[id]` | CRUD | 水測日誌 |
 | `/api/members` `/api/settings` `/api/ical?token=` | GET | 成員、設定、日曆訂閱 |
 
+### 登入方式
+
+- **Google 帳號登入（主要）**：管理頁「Google 登入」區設定
+  （Client ID／Secret／允許網域／幹部 email 清單，回呼網址複製到
+  Google Cloud Console OAuth 設定）。只允許白名單網域（如 `stu.ssc.edu.hk`），
+  首次登入自動開帳號（角色依 email 清單：leader／teacher／member）；
+  Google 應用未驗證時會出現警告畫面，按「進階 → 繼續」即可
+- **帳號密碼登入（後備）**：隊員由隊長開戶，密碼 scrypt 雜湊儲存
+
 ## 之後可以加的
 
-1. 截止日自動提醒（需要排程器，例如 pm2 cron 或系統排程打 API）
+1. 截止日自動提醒（需要排程器，例如 Vercel Cron 打 API）
 2. 檔案附件上傳（接線圖、3D 列印檔）
 3. 多隊／多屆資料切換
 4. iOS / iPadOS 原生 App（直接吃上面的 API）
