@@ -52,16 +52,6 @@ export async function buildIcs(): Promise<{ body: string; token: string }> {
     lines.push("END:VEVENT");
   }
 
-  const tasks = await sql`
-    SELECT id, title, due_date FROM tasks WHERE due_date IS NOT NULL`;
-  for (const t of tasks) {
-    lines.push("BEGIN:VEVENT");
-    lines.push(`UID:task-${t.id}@rov-team-hub`);
-    lines.push(`DTSTART;VALUE=DATE:${stampDate(String(t.due_date))}`);
-    lines.push(`SUMMARY:${esc(`⚑ 截止：${t.title}`)}`);
-    lines.push("END:VEVENT");
-  }
-
   lines.push("END:VCALENDAR");
   return { body: lines.join("\r\n"), token };
 }

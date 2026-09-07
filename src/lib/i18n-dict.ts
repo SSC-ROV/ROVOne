@@ -1,4 +1,9 @@
 export const DICT: Record<string, string> = {
+  "進行中週期": "Active cycles", "已核准待開始": "Approved, not started", "全隊週期進度": "Team cycle progress",
+  "我的開發週期進度": "My cycle progress", "目前沒有參與中的週期，到「開發週期」提案一個吧": "No active cycles yet — propose one in Development Cycles",
+  "點任務名稱可編輯詳情（負責人、截止日、子任務）": "Click a task to edit details (assignee, due date, subtasks)",
+  "任務必須歸屬一個開發週期": "Tasks must belong to a development cycle", "請選擇所屬開發週期": "Please choose a development cycle",
+  "例如：完成推進器選型": "e.g. Thruster selection", "補充說明、規格、連結…": "Details, specs, links…",
   "在哪裡下單？": "Where did you order?", "✓ 確認下單": "✓ Confirm Order",
   "實際金額（整筆總價，可留空）": "Actual price (total, optional)",
   "已標記為已下單": "Marked as ordered",

@@ -6,35 +6,33 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api-client";
 import { daysBetween, fmtMD, todayStr, weekdayCn } from "@/lib/date";
-import { CHIP, SUBTEAM_CLS, priorityDot, subteamLabel } from "@/lib/ui";
+import { CHIP, cycleStatusLabel, cycleStatus } from "@/lib/ui";
 import { useI18n } from "@/lib/i18n";
-import { useRouter } from "next/navigation";
-import type { Me, Settings, Task, TeamEvent } from "@/lib/types";
+import type { Cycle, Me, Settings, TeamEvent } from "@/lib/types";
 
 export default function DashboardPage() {
   const { t } = useI18n();
-  const router = useRouter();
   const [me, setMe] = useState<Me | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
-  const [tasks, setTasks] = useState<Task[] | null>(null);
+  const [cycles, setCycles] = useState<Cycle[] | null>(null);
   const [events, setEvents] = useState<TeamEvent[]>([]);
   const [error, setError] = useState("");
 
   useEffect(() => {
     (async () => {
-      const [u, s, ts, e] = await Promise.all([
+      const [u, s, c, e] = await Promise.all([
         api<{ user: Me | null }>("/api/auth/me"),
         api<Settings>("/api/settings"),
-        api<{ tasks: Task[] }>("/api/tasks"),
+        api<{ cycles: Cycle[] }>("/api/cycles"),
         api<{ events: TeamEvent[] }>("/api/events"),
       ]);
       if (!u.user) {
-        router.replace("/login");
+        window.location.href = "/login";
         return;
       }
       setMe(u.user);
       setSettings(s);
-      setTasks(ts.tasks);
+      setCycles(c.cycles);
       setEvents(e.events);
     })().catch((err: Error) => setError(err.message));
   }, []);
@@ -46,19 +44,21 @@ export default function DashboardPage() {
       </p>
     );
   }
-  if (!tasks || !me || !settings) {
+  if (!cycles || !me || !settings) {
     return <p className="py-20 text-center text-sm text-slate-500">{t("載入中…")}</p>;
   }
 
   const today = todayStr();
-  const open = tasks.filter((x) => x.status !== "done");
-  const overdue = open.filter((x) => x.due_date && x.due_date < today);
-  const weekDue = open
-    .filter((x) => x.due_date && x.due_date >= today && x.due_date <= addDays7(today))
-    .sort((a, b) => (a.due_date! < b.due_date! ? -1 : 1));
-  const myTasks = open
-    .filter((x) => x.assignee_id === me.id)
-    .sort((a, b) => rank(a) - rank(b));
+  const isTeacher = me.role === "teacher";
+  // 老師看全隊；其他成員看自己參與的週期
+  const mine = isTeacher
+    ? cycles
+    : cycles.filter(
+        (c) => c.proposer_id === me.id || c.members.some((m) => m.id === me.id)
+      );
+  const myActive = mine.filter((c) => c.status === "active");
+  const myApproved = mine.filter((c) => c.status === "approved");
+  const myLate = mine.filter((c) => c.status === "late");
   const upcoming = events
     .filter((e) => e.date >= today)
     .sort((a, b) => (a.date < b.date ? -1 : 1))
@@ -69,11 +69,7 @@ export default function DashboardPage() {
     const diff = daysBetween(today, settings.competition_date);
     countdown = {
       label:
-        diff > 0
-          ? t("距離比賽還有")
-          : diff === 0
-            ? t("比賽就是今天！")
-            : t("比賽已結束"),
+        diff > 0 ? t("距離比賽還有") : diff === 0 ? t("比賽就是今天！") : t("比賽已結束"),
       days: Math.abs(diff),
     };
   }
@@ -110,100 +106,108 @@ export default function DashboardPage() {
           )}
         </div>
         <div className="grid grid-cols-3 gap-4 md:col-span-2">
-          <StatCard label={t("進行中任務")} value={open.filter((x) => x.status === "doing").length} accent="text-cyan-300" />
-          <StatCard label={t("已逾期")} value={overdue.length} accent={overdue.length ? "text-rose-400" : "text-slate-400"} />
-          <StatCard label={t("本週截止")} value={weekDue.length} accent="text-amber-300" />
+          <StatCard label={t("進行中週期")} value={myActive.length} accent="text-cyan-300" />
+          <StatCard label={t("遲交")} value={myLate.length} accent={myLate.length ? "text-orange-300" : "text-slate-400"} />
+          <StatCard label={t("已核准待開始")} value={myApproved.length} accent="text-emerald-300" />
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-bold">{t("我的任務")}</h2>
-
-          </div>
-          {myTasks.length === 0 ? (
-            <p className="py-6 text-center text-sm text-slate-500">{t("目前沒有指派給你的任務，去泡茶吧 ☕")}</p>
-          ) : (
-            <ul className="space-y-2">
-              {myTasks.slice(0, 6).map((x) => (
-                <li key={x.id}>
-                  <div className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm">
-                    <span className={`h-2 w-2 shrink-0 rounded-full ${priorityDot(x.priority)}`} />
-                    <span className="flex-1 truncate">{x.title}</span>
-                    {x.due_date && (
-                      <span
-                        className={`shrink-0 text-xs ${
-                          x.due_date < today ? "text-rose-400" : "text-slate-400"
-                        }`}
-                      >
-                        {x.due_date < today ? t("逾期 ") : ""}
-                        {fmtMD(x.due_date)}
-                      </span>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <div className="space-y-6">
-          <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-            <h2 className="mb-3 font-bold">{t("本週即將截止")}</h2>
-            {weekDue.length === 0 ? (
-              <p className="py-4 text-center text-sm text-slate-500">{t("本週沒有任務截止")}</p>
-            ) : (
-              <ul className="space-y-2">
-                {weekDue.slice(0, 5).map((x) => (
-                  <TaskRow key={x.id} task={x} today={today} t={t} />
-                ))}
-              </ul>
-            )}
-          </section>
-          <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="font-bold">{t("近期活動")}</h2>
-              <Link href="/calendar" className="text-sm text-cyan-300 hover:underline">
-                {t("日曆 →")}
-              </Link>
-            </div>
-            {upcoming.length === 0 ? (
-              <p className="py-4 text-center text-sm text-slate-500">{t("沒有排定的活動")}</p>
-            ) : (
-              <ul className="space-y-2">
-                {upcoming.map((e) => (
-                  <li
-                    key={e.id}
-                    className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm"
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="font-bold">
+            {isTeacher ? t("全隊週期進度") : t("我的開發週期進度")}
+          </h2>
+          <Link href="/cycles" className="text-sm text-cyan-300 hover:underline">
+            {t("開發週期")} →
+          </Link>
+        </div>
+        {mine.length === 0 ? (
+          <p className="rounded-2xl border border-slate-800 bg-slate-900/40 py-10 text-center text-sm text-slate-500">
+            {t("目前沒有參與中的週期，到「開發週期」提案一個吧")}
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {mine
+              .filter((c) => c.status === "active" || c.status === "approved" || c.status === "late")
+              .map((c) => {
+                const pct =
+                  c.task_total > 0 ? Math.round((c.task_done / c.task_total) * 100) : 0;
+                const left = daysBetween(today, c.end_date);
+                return (
+                  <Link
+                    key={c.id}
+                    href="/cycles"
+                    className="block rounded-2xl border border-slate-800 bg-slate-900/60 p-4 transition hover:border-slate-600"
                   >
-                    <span className="w-20 shrink-0 text-slate-400">
-                      {fmtMD(e.date)}
-                      {e.time && <span className="ml-1">{e.time}</span>}
-                    </span>
-                    <span className="flex-1 truncate">{e.title}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${cycleStatus(c.status).chip}`}
+                      >
+                        {cycleStatusLabel(c.status)}
+                      </span>
+                      <span className="font-bold">{c.title}</span>
+                      {isTeacher && c.proposer_name && (
+                        <span className={`${CHIP} border-slate-700 text-slate-300`}>
+                          {c.proposer_name}
+                        </span>
+                      )}
+                      <span className="ml-auto text-xs tabular-nums text-slate-400">
+                        {fmtMD(c.start_date)} ~ {fmtMD(c.end_date)}
+                        {c.status === "active" && (
+                          <span
+                            className={`ml-2 ${left < 0 ? "text-rose-400" : left <= 3 ? "text-amber-300" : "text-slate-500"}`}
+                          >
+                            {left < 0 ? `${t("已超過結束日")} ${-left} ${t("天")}` : `${t("剩")} ${left} ${t("天")}`}
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-center gap-3 text-xs text-slate-400">
+                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-800">
+                        <div
+                          className={`h-full rounded-full ${c.task_total > 0 ? "bg-cyan-500" : ""}`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <span className="tabular-nums">
+                        {t("任務")} {c.task_done}/{c.task_total}（{pct}%）
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="font-bold">{t("近期活動")}</h2>
+          <Link href="/calendar" className="text-sm text-cyan-300 hover:underline">
+            {t("日曆 →")}
+          </Link>
         </div>
-      </div>
+        {upcoming.length === 0 ? (
+          <p className="py-4 text-center text-sm text-slate-500">{t("沒有排定的活動")}</p>
+        ) : (
+          <ul className="space-y-2">
+            {upcoming.map((e) => (
+              <li
+                key={e.id}
+                className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm"
+              >
+                <span className="w-20 shrink-0 text-slate-400">
+                  {fmtMD(e.date)}
+                  {e.time && <span className="ml-1">{e.time}</span>}
+                </span>
+                <span className="flex-1 truncate">{e.title}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
-}
-
-function addDays7(base: string): string {
-  const [y, m, d] = base.split("-").map(Number);
-  const dt = new Date(y, m - 1, d + 7);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
-}
-
-function rank(x: Task): number {
-  if (x.status === "doing") return 0;
-  if (x.status === "todo") return 1;
-  return 2;
 }
 
 function StatCard({ label, value, accent }: { label: string; value: number; accent: string }) {
@@ -212,24 +216,5 @@ function StatCard({ label, value, accent }: { label: string; value: number; acce
       <p className={`text-3xl font-black tabular-nums ${accent}`}>{value}</p>
       <p className="mt-1 text-xs text-slate-400">{label}</p>
     </div>
-  );
-}
-
-function TaskRow({ task, today, t }: { task: Task; today: string; t: (s: string) => string }) {
-  return (
-    <li className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm">
-      <span className={`h-2 w-2 shrink-0 rounded-full ${priorityDot(task.priority)}`} />
-      <span className="flex-1 truncate">{task.title}</span>
-      <span className={`shrink-0 rounded-full border px-2 py-0.5 text-xs ${SUBTEAM_CLS[task.subteam] ?? ""}`}>
-        {subteamLabel(task.subteam)}
-      </span>
-      {task.assignee_name && (
-        <span className={`shrink-0 ${CHIP} border-slate-700 text-slate-300`}>
-          {task.assignee_name}
-        </span>
-      )}
-      <span className="shrink-0 text-xs text-slate-400">{fmtMD(task.due_date!)}</span>
-      {task.due_date === today && <span className="shrink-0 text-xs text-amber-300">{t("今天！")}</span>}
-    </li>
   );
 }

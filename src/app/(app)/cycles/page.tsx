@@ -1,5 +1,7 @@
 "use client";
 import { useI18n } from "@/lib/i18n";
+import TaskModal from "@/components/TaskModal";
+import { useSubteams } from "@/lib/subteams";
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
@@ -7,25 +9,33 @@ import { useDialogs } from "@/components/ui/Dialogs";
 import { BTN, BTN_GHOST, CHIP, INPUT_CLS, cycleStatus } from "@/lib/ui";
 import { isStaff } from "@/lib/roles";
 import { daysBetween, fmtMD, todayStr } from "@/lib/date";
-import type { Cycle, CycleStatus, Me, Member } from "@/lib/types";
+import type { Cycle, CycleStatus, Me, Member, Task } from "@/lib/types";
 
 export default function CyclesPage() {
   const { t } = useI18n();
+  const { subteams } = useSubteams();
   const { confirm, prompt, toast } = useDialogs();
   const [cycles, setCycles] = useState<Cycle[] | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [me, setMe] = useState<Me | null>(null);
   const [form, setForm] = useState<null | { editing: Cycle | null }>(null);
+  const [tasks, setTasks] = useState<Task[] | null>(null);
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [modal, setModal] = useState<
+    { mode: "create"; cycleId: number } | { mode: "edit"; task: Task } | null
+  >(null);
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
-    const [c, m, u] = await Promise.all([
+    const [c, m, u, t] = await Promise.all([
       api<{ cycles: Cycle[] }>("/api/cycles"),
       api<{ members: Member[] }>("/api/members"),
       api<{ user: Me | null }>("/api/auth/me"),
+      api<{ tasks: Task[] }>("/api/tasks"),
     ]);
     setCycles(c.cycles);
     setMembers(m.members);
+    setTasks(t.tasks);
     setMe(u.user);
   }, []);
 
@@ -127,6 +137,25 @@ export default function CyclesPage() {
         </button>
       </div>
 
+      {modal && (
+        <TaskModal
+          key={modal.mode === "edit" ? "e" + modal.task.id : "c" + modal.cycleId}
+          mode={modal.mode === "edit" ? "edit" : "create"}
+          task={modal.mode === "edit" ? modal.task : null}
+          cycleId={(modal.mode === "edit" ? modal.task.cycle_id : modal.cycleId) ?? 0}
+          cycleTitle={
+            modal.mode === "edit"
+              ? (cycles.find((x) => x.id === modal.task.cycle_id)?.title ?? "")
+              : (cycles.find((x) => x.id === modal.cycleId)?.title ?? "")
+          }
+          members={members}
+          subteams={subteams}
+          me={me}
+          onClose={() => setModal(null)}
+          onChanged={load}
+        />
+      )}
+
       {form && (
         <CycleForm
           editing={form.editing}
@@ -221,6 +250,21 @@ export default function CyclesPage() {
             <div key={c.id} className="rounded-2xl border border-orange-400/30 bg-orange-400/5 p-4">
               <CycleHead c={c} today={today} />
               <TaskProgress done={c.task_done} total={c.task_total} />
+              <CycleTasks
+                cycle={c}
+                tasks={(tasks ?? []).filter((x) => x.cycle_id === c.id)}
+                expanded={expanded.has(c.id)}
+                onToggleExpand={() =>
+                  setExpanded((prev) => {
+                    const n = new Set(prev);
+                    n.has(c.id) ? n.delete(c.id) : n.add(c.id);
+                    return n;
+                  })
+                }
+                me={me}
+                onChanged={load}
+                onEdit={(task) => setModal({ mode: "edit", task })}
+              />
               <div className="mt-2 flex flex-wrap gap-2">
                 {(isStaff(myRole) || c.proposer_id === meId) && (
                   <button className={BTN_GHOST} onClick={() => act(c, "complete")}>
@@ -467,5 +511,116 @@ function CycleForm({
         </button>
       </div>
     </form>
+  );
+}
+
+
+function CycleTasks({
+  cycle,
+  tasks,
+  expanded,
+  onToggleExpand,
+  me,
+  onChanged,
+  onEdit,
+}: {
+  cycle: Cycle;
+  tasks: Task[];
+  expanded: boolean;
+  onToggleExpand: () => void;
+  me: Me;
+  onChanged: () => void;
+  onEdit: (task: Task) => void;
+}) {
+  const { t } = useI18n();
+  const { toast } = useDialogs();
+  const [quick, setQuick] = useState("");
+
+  async function toggleDone(task: Task) {
+    try {
+      await api(`/api/tasks/${task.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: task.status === "done" ? "doing" : "done", version: task.version }),
+      });
+      onChanged();
+    } catch (err) {
+      toast(t((err as Error).message), "err");
+      onChanged();
+    }
+  }
+
+  async function quickAdd() {
+    if (!quick.trim()) return;
+    try {
+      await api("/api/tasks", {
+        method: "POST",
+        body: JSON.stringify({ title: quick.trim(), cycle_id: cycle.id, subteam: "general" }),
+      });
+      setQuick("");
+      onChanged();
+    } catch (err) {
+      toast(t((err as Error).message), "err");
+    }
+  }
+
+  return (
+    <div className="mt-2">
+      <button
+        className="text-xs text-slate-400 transition hover:text-white"
+        onClick={onToggleExpand}
+      >
+        {expanded ? "▾" : "▸"} {t("任務")}（{tasks.length}）
+      </button>
+      {expanded && (
+        <div className="mt-2 space-y-1.5">
+          {tasks.map((task) => (
+            <div key={task.id} className="flex items-center gap-2 rounded-lg bg-slate-800/50 px-2.5 py-2 text-sm">
+              <input
+                type="checkbox"
+                className="h-4 w-4 accent-cyan-500"
+                checked={task.status === "done"}
+                onChange={() => toggleDone(task)}
+                title={t("任務")}
+              />
+              <button
+                className="flex-1 truncate text-left text-slate-200 hover:text-white"
+                onClick={() => onEdit(task)}
+              >
+                <span className={task.status === "done" ? "text-slate-500 line-through" : ""}>{task.title}</span>
+              </button>
+              {task.due_date && (
+                <span className="shrink-0 text-xs text-slate-500">{fmtMD(task.due_date)}</span>
+              )}
+              {task.assignee_name && (
+                <span className="shrink-0 text-xs text-slate-500">{task.assignee_name}</span>
+              )}
+            </div>
+          ))}
+          {tasks.length === 0 && (
+            <p className="rounded-lg bg-slate-800/40 px-2.5 py-2 text-xs text-slate-500">
+              {t("尚無歸屬任務（在看板編輯任務時可選擇所屬週期）")}
+            </p>
+          )}
+          <div className="flex gap-2">
+            <input
+              className="w-full rounded-lg border border-slate-700 bg-slate-800/80 px-3 py-1.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-500 focus:outline-none"
+              placeholder={t("＋ 新任務")}
+              value={quick}
+              onChange={(e) => setQuick(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && quickAdd()}
+            />
+            <button
+              className="rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-slate-200 transition hover:bg-slate-700"
+              onClick={quickAdd}
+            >
+              {t("加入")}
+            </button>
+          </div>
+          <p className="text-xs text-slate-500">
+            {t("點任務名稱可編輯詳情（負責人、截止日、子任務）")}
+          </p>
+        </div>
+      )}
+    </div>
   );
 }

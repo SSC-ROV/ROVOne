@@ -36,12 +36,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "請填寫任務標題" }, { status: 400 });
   }
   const assigneeId = (body?.assignee_id as number) || null;
+  const cycleId = (body?.cycle_id as number) || null;
+  if (!cycleId) {
+    return NextResponse.json({ error: "任務必須歸屬一個開發週期" }, { status: 400 });
+  }
+  const [cycle] = await sql`
+    SELECT status FROM cycles WHERE id = ${cycleId}`;
+  if (!cycle) return NextResponse.json({ error: "週期不存在" }, { status: 400 });
+  if (["completed", "rejected"].includes(String(cycle.status))) {
+    return NextResponse.json({ error: "該週期已完成或已駁回，無法加入任務" }, { status: 400 });
+  }
   const [task] = await sql`
     INSERT INTO tasks (title, description, status, priority, subteam, due_date, assignee_id, created_by, cycle_id)
     VALUES (${title}, ${String(body?.description ?? "")}, ${String(body?.status ?? "todo")},
             ${String(body?.priority ?? "medium")}, ${String(body?.subteam ?? "general")},
             ${(body?.due_date as string) || null}, ${assigneeId}, ${user.id},
-            ${(body?.cycle_id as number) || null})
+            ${cycleId})
     RETURNING id`;
   const created = await getTaskWithItems(Number(task.id));
   if (created?.assignee_id && created.assignee_id !== user.id) {
