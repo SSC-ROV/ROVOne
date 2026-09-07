@@ -120,9 +120,7 @@ export default function DashboardPage() {
         <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="font-bold">{t("我的任務")}</h2>
-            <Link href="/board" className="text-sm text-cyan-300 hover:underline">
-              {t("到看板 →")}
-            </Link>
+
           </div>
           {myTasks.length === 0 ? (
             <p className="py-6 text-center text-sm text-slate-500">{t("目前沒有指派給你的任務，去泡茶吧 ☕")}</p>
@@ -130,10 +128,7 @@ export default function DashboardPage() {
             <ul className="space-y-2">
               {myTasks.slice(0, 6).map((x) => (
                 <li key={x.id}>
-                  <Link
-                    href="/board"
-                    className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm transition hover:border-slate-600"
-                  >
+                  <div className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm">
                     <span className={`h-2 w-2 shrink-0 rounded-full ${priorityDot(x.priority)}`} />
                     <span className="flex-1 truncate">{x.title}</span>
                     {x.due_date && (
@@ -146,7 +141,7 @@ export default function DashboardPage() {
                         {fmtMD(x.due_date)}
                       </span>
                     )}
-                  </Link>
+                  </div>
                 </li>
               ))}
             </ul>

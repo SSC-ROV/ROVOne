@@ -108,6 +108,7 @@ export const CYCLE_STATUSES: {
   { key: "pending_leader", zh: "待隊長審批", en: "Leader Review", chip: "border-amber-500/40 bg-amber-500/10 text-amber-300", get label() { return tt(this.zh, this.en); } },
   { key: "pending_teacher", zh: "待老師審批", en: "Teacher Review", chip: "border-violet-500/40 bg-violet-500/10 text-violet-300", get label() { return tt(this.zh, this.en); } },
   { key: "active", zh: "進行中", en: "Active", chip: "border-cyan-500/40 bg-cyan-500/10 text-cyan-300", get label() { return tt(this.zh, this.en); } },
+  { key: "late", zh: "遲交", en: "Late", chip: "border-orange-400/40 bg-orange-400/10 text-orange-300", get label() { return tt(this.zh, this.en); } },
   { key: "completed", zh: "已完成", en: "Completed", chip: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300", get label() { return tt(this.zh, this.en); } },
   { key: "rejected", zh: "已駁回", en: "Rejected", chip: "border-rose-500/40 bg-rose-500/10 text-rose-300", get label() { return tt(this.zh, this.en); } },
 ];

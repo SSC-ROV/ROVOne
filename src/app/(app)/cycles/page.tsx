@@ -44,12 +44,13 @@ export default function CyclesPage() {
 
   const pending = cycles.filter((c) => c.status === "pending_leader" || c.status === "pending_teacher");
   const active = cycles.filter((c) => c.status === "active");
+  const late = cycles.filter((c) => c.status === "late");
   const history = cycles.filter((c) => c.status === "completed" || c.status === "rejected");
   const today = todayStr();
   const myRole = me.role;
   const meId = me.id;
 
-  async function act(c: Cycle, action: "approve" | "reject" | "complete" | "resubmit") {
+  async function act(c: Cycle, action: "approve" | "reject" | "complete" | "resubmit" | "marklate") {
     let note: string | null = "";
     if (action === "reject") {
       note = await prompt({ title: `駁回「${c.title}」`, label: "給提案人的備註（可留空）" });
@@ -65,6 +66,7 @@ export default function CyclesPage() {
           ? r.status === "active" ? "" : "已核准，送老師最終審批"
           : action === "reject" ? "已駁回"
           : action === "complete" ? "週期已完成，辛苦了！"
+          : action === "marklate" ? "已標記為遲交"
           : "已重新提交",
         "ok"
       );
@@ -101,6 +103,7 @@ export default function CyclesPage() {
       return {
         member: m,
         active: mine.filter((c) => c.status === "active").length,
+        late: mine.filter((c) => c.status === "late").length,
         pending: mine.filter((c) => c.status.startsWith("pending")).length,
         completed: mine.filter((c) => c.status === "completed").length,
         total: mine.length,
@@ -192,25 +195,52 @@ export default function CyclesPage() {
         ))}
       </section>
 
-      {isStaff(myRole) && (
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-          <h2 className="mb-3 font-bold">{t("成員週期統計")}</h2>
+      {late.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="font-bold text-orange-300">{t("遲交")}（{late.length}）</h2>
+          {late.map((c) => (
+            <div key={c.id} className="rounded-2xl border border-orange-400/30 bg-orange-400/5 p-4">
+              <CycleHead c={c} today={today} />
+              <TaskProgress done={c.task_done} total={c.task_total} />
+              <div className="mt-2 flex flex-wrap gap-2">
+                {(isStaff(myRole) || c.proposer_id === meId) && (
+                  <button className={BTN_GHOST} onClick={() => act(c, "complete")}>
+                    🏁 {t("標記完成")}
+                  </button>
+                )}
+                {isStaff(myRole) && (
+                  <button className={`${BTN_GHOST} text-slate-500`} onClick={() => removeCycle(c)}>
+                    {t("刪除")}
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </section>
+      )}
+
+      <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+        <h2 className="mb-3 font-bold">{t("成員週期統計")}</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs text-slate-500">
+                  <th className="px-2 py-2 font-medium">#</th>
                   <th className="px-2 py-2 font-medium">{t("成員")}</th>
                   <th className="px-2 py-2 font-medium">{t("進行中")}</th>
+                  <th className="px-2 py-2 font-medium">{t("遲交")}</th>
                   <th className="px-2 py-2 font-medium">{t("審批中")}</th>
                   <th className="px-2 py-2 font-medium">{t("已完成")}</th>
                   <th className="px-2 py-2 font-medium">{t("總計")}</th>
                 </tr>
               </thead>
               <tbody>
-                {stats.map((s) => (
+                {stats.map((s, i) => (
                   <tr key={s.member.id} className="border-t border-slate-800/60">
+                    <td className="px-2 py-2.5 tabular-nums text-slate-500">{i + 1}</td>
                     <td className="px-2 py-2.5">{s.member.display_name}</td>
                     <td className="px-2 py-2.5 tabular-nums text-cyan-300">{s.active}</td>
+                    <td className="px-2 py-2.5 tabular-nums text-orange-300">{s.late}</td>
                     <td className="px-2 py-2.5 tabular-nums text-amber-300">{s.pending}</td>
                     <td className="px-2 py-2.5 tabular-nums text-emerald-300">{s.completed}</td>
                     <td className="px-2 py-2.5 tabular-nums font-bold">{s.total}</td>
@@ -220,8 +250,7 @@ export default function CyclesPage() {
             </table>
           </div>
           <p className="mt-2 text-xs text-slate-500">{t("統計包含「提案」與「作為合作成員」的週期。")}</p>
-        </section>
-      )}
+      </section>
 
       {history.length > 0 && (
         <section className="space-y-3">

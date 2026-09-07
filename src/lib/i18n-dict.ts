@@ -1,4 +1,6 @@
 export const DICT: Record<string, string> = {
+  "遲交": "Late", "標記遲交": "⏰ Mark Late", "已標記為遲交": "Marked as late",
+  "只有進行中的週期可以標記遲交": "Only active cycles can be marked late", "排行": "Ranking",
   "組別管理": "Subteam Management", "自訂全站使用的組別（任務、成員、活動都會跟著）；刪除組別時，原屬成員與任務會自動改到第一個剩餘組別": "Customize the subteams used across the site (tasks, members & events follow). Deleting a subteam auto-moves its members & tasks to the first remaining one",
   "中文名稱": "Chinese name", "英文名稱": "English name", "新增組別": "Add Subteam", "儲存組別": "Save Subteams", "組別已更新": "Subteams updated",
   "組別：全隊（不限）": "Subteam: Whole team (any)",

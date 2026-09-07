@@ -12,6 +12,7 @@ export type CycleStatus =
   | "pending_leader"
   | "pending_teacher"
   | "active"
+  | "late"
   | "completed"
   | "rejected";
 

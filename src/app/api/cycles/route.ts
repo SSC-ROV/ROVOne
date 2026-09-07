@@ -16,7 +16,7 @@ export async function GET() {
     LEFT JOIN users b ON b.id = c.decided_by
     ORDER BY CASE c.status
        WHEN 'active' THEN 0 WHEN 'pending_teacher' THEN 1 WHEN 'pending_leader' THEN 2
-       WHEN 'completed' THEN 3 ELSE 4 END, c.end_date, c.id`;
+       WHEN 'late' THEN 3 WHEN 'completed' THEN 4 ELSE 5 END, c.end_date, c.id`;
 
   const memberRows = await sql`
     SELECT cm.cycle_id, u.id, u.display_name
@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
     if (n && (await sql`SELECT 1 FROM users WHERE id = ${n}`).length) ids.add(n);
   }
   for (const id of ids) {
-    await sql`INSERT OR IGNORE INTO cycle_members (cycle_id, user_id) VALUES (${cycleId}, ${id}) ON CONFLICT DO NOTHING`;
+    await sql`INSERT INTO cycle_members (cycle_id, user_id) VALUES (${cycleId}, ${id}) ON CONFLICT DO NOTHING`;
   }
 
   await notifyDiscord(

@@ -98,9 +98,24 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     return NextResponse.json({ ok: true, status: "rejected" });
   }
 
-  if (body.action === "complete") {
+  if (body.action === "marklate") {
     if (cycle.status !== "active") {
-      return NextResponse.json({ error: "只有進行中的週期可以標記完成" }, { status: 400 });
+      return NextResponse.json({ error: "只有進行中的週期可以標記遲交" }, { status: 400 });
+    }
+    if (!isStaff(user.role) && cycle.proposer_id !== user.id) {
+      return NextResponse.json({ error: "只有提案人或幹部可以標記遲交" }, { status: 403 });
+    }
+    await sql`
+      UPDATE cycles SET status = 'late', completed_at = NULL
+      WHERE id = ${cycle.id}`;
+    await logAudit(user.id, user.username, "cycle.marklate", `cycle:${cycle.id}`, cycle.title);
+    await notifyDiscord(`⏰ 開發週期「${cycle.title}」已標記為遲交。`);
+    return NextResponse.json({ ok: true, status: "late" });
+  }
+
+  if (body.action === "complete") {
+    if (cycle.status !== "active" && cycle.status !== "late") {
+      return NextResponse.json({ error: "只有進行中或遲交的週期可以標記完成" }, { status: 400 });
     }
     if (!isStaff(user.role) && cycle.proposer_id !== user.id) {
       return NextResponse.json({ error: "只有提案人或幹部可以標記完成" }, { status: 403 });
