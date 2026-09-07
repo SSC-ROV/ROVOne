@@ -29,7 +29,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   const c = cur as unknown as {
     name: string; spec: string; link: string; qty: number; unit: string;
     est_price: number; actual_price: number | null; purpose: string;
-    subteam: string; status: string; decided_at: string | null;
+    subteam: string; status: string; decided_at: string | null; decided_note: string | null;
     order_vendor: string; order_ref: string; ordered_by: number | null; arrived_at: string | null;
   };
   const status = body.status !== undefined ? String(body.status) : c.status;
@@ -42,6 +42,8 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
         ? null
         : Number(body.actual_price)
       : (c.actual_price as number | null);
+  const decidedNote =
+    body.decided_note !== undefined ? String(body.decided_note) : (c.decided_note as string | null);
   await sql`
     UPDATE parts SET
       name = ${body.name !== undefined ? String(body.name).trim() || String(c.name) : String(c.name)},
@@ -55,12 +57,23 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       subteam = ${body.subteam !== undefined ? String(body.subteam) : String(c.subteam)},
       status = ${status},
       decided_at = ${["approved", "rejected"].includes(status) ? (c.decided_at ? String(c.decided_at) : new Date().toISOString()) : c.decided_at},
+      decided_note = ${decidedNote},
       order_vendor = ${body.order_vendor !== undefined ? String(body.order_vendor) : String(c.order_vendor)},
       order_ref = ${body.order_ref !== undefined ? String(body.order_ref) : String(c.order_ref)},
       ordered_by = ${status === "ordered" ? user.id : c.ordered_by},
       arrived_at = ${status === "arrived" ? new Date().toISOString() : c.arrived_at}
     WHERE id = ${partId}`;
   await logAudit(user.id, user.username, "part.status", `part:${partId} → ${status}`);
+  if (
+    ["approved", "rejected"].includes(status) &&
+    String(existing.status) !== status
+  ) {
+    await notifyDiscord(
+      status === "approved"
+        ? `✅ ${user.display_name}已核准零件申請：「${String(c.name)}」`
+        : `❌ ${user.display_name}駁回零件申請：「${String(c.name)}」${decidedNote ? `— 備註：${decidedNote}` : ""}`
+    );
+  }
   return NextResponse.json({ ok: true });
 }
 

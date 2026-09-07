@@ -125,6 +125,25 @@ export default function PartsPage() {
     }
   }
 
+  async function decide(p: Part, decision: "approved" | "rejected") {
+    let note = "";
+    if (decision === "rejected") {
+      const input = await prompt({ title: `駁回「${p.name}」`, label: t("給申請人的備註（可留空）") });
+      if (input === null) return;
+      note = input;
+    }
+    try {
+      await api(`/api/parts/${p.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: decision, decided_note: note }),
+      });
+      toast(decision === "approved" ? t("已核准") + `「${p.name}」` : t("已駁回") + `「${p.name}」`);
+      await load();
+    } catch (err) {
+      toast(t((err as Error).message), "err");
+    }
+  }
+
   async function removePart(p: Part) {
     const ok = await confirm({
       title: `${t("刪除")}「${p.name}」${t("的申請？")}`,

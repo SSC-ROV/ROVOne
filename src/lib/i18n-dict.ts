@@ -1,4 +1,6 @@
 export const DICT: Record<string, string> = {
+  "核准": "Approve", "駁回": "Reject", "給申請人的備註（可留空）": "Note to requester (optional)",
+  "（也可以複製連結給老師審批，兩種方式都可以）": "(or copy the approval link for the teacher — both work)",
   "遲交": "Late", "標記遲交": "⏰ Mark Late", "已標記為遲交": "Marked as late",
   "只有進行中的週期可以標記遲交": "Only active cycles can be marked late", "排行": "Ranking",
   "組別管理": "Subteam Management", "自訂全站使用的組別（任務、成員、活動都會跟著）；刪除組別時，原屬成員與任務會自動改到第一個剩餘組別": "Customize the subteams used across the site (tasks, members & events follow). Deleting a subteam auto-moves its members & tasks to the first remaining one",
