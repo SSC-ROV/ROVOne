@@ -44,6 +44,9 @@ export default function CyclesPage() {
 
   const pending = cycles.filter((c) => c.status === "pending_leader" || c.status === "pending_teacher");
   const active = cycles.filter((c) => c.status === "active");
+  const approvedNotStarted = cycles.filter(
+    (c) => c.status === "approved" && c.start_date > today
+  );
   const late = cycles.filter((c) => c.status === "late");
   const history = cycles.filter((c) => c.status === "completed" || c.status === "rejected");
   const today = todayStr();
@@ -103,6 +106,7 @@ export default function CyclesPage() {
       return {
         member: m,
         active: mine.filter((c) => c.status === "active").length,
+        approved: mine.filter((c) => c.status === "approved").length,
         late: mine.filter((c) => c.status === "late").length,
         pending: mine.filter((c) => c.status.startsWith("pending")).length,
         completed: mine.filter((c) => c.status === "completed").length,
@@ -149,7 +153,7 @@ export default function CyclesPage() {
                     {dec === "approve" && (
                       <>
                         <button className={BTN} onClick={() => act(c, "approve")}>
-                          {c.status === "pending_teacher" ? t("✓核准（最終）") : t("✓核准，送老師審批")}
+                          {c.status === "pending_teacher" ? t("✓ 批准（標記已核准）") : t("✓ 批准，送老師審批")}
                         </button>
                         <button className={`${BTN_GHOST} text-rose-300`} onClick={() => act(c, "reject")}>
                           {t("✕ 駁回")}
@@ -195,6 +199,21 @@ export default function CyclesPage() {
         ))}
       </section>
 
+      {approvedNotStarted.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="font-bold text-emerald-300">{t("已核准")}（{approvedNotStarted.length}）</h2>
+          {approvedNotStarted.map((c) => (
+            <div key={c.id} className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4">
+              <CycleHead c={c} today={today} />
+              <TaskProgress done={c.task_done} total={c.task_total} />
+              <p className="mt-2 text-xs text-slate-500">
+                {t("開始日期")} {fmtMD(c.start_date)} {t("後自動進入進行中")}
+              </p>
+            </div>
+          ))}
+        </section>
+      )}
+
       {late.length > 0 && (
         <section className="space-y-3">
           <h2 className="font-bold text-orange-300">{t("遲交")}（{late.length}）</h2>
@@ -228,6 +247,7 @@ export default function CyclesPage() {
                   <th className="px-2 py-2 font-medium">#</th>
                   <th className="px-2 py-2 font-medium">{t("成員")}</th>
                   <th className="px-2 py-2 font-medium">{t("進行中")}</th>
+                  <th className="px-2 py-2 font-medium">{t("已核准")}</th>
                   <th className="px-2 py-2 font-medium">{t("遲交")}</th>
                   <th className="px-2 py-2 font-medium">{t("審批中")}</th>
                   <th className="px-2 py-2 font-medium">{t("已完成")}</th>
@@ -240,6 +260,7 @@ export default function CyclesPage() {
                     <td className="px-2 py-2.5 tabular-nums text-slate-500">{i + 1}</td>
                     <td className="px-2 py-2.5">{s.member.display_name}</td>
                     <td className="px-2 py-2.5 tabular-nums text-cyan-300">{s.active}</td>
+                    <td className="px-2 py-2.5 tabular-nums text-emerald-300">{s.approved}</td>
                     <td className="px-2 py-2.5 tabular-nums text-orange-300">{s.late}</td>
                     <td className="px-2 py-2.5 tabular-nums text-amber-300">{s.pending}</td>
                     <td className="px-2 py-2.5 tabular-nums text-emerald-300">{s.completed}</td>
@@ -249,7 +270,7 @@ export default function CyclesPage() {
               </tbody>
             </table>
           </div>
-          <p className="mt-2 text-xs text-slate-500">{t("統計包含「提案」與「作為合作成員」的週期。")}</p>
+          <p className="mt-2 text-xs text-slate-500">{t("統計包含「提案」與「作為合作成員」的週期；已核准的週期在開始日自動轉為進行中。")}</p>
       </section>
 
       {history.length > 0 && (

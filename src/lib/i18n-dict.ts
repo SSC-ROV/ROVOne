@@ -1,4 +1,7 @@
 export const DICT: Record<string, string> = {
+  "已核准": "Approved", "開始日期": "Start date", "後自動進入進行中": "then auto-starts",
+  "✓ 批准（標記已核准）": "✓ Approve (marks Approved)", "✓ 批准，送老師審批": "✓ Approve → Teacher",
+  "已核准！開始日期後自動進行": "Approved! It auto-starts on its begin date",
   "租借設備": "Rental Equipment",
   "核准": "Approve", "駁回": "Reject", "給申請人的備註（可留空）": "Note to requester (optional)",
   "（也可以複製連結給老師審批，兩種方式都可以）": "(or copy the approval link for the teacher — both work)",
@@ -110,7 +113,6 @@ export const DICT: Record<string, string> = {
   "已建立任務，記得到看板補截止日與負責人": "Task created. Add due date & assignee on the Board.",
   "已新增成員": "Added member",
   "已更新提案": "Proposal updated",
-  "已核准": "Approved",
   "已標記為可借用": "marked as available",
   "已標記為維修中": "marked as under maintenance",
   "已歸還，謝謝！": "Returned. Thanks!",
@@ -264,7 +266,6 @@ export const DICT: Record<string, string> = {
   "還沒有登記設備": "No equipment registered yet",
   "重新整理後隊名生效於導覽列": "team name updates in the navbar after refresh",
   "重設密碼": "Reset Password",
-  "開始日期": "Start date",
   "開發週期": "Development Cycles",
   "隊伍名稱": "Team Name",
   "隊伍設定": "Team Settings",

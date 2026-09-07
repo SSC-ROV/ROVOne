@@ -48,16 +48,16 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   }
   if (body.action === "approve") {
     if (cycle.status === "pending_leader") {
-      // 老師是最終審批者，可直接生效；隊長核准後升級待老師審批
-      const next = user.role === "teacher" ? "active" : "pending_teacher";
+      // 老師是最終審批者，批准即「已核准」；隊長批准後升級待老師審批
+      const next = user.role === "teacher" ? "approved" : "pending_teacher";
       await sql`
         UPDATE cycles SET status = ${next}, decided_by = ${user.id},
                decided_note = ${String(body.note ?? "").trim()}
         WHERE id = ${cycle.id}`;
       await logAudit(user.id, user.username, "cycle.approve", `cycle:${cycle.id}`, `${cycle.title} → ${next}`);
       await notifyDiscord(
-        next === "active"
-          ? `✅ 老師核准開發週期：「${cycle.title}」，已開始！`
+        next === "approved"
+          ? `✅ 老師已核准開發週期：「${cycle.title}」（開始日期後自動進行）`
           : `✅ 隊長核准開發週期：「${cycle.title}」，待老師最終審批`
       );
       return NextResponse.json({ ok: true, status: next });
@@ -67,12 +67,12 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
         return NextResponse.json({ error: "這一關要由老師審批" }, { status: 403 });
       }
       await sql`
-        UPDATE cycles SET status = 'active', decided_by = ${user.id},
+        UPDATE cycles SET status = 'approved', decided_by = ${user.id},
                decided_note = ${String(body.note ?? "").trim()}
         WHERE id = ${cycle.id}`;
-      await logAudit(user.id, user.username, "cycle.approve", `cycle:${cycle.id}`, `${cycle.title} → active`);
-      await notifyDiscord(`✅ 老師核准開發週期：「${cycle.title}」，已開始！`);
-      return NextResponse.json({ ok: true, status: "active" });
+      await logAudit(user.id, user.username, "cycle.approve", `cycle:${cycle.id}`, `${cycle.title} → approved`);
+      await notifyDiscord(`✅ 老師已核准開發週期：「${cycle.title}」（開始日期後自動進行）`);
+      return NextResponse.json({ ok: true, status: "approved" });
     }
     return NextResponse.json({ error: "這個狀態不能審批" }, { status: 400 });
   }

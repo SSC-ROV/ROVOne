@@ -9,6 +9,11 @@ export async function GET() {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "未登入" }, { status: 401 });
 
+  // 已核准的週期到了開始日期 → 自動轉為進行中（香港時區）
+  await sql`
+    UPDATE cycles SET status = 'active'
+    WHERE status = 'approved' AND start_date <= ((now() AT TIME ZONE 'Asia/Hong_Kong')::date)::text`;
+
   const rows = await sql`
     SELECT c.*, a.display_name AS proposer_name, b.display_name AS decided_by_name
     FROM cycles c
@@ -16,7 +21,7 @@ export async function GET() {
     LEFT JOIN users b ON b.id = c.decided_by
     ORDER BY CASE c.status
        WHEN 'active' THEN 0 WHEN 'pending_teacher' THEN 1 WHEN 'pending_leader' THEN 2
-       WHEN 'late' THEN 3 WHEN 'completed' THEN 4 ELSE 5 END, c.end_date, c.id`;
+       WHEN 'approved' THEN 3 WHEN 'late' THEN 4 WHEN 'completed' THEN 5 ELSE 6 END, c.end_date, c.id`;
 
   const memberRows = await sql`
     SELECT cm.cycle_id, u.id, u.display_name
@@ -75,7 +80,7 @@ export async function POST(req: NextRequest) {
 
   // 審批鏈：老師提案直接生效；隊長提案跳過隊長層級；成員提案送隊長審批
   const status =
-    user.role === "teacher" ? "active" : isStaff(user.role) ? "pending_teacher" : "pending_leader";
+    user.role === "teacher" ? "approved" : isStaff(user.role) ? "pending_teacher" : "pending_leader";
 
   const [created] = await sql`
     INSERT INTO cycles (title, description, start_date, end_date, status, proposer_id)
@@ -94,8 +99,8 @@ export async function POST(req: NextRequest) {
 
   await notifyDiscord(
     `🚀 新開發週期提案：「${title}」（${start} ~ ${end}）— ${
-      status === "active"
-        ? "老師提案，直接生效"
+      status === "approved"
+        ? "老師提案，直接核准"
         : status === "pending_teacher"
           ? "待老師審批"
           : "待隊長審批"
