@@ -19,14 +19,14 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   const taskId = Number(id);
   const [cur] = await sql`
     SELECT id, title, description, status, priority, subteam, due_date,
-           assignee_id, created_by, mission_id, cycle_id, completed_at, version
+           assignee_id, created_by, cycle_id, completed_at, version
     FROM tasks WHERE id = ${taskId}`;
   if (!cur) return NextResponse.json({ error: "任務不存在" }, { status: 404 });
   const current = cur as unknown as {
     id: number; title: string; description: string; status: string;
     priority: string; subteam: string; due_date: string | null;
     assignee_id: number | null; created_by: number | null;
-    mission_id: number | null; cycle_id: number | null; completed_at: string | null; version: number;
+    cycle_id: number | null; completed_at: string | null; version: number;
   };
   const allowed =
     isStaffRole(user.role) ||
@@ -62,7 +62,6 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       subteam = ${body.subteam !== undefined ? String(body.subteam) : current.subteam},
       due_date = ${body.due_date !== undefined ? (body.due_date as string) || null : current.due_date},
       assignee_id = ${body.assignee_id !== undefined ? (body.assignee_id as number) || null : current.assignee_id},
-      mission_id = ${body.mission_id !== undefined ? (body.mission_id as number) || null : current.mission_id},
       cycle_id = ${body.cycle_id !== undefined ? (body.cycle_id as number) || null : current.cycle_id},
       completed_at = ${body.status !== undefined ? (status === "done" ? new Date().toISOString() : null) : current.completed_at},
       version = version + 1

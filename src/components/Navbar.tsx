@@ -30,7 +30,6 @@ export default function Navbar({
     { href: "/board", label: t("看板") },
     { href: "/calendar", label: t("日曆") },
     { href: "/cycles", label: t("開發週期") },
-    { href: "/missions", label: t("比賽任務") },
     { href: "/parts", label: t("零件採買") },
     { href: "/equipment", label: t("設備") },
     { href: "/divelogs", label: t("水測日誌") },

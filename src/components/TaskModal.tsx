@@ -15,13 +15,12 @@ import {
 } from "@/lib/ui";
 import { useDialogs } from "@/components/ui/Dialogs";
 import { cycleStatus } from "@/lib/ui";
-import type { ChecklistItem, Cycle, Me, Member, MissionTask, Task } from "@/lib/types";
+import type { ChecklistItem, Cycle, Me, Member, Task } from "@/lib/types";
 
 export default function TaskModal({
   mode,
   task,
   members,
-  missions,
   cycles,
   me,
   onClose,
@@ -30,7 +29,6 @@ export default function TaskModal({
   mode: "create" | "edit";
   task: Task | null;
   members: Member[];
-  missions: MissionTask[];
   cycles?: Cycle[];
   me: Me;
   onClose: () => void;
@@ -52,9 +50,6 @@ export default function TaskModal({
   const [dueDate, setDueDate] = useState(task?.due_date ?? "");
   const [assigneeId, setAssigneeId] = useState<string>(
     task?.assignee_id ? String(task.assignee_id) : ""
-  );
-  const [missionId, setMissionId] = useState<string>(
-    task?.mission_id ? String(task.mission_id) : ""
   );
   const [cycleId, setCycleId] = useState<string>(
     task?.cycle_id ? String(task.cycle_id) : ""
@@ -88,7 +83,6 @@ export default function TaskModal({
       subteam,
       due_date: dueDate || null,
       assignee_id: assigneeId ? Number(assigneeId) : null,
-      mission_id: missionId ? Number(missionId) : null,
       cycle_id: cycleId ? Number(cycleId) : null,
     };
     try {
@@ -269,22 +263,6 @@ export default function TaskModal({
                 {STATUSES.map((s) => (
                   <option key={s.key} value={s.key}>
                     {s.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="col-span-2">
-              <label className="mb-1 block text-sm text-slate-400">{t("對應比賽任務（選填，影響完成度統計）")}</label>
-              <select
-                className={INPUT_CLS}
-                value={missionId}
-                onChange={(e) => setMissionId(e.target.value)}
-                disabled={!canEdit}
-              >
-                <option value="">{t("不對應")}</option>
-                {missions.map((m) => (
-                  <option key={m.id} value={String(m.id)}>
-                    {m.title}
                   </option>
                 ))}
               </select>

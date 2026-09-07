@@ -172,6 +172,21 @@ export default function AdminPage() {
     }
   }
 
+  async function updateMember(m: Member, patch: { subteam?: string; role?: string }) {
+    try {
+      await api(`/api/admin/members/${m.id}`, {
+        method: "PATCH",
+        body: JSON.stringify(patch),
+      });
+      if (patch.role) toast(`${t("已更新")}「${m.display_name}」${t("的角色")}`);
+      if (patch.subteam) toast(`${t("已更新")}「${m.display_name}」${t("的組別")}`);
+      await load();
+    } catch (err) {
+      toast(t((err as Error).message), "err");
+      await load();
+    }
+  }
+
   async function removeMember(m: Member) {
     const ok = await confirm({
       title: `${t("刪除成員")}「${m.display_name}」（${m.username}）？`,
@@ -353,17 +368,27 @@ export default function AdminPage() {
                 <tr key={m.id} className="border-t border-slate-800/60">
                   <td className="px-2 py-2.5">{m.display_name}</td>
                   <td className="px-2 py-2.5 text-slate-400">{m.username}</td>
-                  <td className="px-2 py-2.5 text-slate-300">
-                    {subteamLabel(m.subteam)}
+                  <td className="px-2 py-2.5">
+                    <select
+                      className="rounded-lg border border-slate-700 bg-slate-800/80 px-2 py-1 text-sm text-slate-200"
+                      value={m.subteam}
+                      onChange={(e) => updateMember(m, { subteam: e.target.value })}
+                    >
+                      {SUBTEAMS.map((x) => (
+                        <option key={x.key} value={x.key}>{x.label}</option>
+                      ))}
+                    </select>
                   </td>
                   <td className="px-2 py-2.5">
-                    {m.role === "leader" ? (
-                      <span className="text-cyan-300">{t("隊長")}</span>
-                    ) : m.role === "teacher" ? (
-                      <span className="text-violet-300">{t("老師")}</span>
-                    ) : (
-                      <span className="text-slate-400">{t("隊員")}</span>
-                    )}
+                    <select
+                      className="rounded-lg border border-slate-700 bg-slate-800/80 px-2 py-1 text-sm text-slate-200"
+                      value={m.role}
+                      onChange={(e) => updateMember(m, { role: e.target.value })}
+                    >
+                      <option value="member">{t("隊員")}</option>
+                      <option value="teacher">{t("老師")}</option>
+                      <option value="leader">{t("隊長")}</option>
+                    </select>
                   </td>
                   <td className="px-2 py-2.5 text-right">
                     {resetId === m.id ? (

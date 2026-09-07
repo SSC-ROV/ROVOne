@@ -37,11 +37,11 @@ export async function POST(req: NextRequest) {
   }
   const assigneeId = (body?.assignee_id as number) || null;
   const [task] = await sql`
-    INSERT INTO tasks (title, description, status, priority, subteam, due_date, assignee_id, created_by, mission_id, cycle_id)
+    INSERT INTO tasks (title, description, status, priority, subteam, due_date, assignee_id, created_by, cycle_id)
     VALUES (${title}, ${String(body?.description ?? "")}, ${String(body?.status ?? "todo")},
             ${String(body?.priority ?? "medium")}, ${String(body?.subteam ?? "general")},
             ${(body?.due_date as string) || null}, ${assigneeId}, ${user.id},
-            ${(body?.mission_id as number) || null}, ${(body?.cycle_id as number) || null})
+            ${(body?.cycle_id as number) || null})
     RETURNING id`;
   const created = await getTaskWithItems(Number(task.id));
   if (created?.assignee_id && created.assignee_id !== user.id) {

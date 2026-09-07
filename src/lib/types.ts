@@ -66,7 +66,6 @@ export interface Task {
   assignee_id: number | null;
   assignee_name: string | null;
   created_by: number | null;
-  mission_id: number | null;
   cycle_id: number | null;
   version: number;
   sort_order: number;
@@ -155,13 +154,3 @@ export interface DiveLog {
   created_by_name: string | null;
 }
 
-// ---- 比賽任務對照 ----
-export interface MissionTask {
-  id: number;
-  title: string;
-  description: string;
-  points: number | null;
-  sort_order: number;
-  task_total: number;
-  task_done: number;
-}
