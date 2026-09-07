@@ -41,6 +41,7 @@ export default function PartsPage() {
     setMe(u.user);
   }
 
+  const bgReload = () => { load().catch(() => {}); };
   useEffect(() => {
     load().catch((err: Error) => setError(err.message));
   }, []);
@@ -111,6 +112,10 @@ export default function PartsPage() {
 
   async function confirmOrder() {
     if (!ordering) return;
+    const snapshot = parts;
+    const apply = (patch: Partial<Part>) =>
+      setParts((prev) => prev!.map((x) => (x.id === ordering.part.id ? { ...x, ...patch } : x)));
+    apply({ status: "ordered", order_vendor: ordering.vendor, actual_price: ordering.price === "" ? null : Number(ordering.price) || null });
     try {
       await api(`/api/parts/${ordering.part.id}`, {
         method: "PATCH",
@@ -122,8 +127,10 @@ export default function PartsPage() {
       });
       toast(t("已標記為已下單"));
       setOrdering(null);
-      await load();
+      bgReload();
     } catch (err) {
+      setParts(snapshot);
+      setOrdering(null);
       toast(t((err as Error).message), "err");
     }
   }
@@ -135,14 +142,24 @@ export default function PartsPage() {
       if (input === null) return;
       note = input;
     }
+    const snapshot = parts;
+    // 樂觀：立即更新狀態
+    setParts((prev) =>
+      prev!.map((x) =>
+        x.id === p.id
+          ? { ...x, status: decision, decided_note: note, decided_at: x.decided_at ?? new Date().toISOString() }
+          : x
+      )
+    );
     try {
       await api(`/api/parts/${p.id}`, {
         method: "PATCH",
         body: JSON.stringify({ status: decision, decided_note: note }),
       });
       toast(decision === "approved" ? t("已核准") + `「${p.name}」` : t("已駁回") + `「${p.name}」`);
-      await load();
+      bgReload();
     } catch (err) {
+      setParts(snapshot);
       toast(t((err as Error).message), "err");
     }
   }

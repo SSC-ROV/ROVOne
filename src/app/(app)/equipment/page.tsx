@@ -35,6 +35,7 @@ export default function EquipmentPage() {
     setMe(u.user);
   }
 
+  const bgReload = () => { load().catch(() => {}); };
   useEffect(() => {
     load().catch((err: Error) => setError(err.message));
   }, []);
@@ -47,8 +48,16 @@ export default function EquipmentPage() {
   if (!equipment || !me) {
     return <p className="py-20 text-center text-sm text-slate-500">{t("載入中…")}</p>;
   }
+  const meId = me.id;
+  const meName = me.display_name;
 
   async function act(e: Equipment, action: string) {
+    const apply = (patch: Partial<Equipment>) =>
+      setEquipment((prev) => prev!.map((x) => (x.id === e.id ? { ...x, ...patch } : x)));
+    // 樂觀：先改畫面
+    if (action === "borrow") apply({ status: "borrowed", borrower_id: meId, borrower_name: meName, borrowed_at: null, due_return: null });
+    if (action === "return") apply({ status: "available", borrower_id: null, borrower_name: null, borrowed_at: null, due_return: null });
+    if (action === "maintenance") apply({ status: e.status === "maintenance" ? "available" : "maintenance", borrower_id: null, borrower_name: null, borrowed_at: null, due_return: null });
     try {
       if (action === "borrow") {
         const due = await prompt({

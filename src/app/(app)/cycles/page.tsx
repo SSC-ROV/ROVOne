@@ -39,6 +39,7 @@ export default function CyclesPage() {
     setTasks(t.tasks);
     setMe(u.user);
   }, []);
+  const bgReload = () => { load().catch(() => {}); };
 
   useEffect(() => {
     load().catch((err: Error) => setError(err.message));
@@ -64,6 +65,50 @@ export default function CyclesPage() {
   const myRole = me.role;
   const conflicts = computeConflicts(cycles);
   const meId = me.id;
+
+  // 樂觀更新：任務勾選（立即改畫面，背景同步；失敗則還原）
+  async function toggleTaskDone(task: Task) {
+    const nextStatus = task.status === "done" ? "doing" : "done";
+    const snapshot = tasks;
+    setTasks((prev) =>
+      prev!.map((x) =>
+        x.id === task.id
+          ? { ...x, status: nextStatus, completed_at: nextStatus === "done" ? new Date().toISOString() : null }
+          : x
+      )
+    );
+    setCycles((prev) =>
+      prev!.map((c) => {
+        if (c.id !== task.cycle_id) return c;
+        const delta = nextStatus === "done" ? 1 : task.status === "done" ? -1 : 0;
+        return { ...c, task_done: Math.max(0, c.task_done + delta) };
+      })
+    );
+    try {
+      await api(`/api/tasks/${task.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: nextStatus, version: task.version }),
+      });
+      bgReload();
+    } catch (err) {
+      setTasks(snapshot);
+      toast(t((err as Error).message), "err");
+    }
+  }
+
+  // 樂觀更新：快速新增任務（先插臨時項，再由背景重載取得正式資料）
+  async function quickAddTask(cycleId: number, title: string) {
+    if (!title.trim()) return;
+    try {
+      await api("/api/tasks", {
+        method: "POST",
+        body: JSON.stringify({ title: title.trim(), cycle_id: cycleId, subteam: "general" }),
+      });
+      bgReload();
+    } catch (err) {
+      toast(t((err as Error).message), "err");
+    }
+  }
 
   async function act(c: Cycle, action: "approve" | "reject" | "complete" | "resubmit" | "marklate") {
     let note: string | null = "";
@@ -268,6 +313,8 @@ export default function CyclesPage() {
                 me={me}
                 onChanged={load}
                 onEdit={(task) => setModal({ mode: "edit", task })}
+                onToggleDone={(task) => toggleTaskDone(task)}
+                onQuickAdd={(title) => quickAddTask(c.id, title)}
               />
               <div className="mt-2 flex flex-wrap gap-2">
                 {(isStaff(myRole) || c.proposer_id === meId) && (
@@ -533,6 +580,8 @@ function CycleTasks({
   me,
   onChanged,
   onEdit,
+  onToggleDone,
+  onQuickAdd,
 }: {
   cycle: Cycle;
   tasks: Task[];
@@ -541,23 +590,15 @@ function CycleTasks({
   me: Me;
   onChanged: () => void;
   onEdit: (task: Task) => void;
+  onToggleDone: (task: Task) => void;
+  onQuickAdd: (title: string) => void;
 }) {
   const { t } = useI18n();
   const { toast } = useDialogs();
   const [quick, setQuick] = useState("");
 
-  async function toggleDone(task: Task) {
-    try {
-      await api(`/api/tasks/${task.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ status: task.status === "done" ? "doing" : "done", version: task.version }),
-      });
-      onChanged();
-    } catch (err) {
-      toast(t((err as Error).message), "err");
-      onChanged();
-    }
-  }
+  // 樂觀更新由父層處理
+
 
   async function quickAdd() {
     if (!quick.trim()) return;
@@ -589,7 +630,7 @@ function CycleTasks({
                 type="checkbox"
                 className="h-4 w-4 accent-cyan-500"
                 checked={task.status === "done"}
-                onChange={() => toggleDone(task)}
+                onChange={() => onToggleDone(task)}
                 title={t("任務")}
               />
               <button
