@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/lib/i18n";
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
@@ -9,6 +10,7 @@ import { daysBetween, fmtMD, todayStr } from "@/lib/date";
 import type { Cycle, CycleStatus, Me, Member } from "@/lib/types";
 
 export default function CyclesPage() {
+  const { t } = useI18n();
   const { confirm, prompt, toast } = useDialogs();
   const [cycles, setCycles] = useState<Cycle[] | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
@@ -37,7 +39,7 @@ export default function CyclesPage() {
     );
   }
   if (!cycles || !me) {
-    return <p className="py-20 text-center text-sm text-slate-500">載入中…</p>;
+    return <p className="py-20 text-center text-sm text-slate-500">{t("載入中…")}</p>;
   }
 
   const pending = cycles.filter((c) => c.status === "pending_leader" || c.status === "pending_teacher");
@@ -60,7 +62,7 @@ export default function CyclesPage() {
       });
       toast(
         action === "approve"
-          ? r.status === "active" ? "已核准，週期開始！" : "已核准，送老師最終審批"
+          ? r.status === "active" ? "" : "已核准，送老師最終審批"
           : action === "reject" ? "已駁回"
           : action === "complete" ? "週期已完成，辛苦了！"
           : "已重新提交",
@@ -68,7 +70,7 @@ export default function CyclesPage() {
       );
       await load();
     } catch (err) {
-      toast((err as Error).message, "err");
+      toast(t((err as Error).message), "err");
     }
   }
 
@@ -80,7 +82,7 @@ export default function CyclesPage() {
       toast("已刪除");
       await load();
     } catch (err) {
-      toast((err as Error).message, "err");
+      toast(t((err as Error).message), "err");
     }
   }
 
@@ -109,12 +111,12 @@ export default function CyclesPage() {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-lg font-bold">開發週期</h1>
+        <h1 className="text-lg font-bold">{t("開發週期")}</h1>
         <span className="text-sm text-slate-500">
-          提案 → 隊長審批 → 老師審批 → 進行中；任務在看板可歸屬到週期
+          {t("提案 → 隊長審批 → 老師審批 → 進行中；任務在看板可歸屬到週期")}
         </span>
         <button className={`${BTN} ml-auto`} onClick={() => setForm({ editing: null })}>
-          ＋ 提案新週期
+          {t("＋ 提案新週期")}
         </button>
       </div>
 
@@ -133,7 +135,7 @@ export default function CyclesPage() {
 
       {isStaff(myRole) && pending.length > 0 && (
         <section className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-5">
-          <h2 className="mb-3 font-bold text-amber-300">待審批（{pending.length}）</h2>
+          <h2 className="mb-3 font-bold text-amber-300">{t("待審批")}（{pending.length}）</h2>
           <div className="space-y-3">
             {pending.map((c) => {
               const dec = canDecide(c);
@@ -144,16 +146,16 @@ export default function CyclesPage() {
                     {dec === "approve" && (
                       <>
                         <button className={BTN} onClick={() => act(c, "approve")}>
-                          {c.status === "pending_teacher" ? "✓核准（最終）" : "✓核准，送老師審批"}
+                          {c.status === "pending_teacher" ? t("✓核准（最終）") : t("✓核准，送老師審批")}
                         </button>
                         <button className={`${BTN_GHOST} text-rose-300`} onClick={() => act(c, "reject")}>
-                          ✕ 駁回
+                          {t("✕ 駁回")}
                         </button>
                       </>
                     )}
-                    {dec === "wait" && <p className="text-xs text-slate-500">等待老師審批中</p>}
+                    {dec === "wait" && <p className="text-xs text-slate-500">{t("等待老師審批中")}</p>}
                     <button className={`${BTN_GHOST} ml-auto`} onClick={() => setForm({ editing: c })}>
-                      編輯
+                      {t("編輯")}
                     </button>
                   </div>
                 </div>
@@ -164,10 +166,10 @@ export default function CyclesPage() {
       )}
 
       <section className="space-y-3">
-        <h2 className="font-bold">進行中（{active.length}）</h2>
+        <h2 className="font-bold">{t("進行中")}（{active.length}）</h2>
         {active.length === 0 && (
           <p className="rounded-2xl border border-slate-800 bg-slate-900/40 py-10 text-center text-sm text-slate-500">
-            目前沒有進行中的週期
+            {t("目前沒有進行中的週期")}
           </p>
         )}
         {active.map((c) => (
@@ -177,12 +179,12 @@ export default function CyclesPage() {
             <div className="mt-2 flex flex-wrap gap-2">
               {(isStaff(me.role) || c.proposer_id === me.id) && (
                 <button className={BTN_GHOST} onClick={() => act(c, "complete")}>
-                  🏁 標記完成
+                  {t("🏁 標記完成")}
                 </button>
               )}
               {isStaff(me.role) && (
                 <button className={`${BTN_GHOST} text-slate-500`} onClick={() => removeCycle(c)}>
-                  刪除
+                  {t("刪除")}
                 </button>
               )}
             </div>
@@ -192,16 +194,16 @@ export default function CyclesPage() {
 
       {isStaff(myRole) && (
         <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-          <h2 className="mb-3 font-bold">成員週期統計</h2>
+          <h2 className="mb-3 font-bold">{t("成員週期統計")}</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs text-slate-500">
-                  <th className="px-2 py-2 font-medium">成員</th>
-                  <th className="px-2 py-2 font-medium">進行中</th>
-                  <th className="px-2 py-2 font-medium">審批中</th>
-                  <th className="px-2 py-2 font-medium">已完成</th>
-                  <th className="px-2 py-2 font-medium">總計</th>
+                  <th className="px-2 py-2 font-medium">{t("成員")}</th>
+                  <th className="px-2 py-2 font-medium">{t("進行中")}</th>
+                  <th className="px-2 py-2 font-medium">{t("審批中")}</th>
+                  <th className="px-2 py-2 font-medium">{t("已完成")}</th>
+                  <th className="px-2 py-2 font-medium">{t("總計")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -217,24 +219,24 @@ export default function CyclesPage() {
               </tbody>
             </table>
           </div>
-          <p className="mt-2 text-xs text-slate-500">統計包含「提案」與「作為合作成員」的週期。</p>
+          <p className="mt-2 text-xs text-slate-500">{t("統計包含「提案」與「作為合作成員」的週期。")}</p>
         </section>
       )}
 
       {history.length > 0 && (
         <section className="space-y-3">
-          <h2 className="font-bold text-slate-400">歷史（{history.length}）</h2>
+          <h2 className="font-bold text-slate-400">{t("歷史")}（{history.length}）</h2>
           {history.map((c) => (
             <div key={c.id} className="rounded-2xl border border-slate-800/70 bg-slate-900/40 p-4">
               <CycleHead c={c} today={today} />
               {c.status === "rejected" && c.proposer_id === me.id && (
                 <button className={`${BTN_GHOST} mt-2`} onClick={() => act(c, "resubmit")}>
-                  修改後重新提交
+                  {t("修改後重新提交")}
                 </button>
               )}
               {(isStaff(me.role) || (c.proposer_id === meId && c.status === "rejected")) && (
                 <button className="ml-3 text-xs text-slate-500 hover:text-rose-400" onClick={() => removeCycle(c)}>
-                  刪除
+                  {t("刪除")}
                 </button>
               )}
             </div>
@@ -246,6 +248,7 @@ export default function CyclesPage() {
 }
 
 function CycleHead({ c, today }: { c: Cycle; today: string }) {
+  const { t } = useI18n();
   const st = cycleStatus(c.status);
   const left = daysBetween(today, c.end_date);
   return (
@@ -259,17 +262,17 @@ function CycleHead({ c, today }: { c: Cycle; today: string }) {
           {fmtMD(c.start_date)} ~ {fmtMD(c.end_date)}
           {c.status === "active" && (
             <span className={`ml-2 ${left < 0 ? "text-rose-400" : left <= 3 ? "text-amber-300" : "text-slate-500"}`}>
-              {left < 0 ? `已超過結束日 ${-left} 天` : `剩 ${left} 天`}
+              {left < 0 ? `${t("已超過結束日")} ${-left} ${t("天")}` : `${t("剩")} ${left} ${t("天")}`}
             </span>
           )}
         </span>
       </div>
       {c.description && <p className="mt-1 text-sm text-slate-400">{c.description}</p>}
       <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
-        <span>提案：{c.proposer_name ?? "—"}</span>
+        <span>{t("提案")}：{c.proposer_name ?? "—"}</span>
         {c.members.length > 0 && (
           <span className="flex flex-wrap items-center gap-1">
-            · 合作：
+            · {t("合作")}：
             {c.members.map((m) => (
               <span key={m.id} className={`${CHIP} border-slate-700 text-slate-300`}>
                 {m.display_name}
@@ -279,15 +282,16 @@ function CycleHead({ c, today }: { c: Cycle; today: string }) {
         )}
       </div>
       {(c.status === "rejected" || c.status === "completed") && c.decided_note && (
-        <p className="mt-1 text-xs text-slate-400">審批備註：{c.decided_note}</p>
+        <p className="mt-1 text-xs text-slate-400">{t("審批備註")}：{c.decided_note}</p>
       )}
     </div>
   );
 }
 
 function TaskProgress({ done, total }: { done: number; total: number }) {
+  const { t } = useI18n();
   if (total === 0) {
-    return <p className="mt-2 text-xs text-slate-500">尚無歸屬任務（在看板編輯任務時可選擇所屬週期）</p>;
+    return <p className="mt-2 text-xs text-slate-500">{t("尚無歸屬任務（在看板編輯任務時可選擇所屬週期）")}</p>;
   }
   const pct = Math.round((done / total) * 100);
   return (
@@ -296,7 +300,7 @@ function TaskProgress({ done, total }: { done: number; total: number }) {
         <div className="h-full rounded-full bg-cyan-500" style={{ width: `${pct}%` }} />
       </div>
       <span className="tabular-nums">
-        任務 {done}/{total}（{pct}%）
+        {t("任務")} {done}/{total}（{pct}%）
       </span>
     </div>
   );
@@ -315,6 +319,7 @@ function CycleForm({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useI18n();
   const { toast } = useDialogs();
   const [title, setTitle] = useState(editing?.title ?? "");
   const [description, setDescription] = useState(editing?.description ?? "");
@@ -329,11 +334,11 @@ function CycleForm({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim() || !start || !end) {
-      setErr("請填寫名稱與起訖日期");
+      setErr(t("請填寫名稱與起訖日期"));
       return;
     }
     if (end < start) {
-      setErr("結束日期不能早於開始日期");
+      setErr(t("結束日期不能早於開始日期"));
       return;
     }
     setBusy(true);
@@ -344,13 +349,13 @@ function CycleForm({
           method: "PATCH",
           body: JSON.stringify({ title: title.trim(), description, start_date: start, end_date: end, member_ids: picked }),
         });
-        toast("已更新提案");
+        toast(t("已更新提案"));
       } else {
         await api("/api/cycles", {
           method: "POST",
           body: JSON.stringify({ title: title.trim(), description, start_date: start, end_date: end, member_ids: picked }),
         });
-        toast("提案已送出，等審批結果");
+        toast(t("提案已送出，等審批結果"));
       }
       onSaved();
     } catch (error) {
@@ -361,22 +366,22 @@ function CycleForm({
 
   return (
     <form onSubmit={submit} className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-      <h2 className="font-bold">{editing ? `編輯週期：${editing.title}` : "提案新開發週期"}</h2>
+      <h2 className="font-bold">{editing ? `${t("編輯週期")}：${editing.title}` : t("提案新開發週期")}</h2>
       <div className="grid gap-3 sm:grid-cols-[1fr_10rem_10rem]">
-        <input className={INPUT_CLS} placeholder="週期名稱，例如：推進系統重構 *" value={title} onChange={(e) => setTitle(e.target.value)} />
-        <input className={INPUT_CLS} type="date" value={start} onChange={(e) => setStart(e.target.value)} title="開始日期" />
-        <input className={INPUT_CLS} type="date" value={end} onChange={(e) => setEnd(e.target.value)} title="結束日期" />
+        <input className={INPUT_CLS} placeholder={t("週期名稱，例如：推進系統重構 *")} value={title} onChange={(e) => setTitle(e.target.value)} />
+        <input className={INPUT_CLS} type="date" value={start} onChange={(e) => setStart(e.target.value)} title={t("開始日期")} />
+        <input className={INPUT_CLS} type="date" value={end} onChange={(e) => setEnd(e.target.value)} title={t("結束日期")} />
       </div>
       <textarea
         className={`${INPUT_CLS} min-h-16 resize-y`}
-        placeholder="這個週期要做什麼？目標是什麼？（選填）"
+        placeholder={t("這個週期要做什麼？目標是什麼？（選填）")}
         value={description}
         onChange={(e) => setDescription(e.target.value)}
       />
       <div>
-        <p className="mb-1 text-sm text-slate-400">合作成員（可多選）</p>
+        <p className="mb-1 text-sm text-slate-400">{t("合作成員（可多選）")}</p>
         {members.length === 0 ? (
-          <p className="text-xs text-slate-500">目前沒有其他成員可選</p>
+          <p className="text-xs text-slate-500">{t("目前沒有其他成員可選")}</p>
         ) : (
           <div className="flex flex-wrap gap-2">
             {members.map((m) => {
@@ -405,10 +410,10 @@ function CycleForm({
       )}
       <div className="flex gap-2">
         <button className={BTN} disabled={busy}>
-          {busy ? "送出中…" : editing ? "儲存變更" : "送出提案"}
+          {busy ? t("送出中…") : editing ? t("儲存變更") : t("送出提案")}
         </button>
         <button type="button" className={BTN_GHOST} onClick={onClose}>
-          取消
+          {t("取消")}
         </button>
       </div>
     </form>

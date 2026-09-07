@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/lib/i18n";
 
 import {
   createContext,
@@ -46,6 +47,7 @@ export default function DialogProvider({
 }: {
   children: React.ReactNode;
 }) {
+  const { t } = useI18n();
   const [confirmState, setConfirmState] =
     useState<(ConfirmOpts & { resolve: (b: boolean) => void }) | null>(null);
   const [promptState, setPromptState] =
@@ -94,7 +96,7 @@ export default function DialogProvider({
           )}
           <div className="mt-5 flex justify-end gap-2">
             <button className={BTN_GHOST} onClick={() => closeConfirm(false)}>
-              {confirmState.cancelText ?? "取消"}
+              {confirmState.cancelText ?? t("取消")}
             </button>
             <button
               className={
@@ -105,7 +107,7 @@ export default function DialogProvider({
               onClick={() => closeConfirm(true)}
               autoFocus
             >
-              {confirmState.confirmText ?? "確定"}
+              {confirmState.confirmText ?? t("確定")}
             </button>
           </div>
         </Modal>

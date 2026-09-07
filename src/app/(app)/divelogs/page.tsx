@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/lib/i18n";
 import { isStaff } from "@/lib/roles";
 
 
@@ -10,6 +11,7 @@ import { useDialogs } from "@/components/ui/Dialogs";
 import type { DiveLog, Me } from "@/lib/types";
 
 export default function DiveLogsPage() {
+  const { t } = useI18n();
   const { confirm, toast } = useDialogs();
   const [logs, setLogs] = useState<DiveLog[] | null>(null);
   const [me, setMe] = useState<Me | null>(null);
@@ -45,7 +47,7 @@ export default function DiveLogsPage() {
     );
   }
   if (!logs || !me) {
-    return <p className="py-20 text-center text-sm text-slate-500">載入中…</p>;
+    return <p className="py-20 text-center text-sm text-slate-500">{t("載入中…")}</p>;
   }
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
@@ -59,10 +61,10 @@ export default function DiveLogsPage() {
       await api("/api/divelogs", { method: "POST", body: JSON.stringify(form) });
       setForm({ date: todayStr(), title: "", participants: "", tested: "", issues: "", fixes: "", next_steps: "" });
       setShowForm(false);
-      toast("日誌已儲存");
+      toast(t("日誌已儲存"));
       await load();
     } catch (err) {
-      toast((err as Error).message, "err");
+      toast(t((err as Error).message), "err");
     } finally {
       setBusy(false);
     }
@@ -70,9 +72,9 @@ export default function DiveLogsPage() {
 
   async function toTask(log: DiveLog) {
     const ok = await confirm({
-      title: `把「${log.title}」的待驗證事項轉成任務？`,
-      message: "會建立一筆指派給你的高優先級任務，內容附上日誌重點。",
-      confirmText: "建立任務",
+      title: `${t("轉成任務")}：${log.title}`,
+      message: t("會建立一筆指派給你的高優先級任務，內容附上日誌重點。"),
+      confirmText: t("建立任務"),
     });
     if (!ok) return;
     try {
@@ -86,16 +88,16 @@ export default function DiveLogsPage() {
           assignee_id: me!.id,
         }),
       });
-      toast("已建立任務，記得到看板補截止日與負責人");
+      toast(t("已建立任務，記得到看板補截止日與負責人"));
     } catch (err) {
-      toast((err as Error).message, "err");
+      toast(t((err as Error).message), "err");
     }
   }
 
   async function remove(log: DiveLog) {
     const ok = await confirm({
-      title: `刪除日誌「${log.title}」？`,
-      confirmText: "刪除",
+      title: `${t("刪除日誌")}「${log.title}」？`,
+      confirmText: t("刪除"),
       danger: true,
     });
     if (!ok) return;
@@ -104,17 +106,17 @@ export default function DiveLogsPage() {
       toast("已刪除");
       await load();
     } catch (err) {
-      toast((err as Error).message, "err");
+      toast(t((err as Error).message), "err");
     }
   }
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-lg font-bold">水測日誌</h1>
-        <span className="text-sm text-slate-500">每次下水的問題與修正都留下紀錄，才不會踩同樣的坑</span>
+        <h1 className="text-lg font-bold">{t("水測日誌")}</h1>
+        <span className="text-sm text-slate-500">{t("每次下水的問題與修正都留下紀錄，才不會踩同樣的坑")}</span>
         <button className={`${BTN} ml-auto`} onClick={() => setShowForm(!showForm)}>
-          ＋ 新增日誌
+          {t("＋ 新增日誌")}
         </button>
       </div>
 
@@ -122,17 +124,17 @@ export default function DiveLogsPage() {
         <form onSubmit={submit} className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
           <div className="grid gap-3 sm:grid-cols-3">
             <input className={INPUT_CLS} type="date" value={form.date} onChange={set("date")} />
-            <input className={INPUT_CLS} placeholder="標題，例如：水測 #3 *" value={form.title} onChange={set("title")} />
-            <input className={INPUT_CLS} placeholder="參與人員" value={form.participants} onChange={set("participants")} />
+            <input className={INPUT_CLS} placeholder={t("標題，例如：水測 #3 *")} value={form.title} onChange={set("title")} />
+            <input className={INPUT_CLS} placeholder={t("參與人員")} value={form.participants} onChange={set("participants")} />
           </div>
-          <textarea className={`${INPUT_CLS} min-h-16 resize-y`} placeholder="這次測了什麼？" value={form.tested} onChange={set("tested")} />
+          <textarea className={`${INPUT_CLS} min-h-16 resize-y`} placeholder={t("這次測了什麼？")} value={form.tested} onChange={set("tested")} />
           <div className="grid gap-3 sm:grid-cols-2">
-            <textarea className={`${INPUT_CLS} min-h-16 resize-y`} placeholder="發現什麼問題？" value={form.issues} onChange={set("issues")} />
-            <textarea className={`${INPUT_CLS} min-h-16 resize-y`} placeholder="當場怎麼修正？" value={form.fixes} onChange={set("fixes")} />
+            <textarea className={`${INPUT_CLS} min-h-16 resize-y`} placeholder={t("發現什麼問題？")} value={form.issues} onChange={set("issues")} />
+            <textarea className={`${INPUT_CLS} min-h-16 resize-y`} placeholder={t("當場怎麼修正？")} value={form.fixes} onChange={set("fixes")} />
           </div>
-          <textarea className={`${INPUT_CLS} min-h-16 resize-y`} placeholder="下次要驗證什麼？" value={form.next_steps} onChange={set("next_steps")} />
+          <textarea className={`${INPUT_CLS} min-h-16 resize-y`} placeholder={t("下次要驗證什麼？")} value={form.next_steps} onChange={set("next_steps")} />
           <button className={BTN} disabled={busy || !form.title.trim()}>
-            {busy ? "儲存中…" : "儲存日誌"}
+            {busy ? t("儲存中…") : t("儲存日誌")}
           </button>
         </form>
       )}
@@ -140,7 +142,7 @@ export default function DiveLogsPage() {
       <div className="space-y-3">
         {logs.length === 0 && (
           <p className="rounded-2xl border border-slate-800 bg-slate-900/40 py-12 text-center text-sm text-slate-500">
-            還沒有水測紀錄
+            {t("還沒有水測紀錄")}
           </p>
         )}
         {logs.map((log) => (
@@ -151,18 +153,18 @@ export default function DiveLogsPage() {
               </span>
               <span className="font-bold">{log.title}</span>
               {log.participants && <span className="text-sm text-slate-400">{log.participants}</span>}
-              <span className="ml-auto text-xs text-slate-500">記錄：{log.created_by_name ?? "—"}</span>
+              <span className="ml-auto text-xs text-slate-500">{t("記錄")}：{log.created_by_name ?? "—"}</span>
             </div>
             <dl className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
-              <Section title="測試內容" text={log.tested} />
-              <Section title="發現問題" text={log.issues} tone="text-rose-300" />
-              <Section title="當場修正" text={log.fixes} tone="text-emerald-300" />
-              <Section title="下次驗證" text={log.next_steps} tone="text-cyan-300" />
+              <Section title={t("測試內容")} text={log.tested} />
+              <Section title={t("發現問題")} text={log.issues} tone="text-rose-300" />
+              <Section title={t("當場修正")} text={log.fixes} tone="text-emerald-300" />
+              <Section title={t("下次驗證")} text={log.next_steps} tone="text-cyan-300" />
             </dl>
             <div className="mt-2 flex gap-3 text-xs">
               {(log.next_steps || log.issues) && (
                 <button className="text-cyan-300 hover:underline" onClick={() => toTask(log)}>
-                  轉成追蹤任務
+                  {t("轉成追蹤任務")}
                 </button>
               )}
               {isStaff(me.role) && (

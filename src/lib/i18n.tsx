@@ -1,0 +1,60 @@
+"use client";
+
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
+import { setLangProxy, type Lang } from "./i18n-core";
+import { DICT } from "./i18n-dict";
+
+type I18n = {
+  lang: Lang;
+  setLang: (l: Lang) => void;
+  toggle: () => void;
+  /** 中文 → 目前語言（en 時查字典，查不到就回中文） */
+  t: (zh: string) => string;
+};
+
+const Ctx = createContext<I18n | null>(null);
+
+export function useI18n(): I18n {
+  const v = useContext(Ctx);
+  if (!v) throw new Error("useI18n 必須在 I18nProvider 內使用");
+  return v;
+}
+
+export default function I18nProvider({ children }: { children: React.ReactNode }) {
+  const [lang, setLangState] = useState<Lang>(() => {
+    if (typeof window === "undefined") return "zh";
+    const saved = localStorage.getItem("rov_lang");
+    if (saved === "en" || saved === "zh") return saved;
+    return (navigator.language || "").toLowerCase().startsWith("en") ? "en" : "zh";
+  });
+
+  useEffect(() => {
+    setLangProxy(lang);
+    localStorage.setItem("rov_lang", lang);
+    try {
+      document.cookie = `rov_lang=${lang}; path=/; max-age=31536000; SameSite=Lax`;
+    } catch {
+      /* 忽略 */
+    }
+  }, [lang]);
+
+  const t = useCallback(
+    (zh: string) => (lang === "zh" ? zh : (DICT[zh] ?? zh)),
+    [lang]
+  );
+
+  const value: I18n = {
+    lang,
+    setLang: setLangState,
+    toggle: () => setLangState((l) => (l === "zh" ? "en" : "zh")),
+    t,
+  };
+
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+}

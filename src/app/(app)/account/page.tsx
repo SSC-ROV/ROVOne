@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/lib/i18n";
 import { isStaff, roleLabelCn } from "@/lib/roles";
 
 
@@ -8,6 +9,7 @@ import { BTN, INPUT_CLS, subteamLabel } from "@/lib/ui";
 import type { Me } from "@/lib/types";
 
 export default function AccountPage() {
+  const { t } = useI18n();
   const [me, setMe] = useState<Me | null>(null);
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
@@ -30,7 +32,7 @@ export default function AccountPage() {
     );
   }
   if (!me) {
-    return <p className="py-20 text-center text-sm text-slate-500">載入中…</p>;
+    return <p className="py-20 text-center text-sm text-slate-500">{t("載入中…")}</p>;
   }
 
   async function changePassword(e: React.FormEvent) {
@@ -38,7 +40,7 @@ export default function AccountPage() {
     setError("");
     setMsg("");
     if (next !== confirmPw) {
-      setError("兩次輸入的新密碼不一致");
+      setError(t("兩次輸入的新密碼不一致"));
       return;
     }
     setBusy(true);
@@ -47,7 +49,7 @@ export default function AccountPage() {
         method: "POST",
         body: JSON.stringify({ current, next }),
       });
-      setMsg("密碼已更新");
+      setMsg(t("密碼已更新"));
       setCurrent("");
       setNext("");
       setConfirmPw("");
@@ -60,38 +62,38 @@ export default function AccountPage() {
 
   return (
     <div className="mx-auto max-w-md space-y-6">
-      <h1 className="text-lg font-bold">帳號</h1>
+      <h1 className="text-lg font-bold">{t("帳號")}</h1>
       <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 text-sm">
         <dl className="space-y-2">
           <div className="flex justify-between">
-            <dt className="text-slate-400">顯示名稱</dt>
+            <dt className="text-slate-400">{t("顯示名稱")}</dt>
             <dd>{me.display_name}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-slate-400">帳號</dt>
+            <dt className="text-slate-400">{t("帳號")}</dt>
             <dd className="text-slate-300">{me.username}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-slate-400">組別</dt>
+            <dt className="text-slate-400">{t("組別")}</dt>
             <dd>{subteamLabel(me.subteam)}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-slate-400">角色</dt>
+            <dt className="text-slate-400">{t("角色")}</dt>
             <dd>{roleLabelCn(me.role)}</dd>
           </div>
         </dl>
         <p className="mt-3 text-xs text-slate-500">
-          名稱與組別請請隊長在「管理」頁調整。
+          {t("名稱與組別請請隊長在「管理」頁調整。")}
         </p>
       </section>
 
       <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-        <h2 className="mb-3 font-bold">修改密碼</h2>
+        <h2 className="mb-3 font-bold">{t("修改密碼")}</h2>
         <form onSubmit={changePassword} className="space-y-3">
           <input
             type="password"
             className={INPUT_CLS}
-            placeholder="目前密碼"
+            placeholder={t("目前密碼")}
             value={current}
             onChange={(e) => setCurrent(e.target.value)}
             autoComplete="current-password"
@@ -99,7 +101,7 @@ export default function AccountPage() {
           <input
             type="password"
             className={INPUT_CLS}
-            placeholder="新密碼（至少 6 字）"
+            placeholder={t("新密碼（至少 6 字）")}
             value={next}
             onChange={(e) => setNext(e.target.value)}
             autoComplete="new-password"
@@ -107,7 +109,7 @@ export default function AccountPage() {
           <input
             type="password"
             className={INPUT_CLS}
-            placeholder="再輸入一次新密碼"
+            placeholder={t("再輸入一次新密碼")}
             value={confirmPw}
             onChange={(e) => setConfirmPw(e.target.value)}
             autoComplete="new-password"
@@ -123,7 +125,7 @@ export default function AccountPage() {
             </p>
           )}
           <button className={BTN} disabled={busy || !current || next.length < 6}>
-            {busy ? "處理中…" : "更新密碼"}
+            {busy ? t("處理中…") : t("更新密碼")}
           </button>
         </form>
       </section>

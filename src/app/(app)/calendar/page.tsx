@@ -1,4 +1,6 @@
 "use client";
+import { useI18n } from "@/lib/i18n";
+import { tt } from "@/lib/i18n-core";
 import { isStaff } from "@/lib/roles";
 
 
@@ -20,6 +22,7 @@ import type { EventType, Me, Task, TeamEvent } from "@/lib/types";
 const WEEKDAYS = ["一", "二", "三", "四", "五", "六", "日"];
 
 export default function CalendarPage() {
+  const { t } = useI18n();
   const { confirm, toast } = useDialogs();
   const [now, setNow] = useState(() => new Date());
   const [tasks, setTasks] = useState<Task[] | null>(null);
@@ -74,7 +77,7 @@ export default function CalendarPage() {
     );
   }
   if (!tasks || !events || !me) {
-    return <p className="py-20 text-center text-sm text-slate-500">載入中…</p>;
+    return <p className="py-20 text-center text-sm text-slate-500">{t("載入中…")}</p>;
   }
 
   const y = now.getFullYear();
@@ -107,10 +110,10 @@ export default function CalendarPage() {
       setEvTitle("");
       setEvTime("");
       setEvLocation("");
-      toast("活動已新增");
+      toast(t("活動已新增"));
       await load();
     } catch (err) {
-      toast((err as Error).message, "err");
+      toast(t((err as Error).message), "err");
     } finally {
       setBusy(false);
     }
@@ -118,24 +121,24 @@ export default function CalendarPage() {
 
   async function removeEvent(e: TeamEvent) {
     const ok = await confirm({
-      title: `刪除活動「${e.title}」？`,
-      confirmText: "刪除",
+      title: `${t("刪除活動")}「${e.title}」？`,
+      confirmText: t("刪除"),
       danger: true,
     });
     if (!ok) return;
     try {
       await api(`/api/events/${e.id}`, { method: "DELETE" });
-      toast("已刪除活動");
+      toast(t("已刪除活動"));
       await load();
     } catch (err) {
-      toast((err as Error).message, "err");
+      toast(t((err as Error).message), "err");
     }
   }
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-lg font-bold">任務日曆</h1>
+        <h1 className="text-lg font-bold">{t("任務日曆")}</h1>
         <div className="ml-auto flex items-center gap-2">
           <button
             className={BTN_GHOST}
@@ -171,16 +174,16 @@ export default function CalendarPage() {
           </span>
         ))}
         <span className="flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-amber-400" /> 任務截止
+          <span className="h-2 w-2 rounded-full bg-amber-400" /> {t("任務截止")}
         </span>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1fr_20rem]">
         <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/40">
           <div className="grid grid-cols-7 border-b border-slate-800 text-center text-xs text-slate-500">
-            {WEEKDAYS.map((w) => (
+            {WEEKDAYS.map((w, i) => (
               <div key={w} className="py-2">
-                {w}
+                {tt(w, ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][i])}
               </div>
             ))}
           </div>
@@ -250,9 +253,9 @@ export default function CalendarPage() {
             </h2>
             <div className="mt-3 space-y-3">
               <div>
-                <p className="mb-1 text-xs font-semibold text-slate-500">活動</p>
+                <p className="mb-1 text-xs font-semibold text-slate-500">{t("活動")}</p>
                 {selData.events.length === 0 ? (
-                  <p className="text-sm text-slate-500">沒有活動</p>
+                  <p className="text-sm text-slate-500">{t("沒有活動")}</p>
                 ) : (
                   <ul className="space-y-1.5">
                     {selData.events.map((e) => (
@@ -281,9 +284,9 @@ export default function CalendarPage() {
                 )}
               </div>
               <div>
-                <p className="mb-1 text-xs font-semibold text-slate-500">任務截止</p>
+                <p className="mb-1 text-xs font-semibold text-slate-500">{t("任務截止")}</p>
                 {selData.tasks.length === 0 ? (
-                  <p className="text-sm text-slate-500">沒有任務截止</p>
+                  <p className="text-sm text-slate-500">沒有{t("任務截止")}</p>
                 ) : (
                   <ul className="space-y-1.5">
                     {selData.tasks.map((t) => {
@@ -308,11 +311,11 @@ export default function CalendarPage() {
 
           {isStaff(me.role) ? (
             <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-              <h2 className="mb-2 font-bold">在 {fmtMD(sel)} 新增活動</h2>
+              <h2 className="mb-2 font-bold">{t("新增活動")} · {fmtMD(sel)}</h2>
               <div className="space-y-2">
                 <input
                   className={INPUT_CLS}
-                  placeholder="活動名稱，例如：每週例會"
+                  placeholder={t("活動名稱，例如：每週例會")}
                   value={evTitle}
                   onChange={(e) => setEvTitle(e.target.value)}
                 />
@@ -337,19 +340,17 @@ export default function CalendarPage() {
                 </div>
                 <input
                   className={INPUT_CLS}
-                  placeholder="地點（選填）"
+                  placeholder={t("地點（選填）")}
                   value={evLocation}
                   onChange={(e) => setEvLocation(e.target.value)}
                 />
                 <button className={`${BTN} w-full`} onClick={addEvent} disabled={busy || !evTitle.trim()}>
-                  {busy ? "處理中…" : "新增活動"}
+                  {busy ? t("處理中…") : t("新增活動")}
                 </button>
               </div>
             </section>
           ) : (
-            <p className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-xs text-slate-500">
-              活動由隊長安排；如需調整請跟隊長說。
-            </p>
+            <p className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-xs text-slate-500">{t("活動由隊長安排；如需調整請跟隊長說。")}</p>
           )}
         </aside>
       </div>

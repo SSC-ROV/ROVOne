@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/lib/i18n";
 import { isStaff } from "@/lib/roles";
 
 
@@ -19,6 +20,7 @@ type AdminSettings = Settings & {
 };
 
 export default function AdminPage() {
+  const { t } = useI18n();
   const { confirm, prompt, toast } = useDialogs();
   const [me, setMe] = useState<Me | null>(null);
   const [settings, setSettings] = useState<AdminSettings | null>(null);
@@ -80,9 +82,9 @@ export default function AdminPage() {
   if (!isStaff(me.role)) {
     return (
       <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-10 text-center">
-        <p className="text-lg font-bold">此頁面僅限隊長與老師使用</p>
+        <p className="text-lg font-bold">{t("此頁面僅限隊長與老師使用")}</p>
         <p className="mt-2 text-sm text-slate-400">
-          需要調整隊伍設定或成員時，請聯絡隊長。
+          {t("需要調整隊伍設定或成員時，請聯絡隊長。")}
         </p>
       </div>
     );
@@ -105,10 +107,10 @@ export default function AdminPage() {
         }),
       });
       setSettings(s);
-      setMsg("設定已儲存（重新整理後隊名生效於導覽列）");
-      toast("設定已儲存");
+      setMsg(t("設定已儲存") + "（" + t("重新整理後隊名生效於導覽列") + "）");
+      toast(t("設定已儲存"));
     } catch (err) {
-      toast((err as Error).message, "err");
+      toast(t((err as Error).message), "err");
     }
   }
 
@@ -116,12 +118,12 @@ export default function AdminPage() {
     try {
       const r = await api<{ sent: boolean }>("/api/admin/settings/test-notify", { method: "POST" });
       if (r.sent) {
-        toast("測試通知已發送到 Discord，去頻道看看！", "ok");
+        toast(t("測試通知已發送到 Discord，去頻道看看！"), "ok");
       } else {
-        toast("沒有發送成功：請先按「儲存設定」，並確認 Discord Webhook 網址正確", "err");
+        toast(t("沒有發送成功：請先按「儲存設定」，並確認 Discord Webhook 網址正確"), "err");
       }
     } catch (err) {
-      toast((err as Error).message, "err");
+      toast(t((err as Error).message), "err");
     }
   }
 
@@ -130,7 +132,7 @@ export default function AdminPage() {
     const url = `${location.origin}/api/ical?token=${settings.ical_token}`;
     try {
       await navigator.clipboard.writeText(url);
-      toast("訂閱連結已複製！在日曆 App 選「訂閱日曆」貼上即可同步");
+      toast(t("訂閱連結已複製！在日曆 App 選「訂閱日曆」貼上即可同步"));
     } catch {
       await prompt({ title: "複製這個 iCal 訂閱連結", initial: url });
     }
@@ -140,7 +142,7 @@ export default function AdminPage() {
     const url = `${location.origin}/api/auth/google/callback`;
     try {
       await navigator.clipboard.writeText(url);
-      toast("回呼網址已複製！在 Google Cloud 的 OAuth 設定裡貼上即可");
+      toast(t("回呼網址已複製！在 Google Cloud 的 OAuth 設定裡貼上即可"));
     } catch {
       await prompt({ title: "複製這個回呼網址", initial: url });
     }
@@ -163,16 +165,16 @@ export default function AdminPage() {
       setNewUsername("");
       setNewPassword("");
       await load();
-      setMsg(`已新增成員「${newName}」`);
-      toast(`已新增成員「${newName}」，把帳號密碼告訴他吧`);
+      setMsg(t("已新增成員") + `「${newName}」`);
+      toast(t("已新增成員") + `「${newName}」` + t("，把帳號密碼告訴他吧"));
     } catch (err) {
-      toast((err as Error).message, "err");
+      toast(t((err as Error).message), "err");
     }
   }
 
   async function removeMember(m: Member) {
     const ok = await confirm({
-      title: `刪除成員「${m.display_name}」（${m.username}）？`,
+      title: `${t("刪除成員")}「${m.display_name}」（${m.username}）？`,
       message: "他負責的任務會變成未指派。",
       confirmText: "刪除",
       danger: true,
@@ -180,16 +182,16 @@ export default function AdminPage() {
     if (!ok) return;
     try {
       await api(`/api/admin/members/${m.id}`, { method: "DELETE" });
-      toast("已刪除成員");
+      toast(t("已刪除成員"));
       await load();
     } catch (err) {
-      toast((err as Error).message, "err");
+      toast(t((err as Error).message), "err");
     }
   }
 
   async function resetPassword(m: Member) {
     if (resetPw.length < 6) {
-      toast("密碼至少 6 個字", "err");
+      toast(t("密碼至少 6 個字"), "err");
       return;
     }
     try {
@@ -199,15 +201,15 @@ export default function AdminPage() {
       });
       setResetId(null);
       setResetPw("");
-      toast(`已重設「${m.display_name}」的密碼`);
+      toast(t("已重設") + `「${m.display_name}」` + t("的密碼"));
     } catch (err) {
-      toast((err as Error).message, "err");
+      toast(t((err as Error).message), "err");
     }
   }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-lg font-bold">管理（隊長與老師）</h1>
+      <h1 className="text-lg font-bold">{t("管理")}（{t("隊長與老師")}）</h1>
       {msg && (
         <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">
           {msg}
@@ -215,10 +217,10 @@ export default function AdminPage() {
       )}
 
       <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-        <h2 className="mb-3 font-bold">隊伍設定</h2>
+        <h2 className="mb-3 font-bold">{t("隊伍設定")}</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <label className="mb-1 block text-sm text-slate-400">隊伍名稱</label>
+            <label className="mb-1 block text-sm text-slate-400">{t("隊伍名稱")}</label>
             <input
               className={INPUT_CLS}
               value={teamName}
@@ -237,16 +239,13 @@ export default function AdminPage() {
             />
           </div>
         </div>
-        <button className={`${BTN} mt-3`} onClick={saveSettings}>
-          儲存設定
-        </button>
+        <button className={`${BTN} mt-3`} onClick={saveSettings}>{t("儲存設定")}</button>
       </section>
 
       <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-        <h2 className="mb-1 font-bold">通知與整合</h2>
+        <h2 className="mb-1 font-bold">{t("通知與整合")}</h2>
         <p className="mb-3 text-xs text-slate-500">
-          設定 Discord Webhook 後，任務指派、零件審核結果會自動推到你的頻道
-          （Discord 頻道設定 → 整合 → Webhook → 建立並複製網址）
+          {t("設定 Discord Webhook 後，任務指派、零件審核結果會自動推到你的頻道")}（{t("Discord 頻道設定 → 整合 → Webhook → 建立並複製網址")}）
         </p>
         <div className="flex flex-wrap gap-2">
           <input
@@ -255,38 +254,31 @@ export default function AdminPage() {
             value={webhook}
             onChange={(e) => setWebhook(e.target.value)}
           />
-          <button className={BTN_GHOST} onClick={testNotify}>
-            發送測試通知
-          </button>
+          <button className={BTN_GHOST} onClick={testNotify}>{t("發送測試通知")}</button>
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          <span className="text-sm text-slate-400">日曆訂閱（iCal）：</span>
-          <button className={BTN_GHOST} onClick={copyIcalUrl}>
-            複製訂閱連結
-          </button>
+          <span className="text-sm text-slate-400">{t("日曆訂閱（iCal）")}：</span>
+          <button className={BTN_GHOST} onClick={copyIcalUrl}>{t("複製訂閱連結")}</button>
           <span className="text-xs text-slate-500">
-            隊員在手機日曆 App「訂閱日曆」貼上，例會、水測、任務截止自動同步
+            {t("隊員在手機日曆 App「訂閱日曆」貼上，例會、水測、任務截止自動同步")}
           </span>
         </div>
       </section>
 
       <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-        <h2 className="mb-1 font-bold">Google 登入</h2>
+        <h2 className="mb-1 font-bold">{t("Google 登入")}</h2>
         <p className="mb-3 text-xs text-slate-500">
-          設定後隊員可在登入頁用學校 Google 帳號登入（首次自動建立帳號）。
-          回呼網址（複製到 Google Cloud OAuth 設定）：
+          {t("設定後隊員可在登入頁用學校 Google 帳號登入（首次自動建立帳號）。")} {t("回呼網址（複製到 Google Cloud OAuth 設定）")}：
         </p>
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <code className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs text-cyan-300">
             {typeof window !== "undefined" ? `${location.origin}/api/auth/google/callback` : "/api/auth/google/callback"}
           </code>
-          <button className={BTN_GHOST} onClick={copyGoogleCallback}>
-            複製
-          </button>
+          <button className={BTN_GHOST} onClick={copyGoogleCallback}>{t("複製")}</button>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="sm:col-span-2">
-            <label className="mb-1 block text-sm text-slate-400">Google 用戶端 ID（Client ID）</label>
+            <label className="mb-1 block text-sm text-slate-400">{t("Google 用戶端 ID（Client ID）")}</label>
             <input
               className={INPUT_CLS}
               placeholder="xxx.apps.googleusercontent.com"
@@ -295,7 +287,7 @@ export default function AdminPage() {
             />
           </div>
           <div className="sm:col-span-2">
-            <label className="mb-1 block text-sm text-slate-400">Google 用戶端密鑰（Client Secret）</label>
+            <label className="mb-1 block text-sm text-slate-400">{t("Google 用戶端密鑰（Client Secret）")}</label>
             <input
               className={INPUT_CLS}
               type="password"
@@ -306,7 +298,7 @@ export default function AdminPage() {
           </div>
           <div className="sm:col-span-2">
             <label className="mb-1 block text-sm text-slate-400">
-              允許登入的網域（以逗號分隔，只限這些網域的 email）
+              {t("允許登入的網域（以逗號分隔，只限這些網域的 email）")}
             </label>
             <input
               className={INPUT_CLS}
@@ -317,7 +309,7 @@ export default function AdminPage() {
           </div>
           <div>
             <label className="mb-1 block text-sm text-slate-400">
-              隊長 email（這些 Google 帳號登入＝隊長）
+              {t("隊長 email（這些 Google 帳號登入＝隊長）")}
             </label>
             <input
               className={INPUT_CLS}
@@ -328,7 +320,7 @@ export default function AdminPage() {
           </div>
           <div>
             <label className="mb-1 block text-sm text-slate-400">
-              老師 email（這些 Google 帳號登入＝老師）
+              {t("老師 email（這些 Google 帳號登入＝老師）")}
             </label>
             <input
               className={INPUT_CLS}
@@ -339,20 +331,20 @@ export default function AdminPage() {
           </div>
         </div>
         <p className="mt-2 text-xs text-slate-500">
-          組別一律為「全隊」，日後可在「帳號」由老師／隊長調整。密碼登入不受影響，仍可作為後備。
+          {t("組別一律為「全隊」，日後可在「帳號」由老師／隊長調整。密碼登入不受影響，仍可作為後備。")}
         </p>
       </section>
 
       <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-        <h2 className="mb-3 font-bold">成員（{members.length}）</h2>
+        <h2 className="mb-3 font-bold">{t("成員")}（{members.length}）</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-slate-500">
-                <th className="px-2 py-2 font-medium">名稱</th>
-                <th className="px-2 py-2 font-medium">帳號</th>
-                <th className="px-2 py-2 font-medium">組別</th>
-                <th className="px-2 py-2 font-medium">角色</th>
+                <th className="px-2 py-2 font-medium">{t("名稱")}</th>
+                <th className="px-2 py-2 font-medium">{t("帳號")}</th>
+                <th className="px-2 py-2 font-medium">{t("組別")}</th>
+                <th className="px-2 py-2 font-medium">{t("角色")}</th>
                 <th className="px-2 py-2 font-medium"></th>
               </tr>
             </thead>
@@ -366,11 +358,11 @@ export default function AdminPage() {
                   </td>
                   <td className="px-2 py-2.5">
                     {m.role === "leader" ? (
-                      <span className="text-cyan-300">隊長</span>
+                      <span className="text-cyan-300">{t("隊長")}</span>
                     ) : m.role === "teacher" ? (
-                      <span className="text-violet-300">老師</span>
+                      <span className="text-violet-300">{t("老師")}</span>
                     ) : (
-                      <span className="text-slate-400">隊員</span>
+                      <span className="text-slate-400">{t("隊員")}</span>
                     )}
                   </td>
                   <td className="px-2 py-2.5 text-right">
@@ -378,38 +370,30 @@ export default function AdminPage() {
                       <span className="inline-flex gap-1">
                         <input
                           className="w-28 rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-xs"
-                          placeholder="新密碼"
+                          placeholder={t("新密碼")}
                           value={resetPw}
                           onChange={(e) => setResetPw(e.target.value)}
                         />
-                        <button className={BTN_GHOST} onClick={() => resetPassword(m)}>
-                          確定
-                        </button>
+                        <button className={BTN_GHOST} onClick={() => resetPassword(m)}>{t("確定")}</button>
                         <button
                           className={BTN_GHOST}
                           onClick={() => {
                             setResetId(null);
                             setResetPw("");
                           }}
-                        >
-                          取消
-                        </button>
+                        >{t("取消")}</button>
                       </span>
                     ) : (
                       <span className="inline-flex gap-3">
                         <button
                           className="text-slate-400 transition hover:text-cyan-300"
                           onClick={() => setResetId(m.id)}
-                        >
-                          重設密碼
-                        </button>
+                        >{t("重設密碼")}</button>
                         {m.id !== me.id && (
                           <button
                             className="text-slate-400 transition hover:text-rose-400"
                             onClick={() => removeMember(m)}
-                          >
-                            刪除
-                          </button>
+                          >{t("刪除")}</button>
                         )}
                       </span>
                     )}
@@ -422,23 +406,23 @@ export default function AdminPage() {
       </section>
 
       <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-        <h2 className="mb-3 font-bold">新增成員</h2>
+        <h2 className="mb-3 font-bold">{t("新增成員")}</h2>
         <div className="grid gap-3 sm:grid-cols-3">
           <input
             className={INPUT_CLS}
-            placeholder="顯示名稱，例如：王小明"
+            placeholder={t("顯示名稱，例如：王小明")}
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
           />
           <input
             className={INPUT_CLS}
-            placeholder="帳號（英數字）"
+            placeholder={t("帳號（英數字）")}
             value={newUsername}
             onChange={(e) => setNewUsername(e.target.value)}
           />
           <input
             className={INPUT_CLS}
-            placeholder="初始密碼（至少 6 字）"
+            placeholder={t("初始密碼（至少 6 字）")}
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
           />
@@ -449,7 +433,7 @@ export default function AdminPage() {
           >
             {SUBTEAMS.map((s) => (
               <option key={s.key} value={s.key}>
-                組別：{s.label}
+                {t("組別")}：{s.label}
               </option>
             ))}
           </select>
@@ -458,17 +442,15 @@ export default function AdminPage() {
             value={newRole}
             onChange={(e) => setNewRole(e.target.value)}
           >
-            <option value="member">角色：隊員</option>
-            <option value="teacher">角色：老師</option>
-            <option value="leader">角色：隊長</option>
+            <option value="member">{t("角色")}：{t("隊員")}</option>
+            <option value="teacher">{t("角色")}：{t("老師")}</option>
+            <option value="leader">{t("角色")}：{t("隊長")}</option>
           </select>
           <button
             className={BTN}
             disabled={!newName || !newUsername || newPassword.length < 6}
             onClick={addMember}
-          >
-            新增
-          </button>
+          >{t("新增")}</button>
         </div>
       </section>
     </div>

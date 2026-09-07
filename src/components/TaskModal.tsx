@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/lib/i18n";
 import { isStaff } from "@/lib/roles";
 
 
@@ -35,6 +36,7 @@ export default function TaskModal({
   onClose: () => void;
   onChanged: () => void;
 }) {
+  const { t } = useI18n();
   const { confirm, toast } = useDialogs();
   const canEdit =
     mode === "create" ||
@@ -72,7 +74,7 @@ export default function TaskModal({
 
   async function save() {
     if (!title.trim()) {
-      setError("請填寫任務標題");
+      setError(t("請填寫任務標題"));
       return;
     }
     setBusy(true);
@@ -103,7 +105,7 @@ export default function TaskModal({
       onChanged();
       onClose();
     } catch (err) {
-      setError((err as Error).message);
+      setError(t((err as Error).message));
       setBusy(false);
     }
   }
@@ -111,9 +113,9 @@ export default function TaskModal({
   async function remove() {
     if (!task) return;
     const ok = await confirm({
-      title: `刪除「${task.title}」？`,
-      message: "刪除後無法復原。",
-      confirmText: "刪除",
+      title: `${t("刪除")}「${task.title}」？`,
+      message: t("刪除後無法復原。"),
+      confirmText: t("刪除"),
       danger: true,
     });
     if (!ok) return;
@@ -123,7 +125,7 @@ export default function TaskModal({
       onChanged();
       onClose();
     } catch (err) {
-      setError((err as Error).message);
+      setError(t((err as Error).message));
       setBusy(false);
     }
   }
@@ -139,7 +141,7 @@ export default function TaskModal({
       setNewItem("");
       onChanged();
     } catch (err) {
-      toast((err as Error).message, "err");
+      toast(t((err as Error).message), "err");
     }
   }
 
@@ -152,7 +154,7 @@ export default function TaskModal({
       setItems((prev) => prev.map((i) => (i.id === item.id ? r.item : i)));
       onChanged();
     } catch (err) {
-      toast((err as Error).message, "err");
+      toast(t((err as Error).message), "err");
     }
   }
 
@@ -162,7 +164,7 @@ export default function TaskModal({
       setItems((prev) => prev.filter((i) => i.id !== item.id));
       onChanged();
     } catch (err) {
-      toast((err as Error).message, "err");
+      toast(t((err as Error).message), "err");
     }
   }
 
@@ -177,7 +179,7 @@ export default function TaskModal({
       >
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-bold">
-            {mode === "create" ? "新增任務" : canEdit ? "編輯任務" : "任務詳情"}
+            {mode === "create" ? t("新增任務") : canEdit ? t("編輯任務") : t("任務詳情")}
           </h2>
           <button
             onClick={onClose}
@@ -189,7 +191,7 @@ export default function TaskModal({
 
         <div className="space-y-3">
           <div>
-            <label className="mb-1 block text-sm text-slate-400">標題</label>
+            <label className="mb-1 block text-sm text-slate-400">{t("標題")}</label>
             <input
               className={INPUT_CLS}
               value={title}
@@ -199,7 +201,7 @@ export default function TaskModal({
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm text-slate-400">描述</label>
+            <label className="mb-1 block text-sm text-slate-400">{t("描述")}</label>
             <textarea
               className={`${INPUT_CLS} min-h-20 resize-y`}
               value={description}
@@ -210,7 +212,7 @@ export default function TaskModal({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-sm text-slate-400">組別</label>
+              <label className="mb-1 block text-sm text-slate-400">{t("組別")}</label>
               <select
                 className={INPUT_CLS}
                 value={subteam}
@@ -225,7 +227,7 @@ export default function TaskModal({
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-sm text-slate-400">負責人</label>
+              <label className="mb-1 block text-sm text-slate-400">{t("負責人")}</label>
               <select
                 className={INPUT_CLS}
                 value={assigneeId}
@@ -241,7 +243,7 @@ export default function TaskModal({
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-sm text-slate-400">優先級</label>
+              <label className="mb-1 block text-sm text-slate-400">{t("優先級")}</label>
               <select
                 className={INPUT_CLS}
                 value={priority}
@@ -256,7 +258,7 @@ export default function TaskModal({
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-sm text-slate-400">狀態</label>
+              <label className="mb-1 block text-sm text-slate-400">{t("狀態")}</label>
               <select
                 className={INPUT_CLS}
                 value={status}
@@ -271,14 +273,14 @@ export default function TaskModal({
               </select>
             </div>
             <div className="col-span-2">
-              <label className="mb-1 block text-sm text-slate-400">對應比賽任務（選填，影響完成度統計）</label>
+              <label className="mb-1 block text-sm text-slate-400">{t("對應比賽任務（選填，影響完成度統計）")}</label>
               <select
                 className={INPUT_CLS}
                 value={missionId}
                 onChange={(e) => setMissionId(e.target.value)}
                 disabled={!canEdit}
               >
-                <option value="">不對應</option>
+                <option value="">{t("不對應")}</option>
                 {missions.map((m) => (
                   <option key={m.id} value={String(m.id)}>
                     {m.title}
@@ -287,14 +289,14 @@ export default function TaskModal({
               </select>
             </div>
             <div className="col-span-2">
-              <label className="mb-1 block text-sm text-slate-400">所屬開發週期（選填）</label>
+              <label className="mb-1 block text-sm text-slate-400">{t("所屬開發週期（選填）")}</label>
               <select
                 className={INPUT_CLS}
                 value={cycleId}
                 onChange={(e) => setCycleId(e.target.value)}
                 disabled={!canEdit}
               >
-                <option value="">不對應</option>
+                <option value="">{t("不對應")}</option>
                 {(cycles ?? [])
                   .filter((c) => c.status === "active" || c.status === "pending_leader" || c.status === "pending_teacher")
                   .map((c) => (
@@ -305,7 +307,7 @@ export default function TaskModal({
               </select>
             </div>
             <div className="col-span-2">
-              <label className="mb-1 block text-sm text-slate-400">截止日期</label>
+              <label className="mb-1 block text-sm text-slate-400">{t("截止日期")}</label>
               <input
                 type="date"
                 className={INPUT_CLS}
@@ -319,7 +321,7 @@ export default function TaskModal({
           {mode === "edit" && (
             <div>
               <label className="mb-1 block text-sm text-slate-400">
-                子任務 ({items.filter((i) => i.done).length}/{items.length})
+                {t("子任務")} ({items.filter((i) => i.done).length}/{items.length})
               </label>
               <ul className="mb-2 space-y-1.5">
                 {items.map((item) => (
@@ -357,10 +359,10 @@ export default function TaskModal({
                     value={newItem}
                     onChange={(e) => setNewItem(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && addItem()}
-                    placeholder="新增子任務，按 Enter 送出"
+                    placeholder={t("新增子任務，按 Enter 送出")}
                   />
                   <button className={BTN_GHOST} onClick={addItem}>
-                    加入
+                    {t("加入")}
                   </button>
                 </div>
               )}
@@ -368,7 +370,7 @@ export default function TaskModal({
           )}
           {mode === "create" && (
             <p className="text-xs text-slate-500">
-              子任務清單在建立任務後即可加入。
+              子任務清單在建立任務後即可{t("加入")}。
             </p>
           )}
 
@@ -381,10 +383,10 @@ export default function TaskModal({
           {canEdit ? (
             <div className="flex items-center gap-2 pt-2">
               <button className={BTN} onClick={save} disabled={busy}>
-                {busy ? "處理中…" : mode === "create" ? "建立任務" : "儲存"}
+                {busy ? t("處理中…") : mode === "create" ? t("建立任務") : t("儲存")}
               </button>
               <button className={BTN_GHOST} onClick={onClose} disabled={busy}>
-                取消
+                {t("取消")}
               </button>
               {mode === "edit" && isStaff(me.role) && (
                 <button
@@ -392,14 +394,12 @@ export default function TaskModal({
                   disabled={busy}
                   className="ml-auto text-sm text-slate-500 transition hover:text-rose-400"
                 >
-                  刪除任務
+                  {t("刪除任務")}
                 </button>
               )}
             </div>
           ) : (
-            <p className="pt-2 text-xs text-slate-500">
-              只有隊長、負責人或建立者可以修改這個任務。
-            </p>
+            <p className="pt-2 text-xs text-slate-500">{t("只有隊長、負責人或建立者可以修改這個任務。")}</p>
           )}
         </div>
       </div>

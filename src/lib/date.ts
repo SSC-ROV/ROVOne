@@ -1,3 +1,5 @@
+import { tt } from "./i18n-core";
+
 export function localDateStr(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -29,5 +31,8 @@ export function fmtMD(s: string): string {
 }
 
 export function weekdayCn(s: string): string {
-  return "週" + "日一二三四五六"[parseDate(s).getDay()];
+  const d = parseDate(s).getDay();
+  const zh = "週" + "日一二三四五六"[d];
+  const en = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d];
+  return tt(zh, en);
 }

@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/lib/i18n";
 import { isStaff } from "@/lib/roles";
 
 
@@ -10,6 +11,7 @@ import { useDialogs } from "@/components/ui/Dialogs";
 import type { Me, Part, PartStatus } from "@/lib/types";
 
 export default function PartsPage() {
+  const { t } = useI18n();
   const { confirm, prompt, toast } = useDialogs();
   const [parts, setParts] = useState<Part[] | null>(null);
   const [me, setMe] = useState<Me | null>(null);
@@ -46,7 +48,7 @@ export default function PartsPage() {
     );
   }
   if (!parts || !me) {
-    return <p className="py-20 text-center text-sm text-slate-500">載入中…</p>;
+    return <p className="py-20 text-center text-sm text-slate-500">{t("載入中…")}</p>;
   }
 
   const filtered = parts.filter((p) => fStatus === "all" || p.status === fStatus);
@@ -79,10 +81,10 @@ export default function PartsPage() {
       });
       setName(""); setSpec(""); setLink(""); setQty("1"); setEstPrice(""); setPurpose("");
       setShowForm(false);
-      toast("申請已送出，等老師審批就好");
+      toast(t("申請已送出，等老師審批就好"));
       await load();
     } catch (err) {
-      toast((err as Error).message, "err");
+      toast(t((err as Error).message), "err");
     } finally {
       setBusy(false);
     }
@@ -94,15 +96,15 @@ export default function PartsPage() {
       let vendor = p.order_vendor;
       if (status === "ordered") {
         const v = await prompt({
-          title: `「${p.name}」在哪裡下單？`,
+          title: `${p.name} — ${t("在哪裡下單？")}`,
           initial: p.order_vendor,
-          placeholder: "例如：蝦皮 / Blue Robotics 官網",
+          placeholder: t("例如：蝦皮 / Blue Robotics 官網"),
         });
         if (v === null) return;
         vendor = v;
         const price = await prompt({
-          title: "實際金額（整筆總價，可留空）",
-          placeholder: `預估 $${p.est_price * p.qty}`,
+          title: t("實際金額（整筆總價，可留空）"),
+          placeholder: `${t("預估")} $${p.est_price * p.qty}`,
         });
         if (price === null) return;
         actual = price;
@@ -117,23 +119,23 @@ export default function PartsPage() {
       });
       await load();
     } catch (err) {
-      toast((err as Error).message, "err");
+      toast(t((err as Error).message), "err");
     }
   }
 
   async function removePart(p: Part) {
     const ok = await confirm({
-      title: `刪除「${p.name}」的申請？`,
+      title: `${t("刪除")}「${p.name}」${t("的申請？")}`,
       confirmText: "刪除",
       danger: true,
     });
     if (!ok) return;
     try {
       await api(`/api/parts/${p.id}`, { method: "DELETE" });
-      toast("已刪除");
+      toast(t("已刪除"));
       await load();
     } catch (err) {
-      toast((err as Error).message, "err");
+      toast(t((err as Error).message), "err");
     }
   }
 
@@ -141,26 +143,26 @@ export default function PartsPage() {
     const url = `${location.origin}/approve/${p.approve_token}`;
     try {
       await navigator.clipboard.writeText(url);
-      toast("審批連結已複製！用 LINE / Messenger 傳給老師，打開就能按核准");
+      toast(t("審批連結已複製！用 LINE / Messenger 傳給老師，打開就能按核准"));
     } catch {
-      await prompt({ title: "複製這個審批連結給老師", initial: url });
+      await prompt({ title: t("複製這個審批連結給老師"), initial: url });
     }
   }
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-lg font-bold">零件採買</h1>
-        <span className="text-sm text-slate-500">需求 → 老師審批 → 下單 → 到貨，一頁追蹤</span>
+        <h1 className="text-lg font-bold">{t("零件採買")}</h1>
+        <span className="text-sm text-slate-500">{t("需求 → 老師審批 → 下單 → 到貨，一頁追蹤")}</span>
         <div className="ml-auto flex items-center gap-2">
           <select className={`${SELECT_CLS} w-32`} value={fStatus} onChange={(e) => setFStatus(e.target.value)}>
-            <option value="all">全部狀態</option>
+            <option value="all">{t("全部狀態")}</option>
             {PART_STATUSES.map((s) => (
               <option key={s.key} value={s.key}>{s.label}</option>
             ))}
           </select>
           <button className={BTN} onClick={() => setShowForm(!showForm)}>
-            ＋ 新零件需求
+            {t("＋ 新零件需求")}
           </button>
         </div>
       </div>
@@ -174,31 +176,31 @@ export default function PartsPage() {
 
       {showForm && (
         <form onSubmit={submit} className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-          <h2 className="font-bold">新增零件需求（送出後自動產生「老師審批連結」）</h2>
+          <h2 className="font-bold">{t("新增零件需求（送出後自動產生「老師審批連結」）")}</h2>
           <div className="grid gap-3 sm:grid-cols-3">
-            <input className={INPUT_CLS} placeholder="零件名稱 *" value={name} onChange={(e) => setName(e.target.value)} />
-            <input className={INPUT_CLS} placeholder="規格 / 型號" value={spec} onChange={(e) => setSpec(e.target.value)} />
-            <input className={INPUT_CLS} placeholder="購買連結（選填）" value={link} onChange={(e) => setLink(e.target.value)} />
+            <input className={INPUT_CLS} placeholder={t("零件名稱 *")} value={name} onChange={(e) => setName(e.target.value)} />
+            <input className={INPUT_CLS} placeholder={t("規格 / 型號")} value={spec} onChange={(e) => setSpec(e.target.value)} />
+            <input className={INPUT_CLS} placeholder={t("購買連結（選填）")} value={link} onChange={(e) => setLink(e.target.value)} />
             <div className="grid grid-cols-2 gap-2">
               <input className={INPUT_CLS} type="number" min="1" value={qty} onChange={(e) => setQty(e.target.value)} />
-              <input className={INPUT_CLS} placeholder="單位" value={unit} onChange={(e) => setUnit(e.target.value)} />
+              <input className={INPUT_CLS} placeholder={t("單位")} value={unit} onChange={(e) => setUnit(e.target.value)} />
             </div>
-            <input className={INPUT_CLS} type="number" min="0" placeholder="預估單價 $" value={estPrice} onChange={(e) => setEstPrice(e.target.value)} />
+            <input className={INPUT_CLS} type="number" min="0" placeholder={`${t("預估單價")} $`} value={estPrice} onChange={(e) => setEstPrice(e.target.value)} />
             <select className={INPUT_CLS} value={subteam} onChange={(e) => setSubteam(e.target.value)}>
               {SUBTEAMS.map((s) => (
                 <option key={s.key} value={s.key}>組別：{s.label}</option>
               ))}
             </select>
-            <input className={`${INPUT_CLS} sm:col-span-3`} placeholder="用途（給老師看的說明，例如：主推進更換，配合推力計算）" value={purpose} onChange={(e) => setPurpose(e.target.value)} />
+            <input className={`${INPUT_CLS} sm:col-span-3`} placeholder={t("用途（給老師看的說明）")} value={purpose} onChange={(e) => setPurpose(e.target.value)} />
           </div>
-          <button className={BTN} disabled={busy || !name.trim()}>{busy ? "送出中…" : "送出申請"}</button>
+          <button className={BTN} disabled={busy || !name.trim()}>{busy ? t("送出中…") : t("送出申請")}</button>
         </form>
       )}
 
       <div className="space-y-3">
         {filtered.length === 0 && (
           <p className="rounded-2xl border border-slate-800 bg-slate-900/40 py-12 text-center text-sm text-slate-500">
-            沒有符合的零件申請
+            {t("沒有符合的零件申請")}
           </p>
         )}
         {filtered.map((p) => {
@@ -215,29 +217,29 @@ export default function PartsPage() {
                 <span className={`${CHIP} ${SUBTEAM_CLS[p.subteam] ?? ""}`}>{subteamLabel(p.subteam)}</span>
                 <span className="ml-auto text-sm tabular-nums">
                   {p.actual_price != null ? (
-                    <span className="text-emerald-300">實際 ${p.actual_price.toLocaleString()}</span>
+                    <span className="text-emerald-300">{t("實際")} ${p.actual_price.toLocaleString()}</span>
                   ) : (
-                    <span className="text-slate-300">預估 ${(p.est_price * p.qty).toLocaleString()}</span>
+                    <span className="text-slate-300">{t("預估")} ${(p.est_price * p.qty).toLocaleString()}</span>
                   )}
                 </span>
               </div>
-              {p.spec && <p className="mt-1 text-sm text-slate-400">規格：{p.spec}</p>}
-              {p.purpose && <p className="mt-1 text-sm text-slate-400">用途：{p.purpose}</p>}
+              {p.spec && <p className="mt-1 text-sm text-slate-400">{t("規格")}：{p.spec}</p>}
+              {p.purpose && <p className="mt-1 text-sm text-slate-400">{t("用途")}：{p.purpose}</p>}
               {p.link && (
                 <a href={p.link} target="_blank" rel="noreferrer" className="mt-1 inline-block text-sm text-cyan-300 hover:underline">
-                  購買連結 ↗
+                  {t("購買連結")} ↗
                 </a>
               )}
               <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
-                <span>申請人：{p.requested_by_name ?? "—"}</span>
-                {p.decided_note && <span className="text-slate-400">審批備註：{p.decided_note}</span>}
-                {p.order_vendor && <span>下單：{p.order_vendor}{p.order_ref ? `（${p.order_ref}）` : ""}</span>}
-                {p.arrived_at && <span>到貨：{fmtMD(p.arrived_at.slice(0, 10))}</span>}
+                <span>{t("申請人")}：{p.requested_by_name ?? "—"}</span>
+                {p.decided_note && <span className="text-slate-400">{t("審批備註")}：{p.decided_note}</span>}
+                {p.order_vendor && <span>{t("下單")}：{p.order_vendor}{p.order_ref ? `（${p.order_ref}）` : ""}</span>}
+                {p.arrived_at && <span>{t("到貨")}：{fmtMD(p.arrived_at.slice(0, 10))}</span>}
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 {p.status === "pending" && isStaff(me.role) && p.approve_token && (
                   <button className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-sm text-amber-300 transition hover:bg-amber-500/20" onClick={() => copyApproveLink(p)}>
-                    複製老師審批連結
+                    {t("複製老師審批連結")}
                   </button>
                 )}
                 {isStaff(me.role) && p.status !== "pending" && (
@@ -252,7 +254,7 @@ export default function PartsPage() {
                   </select>
                 )}
                 {isStaff(me.role) && p.status === "pending" && (
-                  <span className="text-xs text-slate-500">（等老師按連結核准；或先改狀態繞過：<button className="text-cyan-300 hover:underline" onClick={() => setStatus(p, "approved")}>直接標記已核准</button>）</span>
+                  <span className="text-xs text-slate-500">({t("等老師按連結核准；或先改狀態繞過")}：<button className="text-cyan-300 hover:underline" onClick={() => setStatus(p, "approved")}>{t("直接標記已核准")}</button>)</span>
                 )}
                 {canDelete && (
                   <button className="ml-auto text-xs text-slate-500 transition hover:text-rose-400" onClick={() => removePart(p)}>

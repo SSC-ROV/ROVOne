@@ -15,9 +15,11 @@ import {
 } from "@/lib/ui";
 import type { Cycle, Me, Member, MissionTask, Task, TaskStatus } from "@/lib/types";
 import TaskModal from "@/components/TaskModal";
+import { useI18n } from "@/lib/i18n";
 import { useDialogs } from "@/components/ui/Dialogs";
 
 export default function BoardPage() {
+  const { t } = useI18n();
   const { toast } = useDialogs();
   const [tasks, setTasks] = useState<Task[] | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
@@ -59,7 +61,7 @@ export default function BoardPage() {
     );
   }
   if (!tasks || !me) {
-    return <p className="py-20 text-center text-sm text-slate-500">載入中…</p>;
+    return <p className="py-20 text-center text-sm text-slate-500">{t("載入中…")}</p>;
   }
 
   const filtered = tasks.filter(
@@ -84,7 +86,7 @@ export default function BoardPage() {
       setTasks((prev) =>
         prev!.map((x) => (x.id === task.id ? { ...x, status: task.status } : x))
       );
-      toast((err as Error).message, "err");
+      toast(t((err as Error).message), "err");
     }
   }
 
@@ -100,9 +102,9 @@ export default function BoardPage() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-lg font-bold">任務看板</h1>
+        <h1 className="text-lg font-bold">{t("任務看板")}</h1>
         <span className="text-sm text-slate-500">
-          拖曳卡片可以改變狀態；點卡片看詳情
+          {t("拖曳卡片可以改變狀態；點卡片看詳情")}
         </span>
         <div className="ml-auto flex items-center gap-2">
           <select
@@ -110,7 +112,7 @@ export default function BoardPage() {
             value={fSub}
             onChange={(e) => setFSub(e.target.value)}
           >
-            <option value="all">全部組別</option>
+            <option value="all">{t("全部組別")}</option>
             {SUBTEAMS.map((s) => (
               <option key={s.key} value={s.key}>
                 {s.label}
@@ -122,8 +124,8 @@ export default function BoardPage() {
             value={fAssignee}
             onChange={(e) => setFAssignee(e.target.value)}
           >
-            <option value="all">全部成員</option>
-            <option value="none">未指派</option>
+            <option value="all">{t("全部成員")}</option>
+            <option value="none">{t("未指派")}</option>
             {members.map((m) => (
               <option key={m.id} value={String(m.id)}>
                 {m.display_name}
@@ -131,7 +133,7 @@ export default function BoardPage() {
             ))}
           </select>
           <button className={BTN} onClick={() => setModal({ mode: "create" })}>
-            ＋ 新任務
+            {t("＋ 新任務")}
           </button>
         </div>
       </div>
@@ -180,9 +182,7 @@ export default function BoardPage() {
                   />
                 ))}
                 {cards.length === 0 && (
-                  <p className="py-8 text-center text-xs text-slate-600">
-                    沒有任務
-                  </p>
+                  <p className="py-8 text-center text-xs text-slate-600">{t("沒有任務")}</p>
                 )}
               </div>
             </div>
@@ -216,6 +216,7 @@ function TaskCard({
   onOpen: () => void;
   onDragStart: (e: React.DragEvent) => void;
 }) {
+  const { t } = useI18n();
   const today = todayStr();
   const overdue = task.due_date && task.due_date < today && task.status !== "done";
   const doneCount = task.items.filter((i) => i.done).length;
@@ -253,7 +254,7 @@ function TaskCard({
                 : "border-slate-700 text-slate-400"
             }`}
           >
-            {overdue ? "逾期 " : ""}
+            {overdue ? t("逾期 ") : ""}
             {fmtMD(task.due_date)}
           </span>
         )}

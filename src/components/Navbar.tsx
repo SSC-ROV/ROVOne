@@ -5,6 +5,7 @@ import { isStaff } from "@/lib/roles";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { useI18n } from "@/lib/i18n";
 import type { Me } from "@/lib/types";
 
 export default function Navbar({
@@ -15,6 +16,7 @@ export default function Navbar({
   teamName: string;
 }) {
   const pathname = usePathname();
+  const { t, lang, toggle } = useI18n();
   const [busy, setBusy] = useState(false);
 
   async function logout() {
@@ -24,16 +26,16 @@ export default function Navbar({
   }
 
   const links = [
-    { href: "/", label: "首頁" },
-    { href: "/board", label: "看板" },
-    { href: "/calendar", label: "日曆" },
-    { href: "/cycles", label: "開發週期" },
-    { href: "/missions", label: "比賽任務" },
-    { href: "/parts", label: "零件採買" },
-    { href: "/equipment", label: "設備" },
-    { href: "/divelogs", label: "水測日誌" },
-    ...(isStaff(user.role) ? [{ href: "/admin", label: "管理" }] : []),
-    { href: "/account", label: "帳號" },
+    { href: "/", label: t("首頁") },
+    { href: "/board", label: t("看板") },
+    { href: "/calendar", label: t("日曆") },
+    { href: "/cycles", label: t("開發週期") },
+    { href: "/missions", label: t("比賽任務") },
+    { href: "/parts", label: t("零件採買") },
+    { href: "/equipment", label: t("設備") },
+    { href: "/divelogs", label: t("水測日誌") },
+    ...(isStaff(user.role) ? [{ href: "/admin", label: t("管理") }] : []),
+    { href: "/account", label: t("帳號") },
   ];
 
   return (
@@ -65,11 +67,18 @@ export default function Navbar({
             {user.display_name}
           </span>
           <button
+            onClick={toggle}
+            className="rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-300 transition hover:border-slate-500 hover:text-white"
+            title={lang === "zh" ? "Switch to English" : "切換至中文"}
+          >
+            {lang === "zh" ? "EN" : "中"}
+          </button>
+          <button
             onClick={logout}
             disabled={busy}
             className="text-slate-400 transition hover:text-rose-300"
           >
-            登出
+            {t("登出")}
           </button>
         </div>
       </div>
