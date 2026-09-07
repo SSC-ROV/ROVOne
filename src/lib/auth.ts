@@ -9,7 +9,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   const token = store.get(SESSION_COOKIE)?.value;
   if (!token) return null;
   const [row] = await sql`
-    SELECT u.id, u.username, u.display_name, u.role, u.subteam
+    SELECT u.id, u.username, u.display_name, u.role, u.subteam, u.email, u.login_method
     FROM sessions s JOIN users u ON u.id = s.user_id
     WHERE s.token = ${token} AND s.expires_at > now()`;
   return (row as SessionUser) ?? null;

@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "請輸入帳號與密碼" }, { status: 400 });
   }
   const [user] = await sql`
-    SELECT id, username, display_name, role, subteam, password_hash
+    SELECT id, username, display_name, role, subteam, password_hash, email, login_method
     FROM users WHERE username = ${body.username.trim()}`;
   if (!user || !verifyPassword(body.password, String(user.password_hash))) {
     return NextResponse.json({ error: "帳號或密碼錯誤" }, { status: 401 });
@@ -26,6 +26,8 @@ export async function POST(req: NextRequest) {
       display_name: user.display_name,
       role: user.role,
       subteam: user.subteam,
+      email: user.email,
+      login_method: user.login_method,
     },
   });
   res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions);

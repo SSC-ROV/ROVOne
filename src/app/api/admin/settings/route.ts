@@ -9,6 +9,11 @@ async function currentSettings() {
     competition_date: (await getSettingValue("competition_date")) || null,
     discord_webhook: (await getSettingValue("discord_webhook")) ?? "",
     ical_token: await getOrCreateIcalToken(),
+    google_client_id: (await getSettingValue("google_client_id")) ?? "",
+    google_client_secret: (await getSettingValue("google_client_secret")) ?? "",
+    google_domains: (await getSettingValue("google_domains")) ?? "",
+    google_leader_emails: (await getSettingValue("google_leader_emails")) ?? "",
+    google_teacher_emails: (await getSettingValue("google_teacher_emails")) ?? "",
   };
 }
 
@@ -27,21 +32,30 @@ export async function PUT(req: NextRequest) {
   if (!isStaff(user.role)) {
     return NextResponse.json({ error: "只有隊長或老師可以修改設定" }, { status: 403 });
   }
-  const body = (await req.json().catch(() => null)) as {
-    team_name?: string;
-    competition_date?: string | null;
-    discord_webhook?: string;
-  } | null;
-  if (body?.team_name !== undefined) {
+  const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
+  if (!body) return NextResponse.json({ error: "格式錯誤" }, { status: 400 });
+
+  if (body.team_name !== undefined) {
     const name = String(body.team_name).trim();
     if (!name) return NextResponse.json({ error: "隊名不可空白" }, { status: 400 });
     await setSetting("team_name", name);
   }
-  if (body?.competition_date !== undefined) {
-    await setSetting("competition_date", body.competition_date || "");
+  if (body.competition_date !== undefined) {
+    await setSetting("competition_date", body.competition_date ? String(body.competition_date) : "");
   }
-  if (body?.discord_webhook !== undefined) {
+  if (body.discord_webhook !== undefined) {
     await setSetting("discord_webhook", String(body.discord_webhook).trim());
+  }
+  for (const key of [
+    "google_client_id",
+    "google_client_secret",
+    "google_domains",
+    "google_leader_emails",
+    "google_teacher_emails",
+  ] as const) {
+    if (body[key] !== undefined) {
+      await setSetting(key, String(body[key]).trim());
+    }
   }
   return NextResponse.json(await currentSettings());
 }

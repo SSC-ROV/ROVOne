@@ -8,7 +8,15 @@ import { BTN, BTN_GHOST, INPUT_CLS, SUBTEAMS, subteamLabel } from "@/lib/ui";
 import { useDialogs } from "@/components/ui/Dialogs";
 import type { Me, Member, Settings } from "@/lib/types";
 
-type AdminSettings = Settings & { discord_webhook: string; ical_token: string };
+type AdminSettings = Settings & {
+  discord_webhook: string;
+  ical_token: string;
+  google_client_id: string;
+  google_client_secret: string;
+  google_domains: string;
+  google_leader_emails: string;
+  google_teacher_emails: string;
+};
 
 export default function AdminPage() {
   const { confirm, prompt, toast } = useDialogs();
@@ -21,6 +29,11 @@ export default function AdminPage() {
   const [teamName, setTeamName] = useState("");
   const [compDate, setCompDate] = useState("");
   const [webhook, setWebhook] = useState("");
+  const [googleClientId, setGoogleClientId] = useState("");
+  const [googleClientSecret, setGoogleClientSecret] = useState("");
+  const [googleDomains, setGoogleDomains] = useState("");
+  const [googleLeaderEmails, setGoogleLeaderEmails] = useState("");
+  const [googleTeacherEmails, setGoogleTeacherEmails] = useState("");
 
   const [newName, setNewName] = useState("");
   const [newUsername, setNewUsername] = useState("");
@@ -42,6 +55,11 @@ export default function AdminPage() {
     setTeamName(s.team_name);
     setCompDate(s.competition_date ?? "");
     setWebhook(s.discord_webhook ?? "");
+    setGoogleClientId(s.google_client_id ?? "");
+    setGoogleClientSecret(s.google_client_secret ?? "");
+    setGoogleDomains(s.google_domains ?? "");
+    setGoogleLeaderEmails(s.google_leader_emails ?? "");
+    setGoogleTeacherEmails(s.google_teacher_emails ?? "");
     setMembers(m.members);
   }
 
@@ -79,6 +97,11 @@ export default function AdminPage() {
           team_name: teamName,
           competition_date: compDate || null,
           discord_webhook: webhook,
+          google_client_id: googleClientId,
+          google_client_secret: googleClientSecret,
+          google_domains: googleDomains,
+          google_leader_emails: googleLeaderEmails,
+          google_teacher_emails: googleTeacherEmails,
         }),
       });
       setSettings(s);
@@ -110,6 +133,16 @@ export default function AdminPage() {
       toast("訂閱連結已複製！在日曆 App 選「訂閱日曆」貼上即可同步");
     } catch {
       await prompt({ title: "複製這個 iCal 訂閱連結", initial: url });
+    }
+  }
+
+  async function copyGoogleCallback() {
+    const url = `${location.origin}/api/auth/google/callback`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast("回呼網址已複製！在 Google Cloud 的 OAuth 設定裡貼上即可");
+    } catch {
+      await prompt({ title: "複製這個回呼網址", initial: url });
     }
   }
 
@@ -235,6 +268,79 @@ export default function AdminPage() {
             隊員在手機日曆 App「訂閱日曆」貼上，例會、水測、任務截止自動同步
           </span>
         </div>
+      </section>
+
+      <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+        <h2 className="mb-1 font-bold">Google 登入</h2>
+        <p className="mb-3 text-xs text-slate-500">
+          設定後隊員可在登入頁用學校 Google 帳號登入（首次自動建立帳號）。
+          回呼網址（複製到 Google Cloud OAuth 設定）：
+        </p>
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <code className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs text-cyan-300">
+            {typeof window !== "undefined" ? `${location.origin}/api/auth/google/callback` : "/api/auth/google/callback"}
+          </code>
+          <button className={BTN_GHOST} onClick={copyGoogleCallback}>
+            複製
+          </button>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <label className="mb-1 block text-sm text-slate-400">Google 用戶端 ID（Client ID）</label>
+            <input
+              className={INPUT_CLS}
+              placeholder="xxx.apps.googleusercontent.com"
+              value={googleClientId}
+              onChange={(e) => setGoogleClientId(e.target.value)}
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="mb-1 block text-sm text-slate-400">Google 用戶端密鑰（Client Secret）</label>
+            <input
+              className={INPUT_CLS}
+              type="password"
+              placeholder="GOCSPX-…"
+              value={googleClientSecret}
+              onChange={(e) => setGoogleClientSecret(e.target.value)}
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="mb-1 block text-sm text-slate-400">
+              允許登入的網域（以逗號分隔，只限這些網域的 email）
+            </label>
+            <input
+              className={INPUT_CLS}
+              placeholder="stu.ssc.edu.hk, ssc.edu.hk"
+              value={googleDomains}
+              onChange={(e) => setGoogleDomains(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm text-slate-400">
+              隊長 email（這些 Google 帳號登入＝隊長）
+            </label>
+            <input
+              className={INPUT_CLS}
+              placeholder="leader@ssc.edu.hk"
+              value={googleLeaderEmails}
+              onChange={(e) => setGoogleLeaderEmails(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm text-slate-400">
+              老師 email（這些 Google 帳號登入＝老師）
+            </label>
+            <input
+              className={INPUT_CLS}
+              placeholder="teacher@ssc.edu.hk"
+              value={googleTeacherEmails}
+              onChange={(e) => setGoogleTeacherEmails(e.target.value)}
+            />
+          </div>
+        </div>
+        <p className="mt-2 text-xs text-slate-500">
+          組別一律為「全隊」，日後可在「帳號」由老師／隊長調整。密碼登入不受影響，仍可作為後備。
+        </p>
       </section>
 
       <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">

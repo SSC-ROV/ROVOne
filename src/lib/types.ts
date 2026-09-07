@@ -42,6 +42,8 @@ export interface Me {
   display_name: string;
   role: Role;
   subteam: Subteam;
+  email?: string | null;
+  login_method?: "password" | "google";
 }
 
 export interface ChecklistItem {
