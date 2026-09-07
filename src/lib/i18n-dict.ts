@@ -1,4 +1,10 @@
 export const DICT: Record<string, string> = {
+  "測試通知已發送到 Discord，去頻道看看！（網址已自動保存）": "Test notification sent to Discord! (URL auto-saved)",
+  "Discord 說這個網址無效：請回 Discord 頻道 → 整合 → Webhook，重新「Copy Webhook URL」": "Discord rejected this URL (invalid/deleted). Re-copy the Webhook URL from channel → Integrations → Webhooks",
+  "這台伺服器連不上 Discord（可能被網路防火牆擋住）；正式站 rov.sscrov.com 會從 Vercel 發送，請到那裡再測一次": "This server can't reach Discord (firewall?). The production site rov.sscrov.com sends via Vercel — test there.",
+  "請先貼上 Webhook 網址": "Paste the webhook URL first",
+  "測試失敗，請確認網址": "Test failed. Check the URL",
+  "已更新": "Updated", "的角色": "'s role", "的組別": "'s subteam",
   "載入逾時，請檢查網路後重新整理": "Load timed out. Check your connection and refresh.",
   "請先設定新密碼再開始使用（首次登入或密碼已被重設）": "Please set a new password before continuing (first sign-in or password was reset)",
   "這項資料已被其他人修改，請重新整理後再試": "This item was changed by someone else. Refresh and try again.",

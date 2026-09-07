@@ -116,11 +116,20 @@ export default function AdminPage() {
 
   async function testNotify() {
     try {
-      const r = await api<{ sent: boolean }>("/api/admin/settings/test-notify", { method: "POST" });
+      const r = await api<{ sent: boolean; reason?: string }>("/api/admin/settings/test-notify", {
+        method: "POST",
+        body: JSON.stringify({ webhook }),
+      });
       if (r.sent) {
-        toast(t("測試通知已發送到 Discord，去頻道看看！"), "ok");
+        toast(t("測試通知已發送到 Discord，去頻道看看！（網址已自動保存）"), "ok");
+      } else if (r.reason === "invalid") {
+        toast(t("Discord 說這個網址無效：請回 Discord 頻道 → 整合 → Webhook，重新「Copy Webhook URL」"), "err");
+      } else if (r.reason === "unreachable") {
+        toast(t("這台伺服器連不上 Discord（可能被網路防火牆擋住）；正式站 rov.sscrov.com 會從 Vercel 發送，請到那裡再測一次"), "err");
+      } else if (r.reason === "empty") {
+        toast(t("請先貼上 Webhook 網址"), "err");
       } else {
-        toast(t("沒有發送成功：請先按「儲存設定」，並確認 Discord Webhook 網址正確"), "err");
+        toast(t("測試失敗，請確認網址"), "err");
       }
     } catch (err) {
       toast(t((err as Error).message), "err");

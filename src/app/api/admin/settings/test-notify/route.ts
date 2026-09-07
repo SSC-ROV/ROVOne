@@ -1,16 +1,30 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
 import { isStaff } from "@/lib/roles";
-import { notifyDiscord } from "@/lib/notify";
+import { getSettingValue, setSetting } from "@/lib/db";
+import { testWebhook } from "@/lib/notify";
+import { logAudit } from "@/lib/audit";
 
-export async function POST() {
+/** 測試 Discord Webhook：優先用請求帶來的網址（輸入框當前值），成功自動保存 */
+export async function POST(req: NextRequest) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "未登入" }, { status: 401 });
   if (!isStaff(user.role)) {
     return NextResponse.json({ error: "只有隊長或老師可以測試通知" }, { status: 403 });
   }
-  const sent = await notifyDiscord(
-    "🔔 ROV 任務平台測試通知：設定成功，之後任務指派、零件審核結果會推到這裡。"
-  );
-  return NextResponse.json({ sent });
+  const body = (await req.json().catch(() => null)) as { webhook?: string } | null;
+  const url = (body?.webhook ?? "").trim() || (await getSettingValue("discord_webhook")) || "";
+  if (!url) {
+    return NextResponse.json({ sent: false, reason: "empty" });
+  }
+  if (!/^https:\/\/(discord|discordapp)\.com\/api\/webhooks\/\d+\/[\w-]+$/.test(url)) {
+    return NextResponse.json({ sent: false, reason: "invalid" });
+  }
+  const r = await testWebhook(url);
+  if (r.ok) {
+    await setSetting("discord_webhook", url);
+    await logAudit(user.id, user.username, "discord.test", "", url.slice(0, 40) + "…");
+    return NextResponse.json({ sent: true });
+  }
+  return NextResponse.json({ sent: false, reason: r.message, status: r.status });
 }
