@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/pg";
 import { getSessionUser } from "@/lib/auth";
 import { isStaff } from "@/lib/roles";
+import { logAudit } from "@/lib/audit";
 import { hashPassword } from "@/lib/password";
 import type { Member } from "@/lib/types";
 
@@ -38,6 +39,7 @@ export async function POST(req: NextRequest) {
       INSERT INTO users (username, display_name, password_hash, role, subteam)
       VALUES (${username}, ${displayName}, ${hashPassword(password)}, ${role}, ${String(body?.subteam ?? "general")})
       RETURNING id, username, display_name, role, subteam`;
+    await logAudit(me.id, me.username, "member.create", `user:${username}`).catch(() => {});
     return NextResponse.json({ member });
   } catch {
     return NextResponse.json({ error: "帳號已存在" }, { status: 400 });

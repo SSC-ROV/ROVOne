@@ -34,6 +34,7 @@ export default function AccountPage() {
   if (!me) {
     return <p className="py-20 text-center text-sm text-slate-500">{t("載入中…")}</p>;
   }
+  const forceChange = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("force") === "1" || !me.password_changed_at;
 
   async function changePassword(e: React.FormEvent) {
     e.preventDefault();
@@ -63,6 +64,11 @@ export default function AccountPage() {
   return (
     <div className="mx-auto max-w-md space-y-6">
       <h1 className="text-lg font-bold">{t("帳號")}</h1>
+      {forceChange && (
+        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
+          {t("請先設定新密碼再開始使用（首次登入或密碼已被重設）")}
+        </div>
+      )}
       <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 text-sm">
         <dl className="space-y-2">
           <div className="flex justify-between">

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/pg";
 import { getSessionUser } from "@/lib/auth";
 import { hashPassword, verifyPassword } from "@/lib/password";
+import { logAudit } from "@/lib/audit";
 
 export async function POST(req: NextRequest) {
   const me = await getSessionUser();
@@ -21,6 +22,15 @@ export async function POST(req: NextRequest) {
   if (!row || !verifyPassword(body.current, String(row.password_hash))) {
     return NextResponse.json({ error: "目前密碼不正確" }, { status: 400 });
   }
-  await sql`UPDATE users SET password_hash = ${hashPassword(body.next)} WHERE id = ${me.id}`;
+  await sql`
+    UPDATE users SET password_hash = ${hashPassword(body.next)}, password_changed_at = now()
+    WHERE id = ${me.id}`;
+  // 改密碼後令所有其他 session 失效（保留當前 token→傳入 cookie 即可）
+  const store = await req.cookies;
+  const token = store.get("rov_session")?.value ?? null;
+  if (token) {
+    await sql`DELETE FROM sessions WHERE user_id = ${me.id} AND token != ${token}`;
+  }
+  await logAudit(me.id, me.username, "password.change", `user:${me.username}`);
   return NextResponse.json({ ok: true });
 }

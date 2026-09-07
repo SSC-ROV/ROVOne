@@ -291,7 +291,7 @@ export default function AdminPage() {
             <input
               className={INPUT_CLS}
               type="password"
-              placeholder="GOCSPX-…"
+              placeholder="（從 Google Cloud 複製的 Client Secret）"
               value={googleClientSecret}
               onChange={(e) => setGoogleClientSecret(e.target.value)}
             />

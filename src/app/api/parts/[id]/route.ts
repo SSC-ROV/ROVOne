@@ -4,6 +4,7 @@ import { getSessionUser } from "@/lib/auth";
 import { isStaff } from "@/lib/roles";
 import { getPartByToken } from "@/lib/db";
 import { notifyDiscord } from "@/lib/notify";
+import { logAudit } from "@/lib/audit";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -59,6 +60,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       ordered_by = ${status === "ordered" ? user.id : c.ordered_by},
       arrived_at = ${status === "arrived" ? new Date().toISOString() : c.arrived_at}
     WHERE id = ${partId}`;
+  await logAudit(user.id, user.username, "part.status", `part:${partId} → ${status}`);
   return NextResponse.json({ ok: true });
 }
 
@@ -79,5 +81,6 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
     );
   }
   await sql`DELETE FROM parts WHERE id = ${partId}`;
+  await logAudit(user.id, user.username, "part.delete", `part:${partId}`);
   return NextResponse.json({ ok: true });
 }

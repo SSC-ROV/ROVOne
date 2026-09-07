@@ -1,7 +1,9 @@
+import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getOrCreateIcalToken, getSettingValue, setSetting } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 import { isStaff } from "@/lib/roles";
+import { logAudit } from "@/lib/audit";
 
 async function currentSettings() {
   return {
@@ -46,6 +48,10 @@ export async function PUT(req: NextRequest) {
   if (body.discord_webhook !== undefined) {
     await setSetting("discord_webhook", String(body.discord_webhook).trim());
   }
+  if (body.rotate_ical === true) {
+    await setSetting("ical_token", crypto.randomBytes(16).toString("hex"));
+    await logAudit(user.id, user.username, "ical.rotate", "");
+  }
   for (const key of [
     "google_client_id",
     "google_client_secret",
@@ -57,5 +63,6 @@ export async function PUT(req: NextRequest) {
       await setSetting(key, String(body[key]).trim());
     }
   }
+  await logAudit(user.id, user.username, "settings.update", "", Object.keys(body).join(","));
   return NextResponse.json(await currentSettings());
 }

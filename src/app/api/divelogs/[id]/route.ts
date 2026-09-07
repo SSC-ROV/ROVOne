@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/pg";
 import { getSessionUser } from "@/lib/auth";
 import { isStaff } from "@/lib/roles";
+import { logAudit } from "@/lib/audit";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -16,5 +17,6 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
   if (info.count === 0) {
     return NextResponse.json({ error: "日誌不存在" }, { status: 404 });
   }
+  await logAudit(user.id, user.username, "divelog.delete", `log:${id}`);
   return NextResponse.json({ ok: true });
 }

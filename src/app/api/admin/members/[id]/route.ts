@@ -3,6 +3,7 @@ import { sql } from "@/lib/pg";
 import { getSessionUser } from "@/lib/auth";
 import { isStaff } from "@/lib/roles";
 import { hashPassword } from "@/lib/password";
+import { logAudit } from "@/lib/audit";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -32,7 +33,12 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     if (body.password.length < 6) {
       return NextResponse.json({ error: "密碼至少 6 個字" }, { status: 400 });
     }
-    await sql`UPDATE users SET password_hash = ${hashPassword(String(body.password))} WHERE id = ${userId}`;
+    await sql`
+      UPDATE users SET password_hash = ${hashPassword(String(body.password))},
+             password_changed_at = NULL
+      WHERE id = ${userId}`;
+    await sql`DELETE FROM sessions WHERE user_id = ${userId}`;
+    await logAudit(me.id, me.username, "member.password_reset", `user:${userId}`);
   }
   return NextResponse.json({ ok: true });
 }
@@ -52,5 +58,6 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
   if (info.count === 0) {
     return NextResponse.json({ error: "成員不存在" }, { status: 404 });
   }
+  await logAudit(me.id, me.username, "member.delete", `user:${userId}`);
   return NextResponse.json({ ok: true });
 }

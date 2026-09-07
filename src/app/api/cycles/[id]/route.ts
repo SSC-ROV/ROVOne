@@ -3,6 +3,7 @@ import { sql } from "@/lib/pg";
 import { getSessionUser } from "@/lib/auth";
 import { isStaff } from "@/lib/roles";
 import { notifyDiscord } from "@/lib/notify";
+import { logAudit } from "@/lib/audit";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -40,17 +41,20 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   if (!body) return NextResponse.json({ error: "格式錯誤" }, { status: 400 });
 
   // ── 審批動作 ──
+  if (body.action === "approve" || body.action === "reject") {
+    if (!isStaff(user.role)) {
+      return NextResponse.json({ error: "只有隊長或老師可以審批" }, { status: 403 });
+    }
+  }
   if (body.action === "approve") {
     if (cycle.status === "pending_leader") {
-      if (!isStaff(user.role)) {
-        return NextResponse.json({ error: "只有隊長或老師可以審批" }, { status: 403 });
-      }
       // 老師是最終審批者，可直接生效；隊長核准後升級待老師審批
       const next = user.role === "teacher" ? "active" : "pending_teacher";
       await sql`
         UPDATE cycles SET status = ${next}, decided_by = ${user.id},
                decided_note = ${String(body.note ?? "").trim()}
         WHERE id = ${cycle.id}`;
+      await logAudit(user.id, user.username, "cycle.approve", `cycle:${cycle.id}`, `${cycle.title} → ${next}`);
       await notifyDiscord(
         next === "active"
           ? `✅ 老師核准開發週期：「${cycle.title}」，已開始！`
@@ -66,6 +70,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
         UPDATE cycles SET status = 'active', decided_by = ${user.id},
                decided_note = ${String(body.note ?? "").trim()}
         WHERE id = ${cycle.id}`;
+      await logAudit(user.id, user.username, "cycle.approve", `cycle:${cycle.id}`, `${cycle.title} → active`);
       await notifyDiscord(`✅ 老師核准開發週期：「${cycle.title}」，已開始！`);
       return NextResponse.json({ ok: true, status: "active" });
     }
@@ -86,6 +91,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       UPDATE cycles SET status = 'rejected', decided_by = ${user.id},
              decided_note = ${String(body.note ?? "").trim()}
       WHERE id = ${cycle.id}`;
+    await logAudit(user.id, user.username, "cycle.reject", `cycle:${cycle.id}`, cycle.title);
     await notifyDiscord(
       `❌ 開發週期「${cycle.title}」被駁回${body.note ? `— 備註：${body.note}` : ""}`
     );
@@ -102,6 +108,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     await sql`
       UPDATE cycles SET status = 'completed', completed_at = ${new Date().toISOString()}
       WHERE id = ${cycle.id}`;
+    await logAudit(user.id, user.username, "cycle.complete", `cycle:${cycle.id}`, cycle.title);
     await notifyDiscord(`🏁 開發週期「${cycle.title}」已完成！`);
     return NextResponse.json({ ok: true, status: "completed" });
   }

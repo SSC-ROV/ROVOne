@@ -80,6 +80,7 @@ export default function TaskModal({
     setBusy(true);
     setError("");
     const payload = {
+      version: task?.version,
       title: title.trim(),
       description,
       status,

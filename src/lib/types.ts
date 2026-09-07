@@ -44,6 +44,7 @@ export interface Me {
   subteam: Subteam;
   email?: string | null;
   login_method?: "password" | "google";
+  password_changed_at?: string | null;
 }
 
 export interface ChecklistItem {
@@ -67,6 +68,7 @@ export interface Task {
   created_by: number | null;
   mission_id: number | null;
   cycle_id: number | null;
+  version: number;
   sort_order: number;
   completed_at: string | null;
   items: ChecklistItem[];
@@ -120,6 +122,7 @@ export interface Part {
   ordered_by: number | null;
   arrived_at: string | null;
   approve_token: string | null;
+  approve_expires_at: string | null;
   created_at: string;
 }
 

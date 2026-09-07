@@ -79,7 +79,7 @@ export default function BoardPage() {
     try {
       const r = await api<{ task: Task }>(`/api/tasks/${task.id}`, {
         method: "PATCH",
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, version: task.version }),
       });
       setTasks((prev) => prev!.map((x) => (x.id === task.id ? r.task : x)));
     } catch (err) {
@@ -87,6 +87,7 @@ export default function BoardPage() {
         prev!.map((x) => (x.id === task.id ? { ...x, status: task.status } : x))
       );
       toast(t((err as Error).message), "err");
+      if ((err as Error & { status?: number }).status === 409) load();
     }
   }
 

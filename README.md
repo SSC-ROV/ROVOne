@@ -81,11 +81,37 @@ npm start     # 開 http://localhost:3000
 | **在系統內直接批准零件**、審批連結 | ✅ | ❌（僅連結可由老師按） |
 | 刪除任務／活動／設備／比賽任務、零件採買進度、修改日曆、隊伍設定、成員管理 | ✅ | ❌ |
 
-## 資料與備份
+## 資料與備份（線上：Supabase）
 
-- 所有資料在單一 SQLite 檔：`data/rov.db`（首次啟動自動建立並灌示範資料）
-- 備份 = 複製這個檔案；重置 = 刪掉 `data/` 資料夾再重啟
-- 建議每週把 `data/rov.db` 複製一份到雲端硬碟
+- **所有資料都在 Supabase Postgres**（不會在任何 Vercel / 瀏覽器 / 原始碼裡）
+- 備份方式（三選一）：
+  1. **開始每日自動備份**：Supabase 控制台 → 專案 → Database → Backups（Free 方案啟用後為每日，需先在後台設定；建議每週手動確認一次）
+  2. **手動備份**：控制台 Database → 下載備份（Download backup）
+  3. **命令行進階**（可寫入排程）：`pg_dump "$DATABASE_URL" > backup_$(date +%F).sql`
+- 恢復：控制台 Restore；或 `psql "$DATABASE_URL" < backup.sql`
+- ⚠️ `data/rov.db` 只是遷移前 SQLite 的舊檔，**僅適用於完全離線的舊版（階段一）部署**，與線上無關
+- 交接事項：Supabase 登入權限至少兩人知道（不要只有一個人記得）；若帳密遺失，帳號可能無法找回
+
+## 平台限制與運維（重要，正式營運期間）
+
+| 限制 | 影響與對策 |
+|---|---|
+| Vercel Hobby 函數超時 **10 秒**（未開 Fluid Compute） | 目前 CRUD 遠低於此；**未來加檔案上傳／圖片處理／批量匯出前，務必先壓測**，否則會被 504 殺掉 |
+| Vercel Hobby Cron **每天最多 1 次** | 「截止日自動提醒」若要每小時級粒度，須升級 Pro 或改用外部免費 cron 服務打 webhook |
+| Supabase Free 專案 **7 天無活動自動暫停**；暫停超過 90 天後 Restore 按鈕失效（需手動重建新專案、URL/Key 都會變） | 假期（暑假／CNY）前先建 **keep-alive**：Vercel Cron 每日打一次網站（`/api/ical?token=...` 也算活動）；交接文件第一行寫「網站打不開 → 先去 Supabase 控制台看是否 paused → 按 Restore」 |
+| Cloudflare 目前 DNS only（灰雲，無 CDN／WAF） | Vercel 已自帶 TLS，風險低；若未來遭遇針對性濫用（如審批連結被重放），可改開橘雲代理並加規則 |
+
+## 安全備忘（已實作並驗證）
+
+- 登入限流：同帳號＋IP 5 次失敗鎖 15 分鐘（`login_attempts` 表）
+- 首次登入／密碼被重設 → **強制先改密碼**才能使用（服務端攔截＋跳轉「帳號」頁）
+- 改密碼後：其他所有 session 立即失效
+- 審批連結：128-bit 隨機 token、72 小時過期、審核一次即失效（資料庫層標記）
+- 審計日誌：關鍵操作（刪除、審批、改密、重設密碼、設定變更）寫入 `audit_log`，隊長／老師可在 `/api/admin/audit-log` 查看
+- 任務樂觀鎖（`version`）：兩人同時編輯同一任務時，後寫者收到 409 提示重新整理
+- 密碼雜湊：scrypt（Node 官方參數 N=16384, r=8, p=1）＋每位使用者獨立 16-byte salt
+- 靜態檢查已通過：無 `dangerouslySetInnerHTML`（XSS 靠 React 默認轉義）、全部 SQL 參數化、Google Client Secret 與 Discord Webhook 不出現在前端 bundle／非幹部 API 回應
+
 
 ## 部署架構（目前線上：2026-09-07）
 
@@ -153,14 +179,15 @@ ngrok 也是類似工具，免費版網址同樣會換，二選一即可。
 **不建議 Vercel / Netlify**：這個專案用 SQLite 檔案資料庫，那類平台沒有
 永久磁碟，要改成 Turso/Supabase 才行（未來想改再找我）。
 
-### 上線檢查清單
+### 上線檢查清單（長期營運版）
 
-- [ ] 改掉 leader / member 預設密碼
-- [ ] 每位隊員都用自己帳號（管理頁開戶），出事才知道是誰改的
-- [ ] 管理 → 設定 Discord Webhook 並測試
-- [ ] 複製 iCal 連結給隊員訂閱
-- [ ] 設定每週備份 `data/rov.db`
-- [ ] 伺服器重開後要能自動啟動（pm2：`pm2 save` + `pm2 startup`）
+- [x] 預設密碼已改（系統已強制首次登入改密碼；管理員重設後同樣強制）
+- [x] 每位隊員都用自己帳號（Google 登入自動開戶；或管理頁手動開戶）
+- [x] Discord Webhook 設定並測試（管理頁 → 通知與整合）
+- [x] iCal 訂閱連結發給隊員（可隨時在管理頁「重新產生」輪換）
+- [ ] Supabase 帳號密碼至少兩人知道（交接）
+- [ ] 設定 Supabase「Backups」；每月手動下載備份一次到雲端硬碟
+- [ ] 建立 keep-alive：Vercel Cron 每日一次打健康檢查（如 `/api/ical?token=...`）
 
 ## 技術棧
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/pg";
 import { getPartByToken } from "@/lib/db";
 import { notifyDiscord } from "@/lib/notify";
+import { logAudit } from "@/lib/audit";
 
 type Ctx = { params: Promise<{ token: string }> };
 
@@ -34,6 +35,9 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   if (part.status !== "pending") {
     return NextResponse.json({ error: "這筆申請已經審核過了" }, { status: 400 });
   }
+  if (part.approve_expires_at && new Date(part.approve_expires_at) < new Date()) {
+    return NextResponse.json({ error: "這個審批連結已過期（72 小時），請請隊長重新複製新的連結" }, { status: 400 });
+  }
   const body = (await req.json().catch(() => null)) as {
     decision?: string;
     note?: string;
@@ -47,6 +51,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
                      decided_note = ${String(body?.note ?? "").trim()}
     WHERE id = ${part.id}`;
 
+  await logAudit(null, "teacher-link", "part.approve", `part:${part.id}`, `${decision}${body?.note ? "；備註：" + body.note : ""}`);
   await notifyDiscord(
     decision === "approved"
       ? `✅ 老師已核准零件申請：「${part.name}」× ${part.qty}${part.unit}（預估 $${part.est_price}）`

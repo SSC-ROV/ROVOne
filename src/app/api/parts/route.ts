@@ -22,11 +22,12 @@ export async function POST(req: NextRequest) {
   if (!name) return NextResponse.json({ error: "請填寫零件名稱" }, { status: 400 });
   const token = randomToken();
   await sql`
-    INSERT INTO parts (name, spec, link, qty, unit, est_price, purpose, subteam, status, requested_by, approve_token)
+    INSERT INTO parts (name, spec, link, qty, unit, est_price, purpose, subteam, status, requested_by, approve_token, approve_expires_at)
     VALUES (${name}, ${String(body?.spec ?? "")}, ${String(body?.link ?? "")},
             ${Math.max(1, Number(body?.qty) || 1)}, ${String(body?.unit ?? "個")},
             ${Math.max(0, Number(body?.est_price) || 0)}, ${String(body?.purpose ?? "")},
-            ${String(body?.subteam ?? "general")}, 'pending', ${user.id}, ${token})`;
+            ${String(body?.subteam ?? "general")}, 'pending', ${user.id}, ${token},
+            now() + interval '72 hours')`;
   return NextResponse.json({ ok: true });
 }
 

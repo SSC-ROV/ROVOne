@@ -90,7 +90,7 @@ export async function GET(req: NextRequest) {
 
   const token = await createSession(Number(user.id));
   const res = NextResponse.redirect(new URL("/", origin));
-  res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions);
+  res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions(origin.startsWith("https:")));
   res.cookies.delete("rov_oauth_state");
   return res;
 }

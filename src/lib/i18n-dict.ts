@@ -1,4 +1,10 @@
 export const DICT: Record<string, string> = {
+  "請先設定新密碼再開始使用（首次登入或密碼已被重設）": "Please set a new password before continuing (first sign-in or password was reset)",
+  "這項資料已被其他人修改，請重新整理後再試": "This item was changed by someone else. Refresh and try again.",
+  "嘗試次數過多，請 15 分鐘後再試": "Too many attempts. Try again in 15 minutes.",
+  "這個審批連結已過期（72 小時），請請隊長重新複製新的連結": "This approval link has expired (72h). Ask the leader for a new link.",
+  "重新產生訂閱連結": "Regenerate Subscribe Link",
+  "重新整理後生效": "applies after refresh",
   "Discord 頻道設定 → 整合 → Webhook → 建立並複製網址": "Discord: channel settings → Integrations → Webhook → create & copy URL",
   "Google 用戶端 ID（Client ID）": "Google Client ID",
   "Google 用戶端密鑰（Client Secret）": "Google Client Secret",
