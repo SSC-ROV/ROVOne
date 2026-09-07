@@ -8,6 +8,7 @@ import { api } from "@/lib/api-client";
 import { daysBetween, fmtMD, todayStr, weekdayCn } from "@/lib/date";
 import { CHIP, cycleStatusLabel, cycleStatus } from "@/lib/ui";
 import { useI18n } from "@/lib/i18n";
+import CycleTimeline from "@/components/CycleTimeline";
 import type { Cycle, Me, Settings, TeamEvent } from "@/lib/types";
 
 export default function DashboardPage() {
@@ -111,6 +112,8 @@ export default function DashboardPage() {
           <StatCard label={t("已核准待開始")} value={myApproved.length} accent="text-emerald-300" />
         </div>
       </div>
+
+      <CycleTimeline cycles={cycles} today={today} compact />
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">

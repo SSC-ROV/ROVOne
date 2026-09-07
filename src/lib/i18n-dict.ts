@@ -1,4 +1,8 @@
 export const DICT: Record<string, string> = {
+  "週期時間軸": "Cycle Timeline", "長條重疊＝同時進行；⚠ 表示兩個週期有共同成員，開始前先協調": "Overlapping bars = running at the same time; ⚠ = shared members, coordinate first",
+  "撞期": "Schedule conflict", "與": "with", "共同成員": "Shared members",
+  "各長條依狀態著色；游標停在上面可看完整名稱": "Bars are colored by status; hover for full names",
+  "有撞期的週期，請到「開發週期」頁協調": "Conflicting cycles detected — coordinate on the Development Cycles page",
   "進行中週期": "Active cycles", "已核准待開始": "Approved, not started", "全隊週期進度": "Team cycle progress",
   "我的開發週期進度": "My cycle progress", "目前沒有參與中的週期，到「開發週期」提案一個吧": "No active cycles yet — propose one in Development Cycles",
   "點任務名稱可編輯詳情（負責人、截止日、子任務）": "Click a task to edit details (assignee, due date, subtasks)",
