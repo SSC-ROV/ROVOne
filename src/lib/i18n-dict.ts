@@ -1,4 +1,7 @@
 export const DICT: Record<string, string> = {
+  "已建立任務": "Task created", "，記得到看板補截止日": " — add a due date on the board",
+  "登入方式": "Sign-in method", "此帳號使用學校 Google 帳號登入，無需設定密碼。": "This account signs in with the school Google account. No password needed.",
+  "目前沒有進行中的開發週期，請先在「開發週期」頁提案": "No active development cycle right now. Propose one on the Development Cycles page first.",
   "週期時間軸": "Cycle Timeline", "長條重疊＝同時進行；⚠ 表示兩個週期有共同成員，開始前先協調": "Overlapping bars = running at the same time; ⚠ = shared members, coordinate first",
   "撞期": "Schedule conflict", "與": "with", "共同成員": "Shared members",
   "各長條依狀態著色；游標停在上面可看完整名稱": "Bars are colored by status; hover for full names",

@@ -74,9 +74,9 @@ export async function GET(req: NextRequest) {
     }
 
     const [created] = await sql`
-      INSERT INTO users (username, display_name, password_hash, role, subteam, email, login_method)
+      INSERT INTO users (username, display_name, password_hash, role, subteam, email, login_method, password_changed_at)
       VALUES (${username}, ${name || localPart}, ${crypto.randomBytes(32).toString("hex")},
-              ${role}, 'general', ${email}, 'google')
+              ${role}, 'general', ${email}, 'google', now())
       RETURNING id, role`;
     user = created;
     await notifyDiscord(

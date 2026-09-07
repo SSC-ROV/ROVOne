@@ -93,6 +93,14 @@ export default function AccountPage() {
         </p>
       </section>
 
+      {me.login_method === "google" ? (
+        <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 text-sm">
+          <h2 className="mb-2 font-bold">{t("登入方式")}</h2>
+          <p className="text-slate-300">
+            {t("此帳號使用學校 Google 帳號登入，無需設定密碼。")}
+          </p>
+        </section>
+      ) : (
       <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
         <h2 className="mb-3 font-bold">{t("修改密碼")}</h2>
         <form onSubmit={changePassword} className="space-y-3">
@@ -135,6 +143,7 @@ export default function AccountPage() {
           </button>
         </form>
       </section>
+      )}
     </div>
   );
 }

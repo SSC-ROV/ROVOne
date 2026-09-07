@@ -5,7 +5,7 @@ import SubteamsProvider from "@/lib/subteams";
 
 export const metadata: Metadata = {
   title: "ROV 隊伍任務平台",
-  description: "ROV 團隊的任務看板、時間規劃與任務日曆",
+  description: "ROV 團隊的開發週期、任務追蹤、時間規劃與裝備管理",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

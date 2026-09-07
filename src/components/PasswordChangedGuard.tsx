@@ -13,7 +13,7 @@ export default function PasswordChangedGuard() {
     fetch("/api/auth/me")
       .then((r) => r.json())
       .then((d) => {
-        if (d.user && !d.user.password_changed_at) {
+        if (d.user && d.user.login_method !== "google" && !d.user.password_changed_at) {
           router.replace("/account?force=1");
         }
       })

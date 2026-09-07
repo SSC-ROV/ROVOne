@@ -8,12 +8,13 @@ import { api } from "@/lib/api-client";
 import { BTN, INPUT_CLS } from "@/lib/ui";
 import { fmtMD, todayStr, weekdayCn } from "@/lib/date";
 import { useDialogs } from "@/components/ui/Dialogs";
-import type { DiveLog, Me } from "@/lib/types";
+import type { Cycle, DiveLog, Me } from "@/lib/types";
 
 export default function DiveLogsPage() {
   const { t } = useI18n();
   const { confirm, toast } = useDialogs();
   const [logs, setLogs] = useState<DiveLog[] | null>(null);
+  const [cycles, setCycles] = useState<Cycle[] | null>(null);
   const [me, setMe] = useState<Me | null>(null);
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -29,11 +30,14 @@ export default function DiveLogsPage() {
   const [busy, setBusy] = useState(false);
 
   async function load() {
-    const [l, u] = await Promise.all([
+    const [l, e, u, cy] = await Promise.all([
       api<{ logs: DiveLog[] }>("/api/divelogs"),
+      api<{ events: unknown[] }>("/api/events").catch(() => ({ events: [] })),
       api<{ user: Me | null }>("/api/auth/me"),
+      api<{ cycles: Cycle[] }>("/api/cycles").catch(() => ({ cycles: [] as Cycle[] })),
     ]);
     setLogs(l.logs);
+    setCycles(cy.cycles);
     setMe(u.user);
   }
 
@@ -71,6 +75,13 @@ export default function DiveLogsPage() {
   }
 
   async function toTask(log: DiveLog) {
+    const candidates = (cycles ?? []).filter((c) => c.status === "active");
+    if (candidates.length === 0) {
+      toast(t("目前沒有進行中的開發週期，請先在「開發週期」頁提案"), "err");
+      return;
+    }
+    const mine = candidates.find((c) => c.proposer_id === me?.id || c.members.some((m) => m.id === me?.id));
+    const target = mine ?? candidates[0];
     const ok = await confirm({
       title: `${t("轉成任務")}：${log.title}`,
       message: t("會建立一筆指派給你的高優先級任務，內容附上日誌重點。"),
@@ -86,9 +97,10 @@ export default function DiveLogsPage() {
           subteam: "general",
           priority: "high",
           assignee_id: me!.id,
+          cycle_id: target.id,
         }),
       });
-      toast(t("已建立任務，記得到看板補截止日與負責人"));
+      toast(t("已建立任務") + `（${target.title}）` + t("，記得到看板補截止日"));
     } catch (err) {
       toast(t((err as Error).message), "err");
     }
