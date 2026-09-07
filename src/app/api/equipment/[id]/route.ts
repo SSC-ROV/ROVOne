@@ -1,3 +1,4 @@
+import { isStaff } from "@/lib/roles";
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
@@ -40,7 +41,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       return NextResponse.json({ ok: true });
     }
     if (body.action === "return") {
-      if (user.role !== "leader" && eq.borrower_id !== user.id) {
+      if (!isStaff(user.role) && eq.borrower_id !== user.id) {
         return NextResponse.json(
           { error: "只有借用人本人或隊長可以歸還" },
           { status: 403 }
@@ -52,7 +53,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       return NextResponse.json({ ok: true });
     }
     if (body.action === "maintenance") {
-      if (user.role !== "leader") {
+      if (!isStaff(user.role)) {
         return NextResponse.json({ error: "只有隊長可以調整維修狀態" }, { status: 403 });
       }
       if (eq.status === "borrowed") {
@@ -66,7 +67,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   }
 
   // 名稱 / 分類 / 備註：隊長
-  if (user.role !== "leader") {
+  if (!isStaff(user.role)) {
     return NextResponse.json({ error: "只有隊長可以編輯設備資料" }, { status: 403 });
   }
   if (body?.name !== undefined) {
@@ -92,7 +93,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 export async function DELETE(_req: NextRequest, ctx: Ctx) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "未登入" }, { status: 401 });
-  if (user.role !== "leader") {
+  if (!isStaff(user.role)) {
     return NextResponse.json({ error: "只有隊長可以刪除設備" }, { status: 403 });
   }
   const { id } = await ctx.params;

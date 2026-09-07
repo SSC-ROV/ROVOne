@@ -1,3 +1,4 @@
+import { isStaff } from "@/lib/roles";
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
@@ -16,7 +17,7 @@ function canEditTask(
     | undefined;
   if (!task) return false;
   return (
-    user.role === "leader" ||
+    isStaff(user.role) ||
     user.id === task.assignee_id ||
     user.id === task.created_by
   );

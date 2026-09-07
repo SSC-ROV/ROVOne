@@ -1,4 +1,6 @@
 "use client";
+import { isStaff } from "@/lib/roles";
+
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -29,7 +31,7 @@ export default function Navbar({
     { href: "/parts", label: "零件採買" },
     { href: "/equipment", label: "設備" },
     { href: "/divelogs", label: "水測日誌" },
-    ...(user.role === "leader" ? [{ href: "/admin", label: "管理" }] : []),
+    ...(isStaff(user.role) ? [{ href: "/admin", label: "管理" }] : []),
     { href: "/account", label: "帳號" },
   ];
 

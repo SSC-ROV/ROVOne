@@ -1,4 +1,6 @@
 "use client";
+import { isStaff, roleLabelCn } from "@/lib/roles";
+
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
@@ -75,7 +77,7 @@ export default function AccountPage() {
           </div>
           <div className="flex justify-between">
             <dt className="text-slate-400">角色</dt>
-            <dd>{me.role === "leader" ? "隊長" : "隊員"}</dd>
+            <dd>{roleLabelCn(me.role)}</dd>
           </div>
         </dl>
         <p className="mt-3 text-xs text-slate-500">

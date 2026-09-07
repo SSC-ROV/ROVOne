@@ -1,4 +1,6 @@
 "use client";
+import { isStaff } from "@/lib/roles";
+
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -92,7 +94,7 @@ export default function DashboardPage() {
           ) : (
             <>
               <p className="text-sm text-slate-400">尚未設定比賽日期</p>
-              {me.role === "leader" ? (
+              {isStaff(me.role) ? (
                 <Link
                   href="/admin"
                   className="mt-2 inline-block text-sm text-cyan-300 hover:underline"
@@ -100,7 +102,7 @@ export default function DashboardPage() {
                   前往「管理」設定 →
                 </Link>
               ) : (
-                <p className="mt-2 text-sm text-slate-500">請隊長於「管理」頁設定</p>
+                <p className="mt-2 text-sm text-slate-500">請隊長或老師於「管理」頁設定</p>
               )}
             </>
           )}

@@ -1,4 +1,6 @@
 "use client";
+import { isStaff } from "@/lib/roles";
+
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
@@ -163,7 +165,7 @@ export default function DiveLogsPage() {
                   轉成追蹤任務
                 </button>
               )}
-              {me.role === "leader" && (
+              {isStaff(me.role) && (
                 <button className="ml-auto text-slate-500 transition hover:text-rose-400" onClick={() => remove(log)}>
                   刪除
                 </button>

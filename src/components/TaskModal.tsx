@@ -1,4 +1,6 @@
 "use client";
+import { isStaff } from "@/lib/roles";
+
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
@@ -33,7 +35,7 @@ export default function TaskModal({
   const { confirm, toast } = useDialogs();
   const canEdit =
     mode === "create" ||
-    me.role === "leader" ||
+    isStaff(me.role) ||
     task?.assignee_id === me.id ||
     task?.created_by === me.id;
 
@@ -359,7 +361,7 @@ export default function TaskModal({
               <button className={BTN_GHOST} onClick={onClose} disabled={busy}>
                 取消
               </button>
-              {mode === "edit" && me.role === "leader" && (
+              {mode === "edit" && isStaff(me.role) && (
                 <button
                   onClick={remove}
                   disabled={busy}

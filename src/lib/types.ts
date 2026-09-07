@@ -1,4 +1,4 @@
-export type Role = "leader" | "member";
+export type Role = "leader" | "teacher" | "member";
 export type Subteam = "mech" | "elec" | "sw" | "pilot" | "general";
 export type TaskStatus = "todo" | "doing" | "done";
 export type Priority = "high" | "medium" | "low";

@@ -1,3 +1,4 @@
+import { isStaff } from "@/lib/roles";
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
@@ -7,8 +8,8 @@ import type { Member } from "@/lib/types";
 export async function POST(req: NextRequest) {
   const me = await getSessionUser();
   if (!me) return NextResponse.json({ error: "未登入" }, { status: 401 });
-  if (me.role !== "leader") {
-    return NextResponse.json({ error: "只有隊長可以新增成員" }, { status: 403 });
+  if (!isStaff(me.role)) {
+    return NextResponse.json({ error: "只有隊長或老師可以新增成員" }, { status: 403 });
   }
   const body = (await req.json().catch(() => null)) as {
     username?: string;
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
         username,
         displayName,
         hashPassword(password),
-        body?.role === "leader" ? "leader" : "member",
+        ["leader", "teacher", "member"].includes(String(body?.role)) ? String(body?.role) : "member",
         String(body?.subteam ?? "general")
       );
     const member = db

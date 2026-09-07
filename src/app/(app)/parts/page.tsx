@@ -1,4 +1,6 @@
 "use client";
+import { isStaff } from "@/lib/roles";
+
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
@@ -201,7 +203,7 @@ export default function PartsPage() {
         )}
         {filtered.map((p) => {
           const st = partStatus(p.status);
-          const canDelete = me.role === "leader" || (p.requested_by === me.id && p.status === "pending");
+          const canDelete = isStaff(me.role) || (p.requested_by === me.id && p.status === "pending");
           return (
             <div key={p.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
               <div className="flex flex-wrap items-center gap-2">
@@ -233,12 +235,12 @@ export default function PartsPage() {
                 {p.arrived_at && <span>到貨：{fmtMD(p.arrived_at.slice(0, 10))}</span>}
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                {p.status === "pending" && me.role === "leader" && p.approve_token && (
+                {p.status === "pending" && isStaff(me.role) && p.approve_token && (
                   <button className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-sm text-amber-300 transition hover:bg-amber-500/20" onClick={() => copyApproveLink(p)}>
                     複製老師審批連結
                   </button>
                 )}
-                {me.role === "leader" && p.status !== "pending" && (
+                {isStaff(me.role) && p.status !== "pending" && (
                   <select
                     className={`${SELECT_CLS} w-28 text-xs`}
                     value={p.status}
@@ -249,7 +251,7 @@ export default function PartsPage() {
                     ))}
                   </select>
                 )}
-                {me.role === "leader" && p.status === "pending" && (
+                {isStaff(me.role) && p.status === "pending" && (
                   <span className="text-xs text-slate-500">（等老師按連結核准；或先改狀態繞過：<button className="text-cyan-300 hover:underline" onClick={() => setStatus(p, "approved")}>直接標記已核准</button>）</span>
                 )}
                 {canDelete && (

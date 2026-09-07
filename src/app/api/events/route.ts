@@ -1,3 +1,4 @@
+import { isStaff } from "@/lib/roles";
 import { NextRequest, NextResponse } from "next/server";
 import db, { getEvents } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
@@ -12,7 +13,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "未登入" }, { status: 401 });
-  if (user.role !== "leader") {
+  if (!isStaff(user.role)) {
     return NextResponse.json(
       { error: "只有隊長可以建立活動" },
       { status: 403 }

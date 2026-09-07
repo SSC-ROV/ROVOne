@@ -1,3 +1,4 @@
+import { isStaff } from "@/lib/roles";
 import { NextRequest, NextResponse } from "next/server";
 import db, { getTaskWithItems } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
@@ -11,7 +12,7 @@ function canEdit(
   task: { assignee_id: number | null; created_by: number | null }
 ): boolean {
   return (
-    user.role === "leader" ||
+    isStaff(user.role) ||
     user.id === task.assignee_id ||
     user.id === task.created_by
   );
@@ -94,7 +95,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 export async function DELETE(_req: NextRequest, ctx: Ctx) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "未登入" }, { status: 401 });
-  if (user.role !== "leader") {
+  if (!isStaff(user.role)) {
     return NextResponse.json({ error: "只有隊長可以刪除任務" }, { status: 403 });
   }
   const { id } = await ctx.params;

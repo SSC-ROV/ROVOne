@@ -1,4 +1,6 @@
 "use client";
+import { isStaff } from "@/lib/roles";
+
 
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api-client";
@@ -264,7 +266,7 @@ export default function CalendarPage() {
                         {e.location && (
                           <span className="text-xs text-slate-500">@{e.location}</span>
                         )}
-                        {me.role === "leader" && (
+                        {isStaff(me.role) && (
                           <button
                             onClick={() => removeEvent(e)}
                             className="text-slate-500 transition hover:text-rose-400"
@@ -304,7 +306,7 @@ export default function CalendarPage() {
             </div>
           </section>
 
-          {me.role === "leader" ? (
+          {isStaff(me.role) ? (
             <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
               <h2 className="mb-2 font-bold">在 {fmtMD(sel)} 新增活動</h2>
               <div className="space-y-2">

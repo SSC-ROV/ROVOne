@@ -1,4 +1,6 @@
 "use client";
+import { isStaff } from "@/lib/roles";
+
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
@@ -138,7 +140,7 @@ export default function MissionsPage() {
                   style={{ width: `${pct ?? 0}%` }}
                 />
               </div>
-              {me.role === "leader" && (
+              {isStaff(me.role) && (
                 <button
                   onClick={() => remove(m)}
                   className="mt-2 text-xs text-slate-500 transition hover:text-rose-400"
@@ -151,7 +153,7 @@ export default function MissionsPage() {
         })}
       </div>
 
-      {me.role === "leader" && (
+      {isStaff(me.role) && (
         <form onSubmit={add} className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
           <h2 className="font-bold">新增比賽任務（照規則書一條一條加）</h2>
           <div className="grid gap-3 sm:grid-cols-[1fr_6rem_2fr_auto]">

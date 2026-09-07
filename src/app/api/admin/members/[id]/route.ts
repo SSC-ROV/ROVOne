@@ -1,3 +1,4 @@
+import { isStaff } from "@/lib/roles";
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
@@ -8,7 +9,7 @@ type Ctx = { params: Promise<{ id: string }> };
 export async function PATCH(req: NextRequest, ctx: Ctx) {
   const me = await getSessionUser();
   if (!me) return NextResponse.json({ error: "未登入" }, { status: 401 });
-  if (me.role !== "leader") {
+  if (!isStaff(me.role)) {
     return NextResponse.json({ error: "只有隊長可以管理成員" }, { status: 403 });
   }
   const { id } = await ctx.params;
@@ -45,7 +46,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 export async function DELETE(_req: NextRequest, ctx: Ctx) {
   const me = await getSessionUser();
   if (!me) return NextResponse.json({ error: "未登入" }, { status: 401 });
-  if (me.role !== "leader") {
+  if (!isStaff(me.role)) {
     return NextResponse.json({ error: "只有隊長可以管理成員" }, { status: 403 });
   }
   const { id } = await ctx.params;

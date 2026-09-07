@@ -1,4 +1,6 @@
 "use client";
+import { isStaff } from "@/lib/roles";
+
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
@@ -165,17 +167,17 @@ export default function EquipmentPage() {
                           借用
                         </button>
                       )}
-                      {e.status === "borrowed" && (me.role === "leader" || e.borrower_id === me.id) && (
+                      {e.status === "borrowed" && (isStaff(me.role) || e.borrower_id === me.id) && (
                         <button className="text-emerald-300 hover:underline" onClick={() => act(e, "return")}>
                           歸還
                         </button>
                       )}
-                      {me.role === "leader" && e.status !== "borrowed" && (
+                      {isStaff(me.role) && e.status !== "borrowed" && (
                         <button className="text-slate-400 hover:underline" onClick={() => act(e, "maintenance")}>
                           {e.status === "maintenance" ? "修好了" : "送修"}
                         </button>
                       )}
-                      {me.role === "leader" && (
+                      {isStaff(me.role) && (
                         <button className="text-slate-500 hover:text-rose-400" onClick={() => remove(e)}>
                           刪除
                         </button>
@@ -196,7 +198,7 @@ export default function EquipmentPage() {
         </table>
       </div>
 
-      {me.role === "leader" && (
+      {isStaff(me.role) && (
         <form onSubmit={addEquipment} className="grid gap-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-5 sm:grid-cols-[1fr_10rem_1fr_auto]">
           <input className={INPUT_CLS} placeholder="設備名稱，例如：T200 備用推進器" value={name} onChange={(e) => setName(e.target.value)} />
           <select className={INPUT_CLS} value={category} onChange={(e) => setCategory(e.target.value)}>

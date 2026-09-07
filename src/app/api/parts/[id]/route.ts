@@ -1,3 +1,4 @@
+import { isStaff } from "@/lib/roles";
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
@@ -7,7 +8,7 @@ type Ctx = { params: Promise<{ id: string }> };
 export async function PATCH(req: NextRequest, ctx: Ctx) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "未登入" }, { status: 401 });
-  if (user.role !== "leader") {
+  if (!isStaff(user.role)) {
     return NextResponse.json(
       { error: "採買進度由隊長更新；申請中的項目可直接請隊長處理" },
       { status: 403 }
@@ -96,7 +97,7 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
   if (!part) return NextResponse.json({ error: "零件不存在" }, { status: 404 });
   const isOwnerPending =
     part.status === "pending" && part.requested_by === user.id;
-  if (user.role !== "leader" && !isOwnerPending) {
+  if (!isStaff(user.role) && !isOwnerPending) {
     return NextResponse.json(
       { error: "只有隊長可以刪除；申請人只能刪除自己待審批的申請" },
       { status: 403 }

@@ -1,4 +1,6 @@
 "use client";
+import { isStaff } from "@/lib/roles";
+
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
@@ -57,10 +59,10 @@ export default function AdminPage() {
   if (!me || !settings) {
     return <p className="py-20 text-center text-sm text-slate-500">載入中…</p>;
   }
-  if (me.role !== "leader") {
+  if (!isStaff(me.role)) {
     return (
       <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-10 text-center">
-        <p className="text-lg font-bold">此頁面僅限隊長使用</p>
+        <p className="text-lg font-bold">此頁面僅限隊長與老師使用</p>
         <p className="mt-2 text-sm text-slate-400">
           需要調整隊伍設定或成員時，請聯絡隊長。
         </p>
@@ -172,7 +174,7 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-lg font-bold">管理（僅隊長）</h1>
+      <h1 className="text-lg font-bold">管理（隊長與老師）</h1>
       {msg && (
         <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">
           {msg}
@@ -259,6 +261,8 @@ export default function AdminPage() {
                   <td className="px-2 py-2.5">
                     {m.role === "leader" ? (
                       <span className="text-cyan-300">隊長</span>
+                    ) : m.role === "teacher" ? (
+                      <span className="text-violet-300">老師</span>
                     ) : (
                       <span className="text-slate-400">隊員</span>
                     )}
@@ -349,6 +353,7 @@ export default function AdminPage() {
             onChange={(e) => setNewRole(e.target.value)}
           >
             <option value="member">角色：隊員</option>
+            <option value="teacher">角色：老師</option>
             <option value="leader">角色：隊長</option>
           </select>
           <button

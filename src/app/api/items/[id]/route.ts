@@ -1,3 +1,4 @@
+import { isStaff } from "@/lib/roles";
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
@@ -16,7 +17,7 @@ function canEdit(user: { id: number; role: string }, itemId: number): boolean {
     | undefined;
   if (!row) return false;
   return (
-    user.role === "leader" ||
+    isStaff(user.role) ||
     user.id === row.assignee_id ||
     user.id === row.created_by
   );

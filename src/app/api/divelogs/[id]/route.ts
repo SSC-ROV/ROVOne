@@ -1,3 +1,4 @@
+import { isStaff } from "@/lib/roles";
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
@@ -7,7 +8,7 @@ type Ctx = { params: Promise<{ id: string }> };
 export async function DELETE(_req: NextRequest, ctx: Ctx) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "未登入" }, { status: 401 });
-  if (user.role !== "leader") {
+  if (!isStaff(user.role)) {
     return NextResponse.json({ error: "只有隊長可以刪除日誌" }, { status: 403 });
   }
   const { id } = await ctx.params;

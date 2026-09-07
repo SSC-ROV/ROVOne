@@ -1,3 +1,4 @@
+import { isStaff } from "@/lib/roles";
 import { NextRequest, NextResponse } from "next/server";
 import db, { getOrCreateIcalToken, getSettingValue, setSetting } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
@@ -5,7 +6,7 @@ import { getSessionUser } from "@/lib/auth";
 export async function GET() {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "未登入" }, { status: 401 });
-  if (user.role !== "leader") {
+  if (!isStaff(user.role)) {
     return NextResponse.json({ error: "只有隊長可以查看設定" }, { status: 403 });
   }
   return NextResponse.json({
@@ -19,7 +20,7 @@ export async function GET() {
 export async function PUT(req: NextRequest) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "未登入" }, { status: 401 });
-  if (user.role !== "leader") {
+  if (!isStaff(user.role)) {
     return NextResponse.json({ error: "只有隊長可以修改設定" }, { status: 403 });
   }
   const body = (await req.json().catch(() => null)) as {
