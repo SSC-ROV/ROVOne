@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import db from "@/lib/db";
+import { sql } from "@/lib/pg";
 import { verifyPassword } from "@/lib/password";
 import { createSession, sessionCookieOptions } from "@/lib/auth";
 import { SESSION_COOKIE } from "@/lib/session";
@@ -12,22 +12,13 @@ export async function POST(req: NextRequest) {
   if (!body?.username || !body?.password) {
     return NextResponse.json({ error: "請輸入帳號與密碼" }, { status: 400 });
   }
-  const user = db
-    .prepare("SELECT * FROM users WHERE username = ?")
-    .get(body.username.trim()) as
-    | {
-        id: number;
-        username: string;
-        display_name: string;
-        role: string;
-        subteam: string;
-        password_hash: string;
-      }
-    | undefined;
-  if (!user || !verifyPassword(body.password, user.password_hash)) {
+  const [user] = await sql`
+    SELECT id, username, display_name, role, subteam, password_hash
+    FROM users WHERE username = ${body.username.trim()}`;
+  if (!user || !verifyPassword(body.password, String(user.password_hash))) {
     return NextResponse.json({ error: "帳號或密碼錯誤" }, { status: 401 });
   }
-  const token = createSession(user.id);
+  const token = await createSession(Number(user.id));
   const res = NextResponse.json({
     user: {
       id: user.id,

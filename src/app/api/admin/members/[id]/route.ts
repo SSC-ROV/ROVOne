@@ -1,7 +1,7 @@
-import { isStaff } from "@/lib/roles";
 import { NextRequest, NextResponse } from "next/server";
-import db from "@/lib/db";
+import { sql } from "@/lib/pg";
 import { getSessionUser } from "@/lib/auth";
+import { isStaff } from "@/lib/roles";
 import { hashPassword } from "@/lib/password";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -10,7 +10,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   const me = await getSessionUser();
   if (!me) return NextResponse.json({ error: "未登入" }, { status: 401 });
   if (!isStaff(me.role)) {
-    return NextResponse.json({ error: "只有隊長可以管理成員" }, { status: 403 });
+    return NextResponse.json({ error: "只有隊長或老師可以管理成員" }, { status: 403 });
   }
   const { id } = await ctx.params;
   const userId = Number(id);
@@ -23,22 +23,16 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   if (body.display_name !== undefined) {
     const name = String(body.display_name).trim();
     if (!name) return NextResponse.json({ error: "名稱不可空白" }, { status: 400 });
-    db.prepare("UPDATE users SET display_name = ? WHERE id = ?").run(name, userId);
+    await sql`UPDATE users SET display_name = ${name} WHERE id = ${userId}`;
   }
   if (body.subteam !== undefined) {
-    db.prepare("UPDATE users SET subteam = ? WHERE id = ?").run(
-      String(body.subteam),
-      userId
-    );
+    await sql`UPDATE users SET subteam = ${String(body.subteam)} WHERE id = ${userId}`;
   }
   if (body.password !== undefined) {
     if (body.password.length < 6) {
       return NextResponse.json({ error: "密碼至少 6 個字" }, { status: 400 });
     }
-    db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(
-      hashPassword(String(body.password)),
-      userId
-    );
+    await sql`UPDATE users SET password_hash = ${hashPassword(String(body.password))} WHERE id = ${userId}`;
   }
   return NextResponse.json({ ok: true });
 }
@@ -47,15 +41,15 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
   const me = await getSessionUser();
   if (!me) return NextResponse.json({ error: "未登入" }, { status: 401 });
   if (!isStaff(me.role)) {
-    return NextResponse.json({ error: "只有隊長可以管理成員" }, { status: 403 });
+    return NextResponse.json({ error: "只有隊長或老師可以管理成員" }, { status: 403 });
   }
   const { id } = await ctx.params;
   const userId = Number(id);
   if (userId === me.id) {
     return NextResponse.json({ error: "不能刪除自己" }, { status: 400 });
   }
-  const info = db.prepare("DELETE FROM users WHERE id = ?").run(userId);
-  if (info.changes === 0) {
+  const info = await sql`DELETE FROM users WHERE id = ${userId}`;
+  if (info.count === 0) {
     return NextResponse.json({ error: "成員不存在" }, { status: 404 });
   }
   return NextResponse.json({ ok: true });

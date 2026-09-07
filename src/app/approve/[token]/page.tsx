@@ -10,7 +10,7 @@ export default async function ApprovePage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  const part = getPartByToken(token);
+  const part = await getPartByToken(token);
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-950 bg-[radial-gradient(ellipse_at_top,rgba(8,145,178,0.22),transparent_60%)] px-4 py-10">

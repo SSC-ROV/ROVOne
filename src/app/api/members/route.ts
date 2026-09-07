@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import db from "@/lib/db";
+import { sql } from "@/lib/pg";
 import { getSessionUser } from "@/lib/auth";
 import type { Member } from "@/lib/types";
 
@@ -7,10 +7,8 @@ import type { Member } from "@/lib/types";
 export async function GET() {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "未登入" }, { status: 401 });
-  const members = db
-    .prepare(
-      "SELECT id, username, display_name, role, subteam FROM users ORDER BY CASE role WHEN 'leader' THEN 0 ELSE 1 END, username"
-    )
-    .all() as unknown as Member[];
+  const members = await sql`
+    SELECT id, username, display_name, role, subteam FROM users
+    ORDER BY CASE role WHEN 'leader' THEN 0 WHEN 'teacher' THEN 1 ELSE 2 END, username`;
   return NextResponse.json({ members });
 }

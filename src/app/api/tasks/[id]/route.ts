@@ -1,21 +1,14 @@
-import { isStaff } from "@/lib/roles";
 import { NextRequest, NextResponse } from "next/server";
-import db, { getTaskWithItems } from "@/lib/db";
+import { sql } from "@/lib/pg";
 import { getSessionUser } from "@/lib/auth";
+import { getTaskWithItems } from "@/lib/db";
 import { fmtDue, notifyDiscord } from "@/lib/notify";
 import type { Task } from "@/lib/types";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-function canEdit(
-  user: { id: number; role: string },
-  task: { assignee_id: number | null; created_by: number | null }
-): boolean {
-  return (
-    isStaff(user.role) ||
-    user.id === task.assignee_id ||
-    user.id === task.created_by
-  );
+function isStaffRole(role: string) {
+  return role === "leader" || role === "teacher";
 }
 
 export async function PATCH(req: NextRequest, ctx: Ctx) {
@@ -23,71 +16,53 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   if (!user) return NextResponse.json({ error: "未登入" }, { status: 401 });
   const { id } = await ctx.params;
   const taskId = Number(id);
-  const existing = db
-    .prepare("SELECT id, title, status, assignee_id, created_by FROM tasks WHERE id = ?")
-    .get(taskId) as
-    | (Pick<Task, "assignee_id" | "created_by" | "status" | "title"> & { id: number })
-    | undefined;
-  if (!existing) return NextResponse.json({ error: "任務不存在" }, { status: 404 });
-  if (!canEdit(user, existing)) {
+  const [cur] = await sql`
+    SELECT id, title, description, status, priority, subteam, due_date,
+           assignee_id, created_by, mission_id, cycle_id, completed_at
+    FROM tasks WHERE id = ${taskId}`;
+  if (!cur) return NextResponse.json({ error: "任務不存在" }, { status: 404 });
+  const current = cur as unknown as {
+    id: number; title: string; description: string; status: string;
+    priority: string; subteam: string; due_date: string | null;
+    assignee_id: number | null; created_by: number | null;
+    mission_id: number | null; cycle_id: number | null; completed_at: string | null;
+  };
+  const allowed =
+    isStaffRole(user.role) ||
+    user.id === current.assignee_id ||
+    user.id === current.created_by;
+  if (!allowed) {
     return NextResponse.json(
       { error: "只有隊長、負責人或建立者可以修改這個任務" },
       { status: 403 }
     );
   }
-  const body = (await req.json().catch(() => null)) as Record<
-    string,
-    unknown
-  > | null;
+  const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   if (!body) return NextResponse.json({ error: "格式錯誤" }, { status: 400 });
 
-  const fields: string[] = [];
-  const values: unknown[] = [];
-  const allow = [
-    "title",
-    "description",
-    "status",
-    "priority",
-    "subteam",
-  ] as const;
-  for (const key of allow) {
-    if (body[key] !== undefined) {
-      fields.push(`${key} = ?`);
-      values.push(String(body[key]));
-    }
-  }
-  if (body.due_date !== undefined) {
-    fields.push("due_date = ?");
-    values.push((body.due_date as string) || null);
-  }
-  if (body.assignee_id !== undefined) {
-    fields.push("assignee_id = ?");
-    values.push((body.assignee_id as number) || null);
-  }
-  if (body.mission_id !== undefined) {
-    fields.push("mission_id = ?");
-    values.push((body.mission_id as number) || null);
-  }
-  if (body.cycle_id !== undefined) {
-    fields.push("cycle_id = ?");
-    values.push((body.cycle_id as number) || null);
-  }
-  if (body.status !== undefined) {
-    fields.push("completed_at = ?");
-    values.push(body.status === "done" ? new Date().toISOString() : null);
-  }
-  if (fields.length === 0) {
-    return NextResponse.json({ error: "沒有要更新的欄位" }, { status: 400 });
-  }
-  values.push(taskId);
-  db.prepare(`UPDATE tasks SET ${fields.join(", ")} WHERE id = ?`).run(
-    ...(values as never[])
-  );
-  const updated = getTaskWithItems(taskId)!;
+  const title = body.title !== undefined ? String(body.title).trim() : current.title;
+  if (!title) return NextResponse.json({ error: "標題不可空白" }, { status: 400 });
+  const status = body.status !== undefined ? String(body.status) : current.status;
+
+  await sql`
+    UPDATE tasks SET
+      title = ${title},
+      description = ${body.description !== undefined ? String(body.description) : current.description},
+      status = ${status},
+      priority = ${body.priority !== undefined ? String(body.priority) : current.priority},
+      subteam = ${body.subteam !== undefined ? String(body.subteam) : current.subteam},
+      due_date = ${body.due_date !== undefined ? (body.due_date as string) || null : current.due_date},
+      assignee_id = ${body.assignee_id !== undefined ? (body.assignee_id as number) || null : current.assignee_id},
+      mission_id = ${body.mission_id !== undefined ? (body.mission_id as number) || null : current.mission_id},
+      cycle_id = ${body.cycle_id !== undefined ? (body.cycle_id as number) || null : current.cycle_id},
+      completed_at = ${body.status !== undefined ? (status === "done" ? new Date().toISOString() : null) : current.completed_at}
+    WHERE id = ${taskId}`;
+
+  const updated = (await getTaskWithItems(taskId))!;
   if (
     body.assignee_id !== undefined &&
     updated.assignee_id &&
-    updated.assignee_id !== existing.assignee_id
+    updated.assignee_id !== current.assignee_id
   ) {
     notifyDiscord(
       `📋 任務「${updated.title}」改指派給 ${updated.assignee_name ?? "隊員"}${fmtDue(updated.due_date)}`
@@ -99,12 +74,12 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 export async function DELETE(_req: NextRequest, ctx: Ctx) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "未登入" }, { status: 401 });
-  if (!isStaff(user.role)) {
+  if (!isStaffRole(user.role)) {
     return NextResponse.json({ error: "只有隊長可以刪除任務" }, { status: 403 });
   }
   const { id } = await ctx.params;
-  const info = db.prepare("DELETE FROM tasks WHERE id = ?").run(Number(id));
-  if (info.changes === 0) {
+  const info = await sql`DELETE FROM tasks WHERE id = ${Number(id)}`;
+  if (info.count === 0) {
     return NextResponse.json({ error: "任務不存在" }, { status: 404 });
   }
   return NextResponse.json({ ok: true });

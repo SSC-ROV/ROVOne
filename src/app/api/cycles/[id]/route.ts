@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import db from "@/lib/db";
+import { sql } from "@/lib/pg";
 import { getSessionUser } from "@/lib/auth";
 import { isStaff } from "@/lib/roles";
 import { notifyDiscord } from "@/lib/notify";
@@ -16,17 +16,16 @@ type CycleRow = {
   proposer_id: number | null;
 };
 
-function load(id: number): CycleRow | undefined {
-  return db.prepare("SELECT * FROM cycles WHERE id = ?").get(id) as
-    | CycleRow
-    | undefined;
+async function load(id: number): Promise<CycleRow | undefined> {
+  const [row] = await sql`SELECT * FROM cycles WHERE id = ${id}`;
+  return row as CycleRow | undefined;
 }
 
 export async function PATCH(req: NextRequest, ctx: Ctx) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "未登入" }, { status: 401 });
   const { id } = await ctx.params;
-  const cycle = load(Number(id));
+  const cycle = await load(Number(id));
   if (!cycle) return NextResponse.json({ error: "週期不存在" }, { status: 404 });
 
   const body = (await req.json().catch(() => null)) as {
@@ -48,9 +47,10 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       }
       // 老師是最終審批者，可直接生效；隊長核准後升級待老師審批
       const next = user.role === "teacher" ? "active" : "pending_teacher";
-      db.prepare("UPDATE cycles SET status = ?, decided_by = ?, decided_note = ? WHERE id = ?").run(
-        next, user.id, String(body.note ?? "").trim(), cycle.id
-      );
+      await sql`
+        UPDATE cycles SET status = ${next}, decided_by = ${user.id},
+               decided_note = ${String(body.note ?? "").trim()}
+        WHERE id = ${cycle.id}`;
       await notifyDiscord(
         next === "active"
           ? `✅ 老師核准開發週期：「${cycle.title}」，已開始！`
@@ -62,9 +62,10 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       if (user.role !== "teacher") {
         return NextResponse.json({ error: "這一關要由老師審批" }, { status: 403 });
       }
-      db.prepare("UPDATE cycles SET status = 'active', decided_by = ?, decided_note = ? WHERE id = ?").run(
-        user.id, String(body.note ?? "").trim(), cycle.id
-      );
+      await sql`
+        UPDATE cycles SET status = 'active', decided_by = ${user.id},
+               decided_note = ${String(body.note ?? "").trim()}
+        WHERE id = ${cycle.id}`;
       await notifyDiscord(`✅ 老師核准開發週期：「${cycle.title}」，已開始！`);
       return NextResponse.json({ ok: true, status: "active" });
     }
@@ -81,9 +82,10 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     if (cycle.status !== "pending_leader" && cycle.status !== "pending_teacher") {
       return NextResponse.json({ error: "這個狀態不能駁回" }, { status: 400 });
     }
-    db.prepare("UPDATE cycles SET status = 'rejected', decided_by = ?, decided_note = ? WHERE id = ?").run(
-      user.id, String(body.note ?? "").trim(), cycle.id
-    );
+    await sql`
+      UPDATE cycles SET status = 'rejected', decided_by = ${user.id},
+             decided_note = ${String(body.note ?? "").trim()}
+      WHERE id = ${cycle.id}`;
     await notifyDiscord(
       `❌ 開發週期「${cycle.title}」被駁回${body.note ? `— 備註：${body.note}` : ""}`
     );
@@ -97,9 +99,9 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     if (!isStaff(user.role) && cycle.proposer_id !== user.id) {
       return NextResponse.json({ error: "只有提案人或幹部可以標記完成" }, { status: 403 });
     }
-    db.prepare("UPDATE cycles SET status = 'completed', completed_at = ? WHERE id = ?").run(
-      new Date().toISOString(), cycle.id
-    );
+    await sql`
+      UPDATE cycles SET status = 'completed', completed_at = ${new Date().toISOString()}
+      WHERE id = ${cycle.id}`;
     await notifyDiscord(`🏁 開發週期「${cycle.title}」已完成！`);
     return NextResponse.json({ ok: true, status: "completed" });
   }
@@ -112,8 +114,10 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       return NextResponse.json({ error: "只有提案人可以重新提交" }, { status: 403 });
     }
     const next = isStaff(user.role) ? "pending_teacher" : "pending_leader";
-    db.prepare("UPDATE cycles SET status = ?, decided_note = '' WHERE id = ?").run(next, cycle.id);
-    await notifyDiscord(`🔄 開發週期「${cycle.title}」重新提交${next === "pending_teacher" ? "，待老師審批" : "，待隊長審批"}`);
+    await sql`UPDATE cycles SET status = ${next}, decided_note = '' WHERE id = ${cycle.id}`;
+    await notifyDiscord(
+      `🔄 開發週期「${cycle.title}」重新提交${next === "pending_teacher" ? "，待老師審批" : "，待隊長審批"}`
+    );
     return NextResponse.json({ ok: true, status: next });
   }
 
@@ -127,26 +131,23 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   if (body.title !== undefined) {
     const title = String(body.title).trim();
     if (!title) return NextResponse.json({ error: "名稱不可空白" }, { status: 400 });
-    db.prepare("UPDATE cycles SET title = ? WHERE id = ?").run(title, cycle.id);
+    await sql`UPDATE cycles SET title = ${title} WHERE id = ${cycle.id}`;
   }
   if (body.description !== undefined) {
-    db.prepare("UPDATE cycles SET description = ? WHERE id = ?").run(String(body.description), cycle.id);
+    await sql`UPDATE cycles SET description = ${String(body.description)} WHERE id = ${cycle.id}`;
   }
-  let start = cycle.start_date;
-  let end = cycle.end_date;
-  if (body.start_date !== undefined) start = String(body.start_date);
-  if (body.end_date !== undefined) end = String(body.end_date);
+  const start = body.start_date !== undefined ? String(body.start_date) : cycle.start_date;
+  const end = body.end_date !== undefined ? String(body.end_date) : cycle.end_date;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end) || end < start) {
     return NextResponse.json({ error: "日期格式或範圍不正確" }, { status: 400 });
   }
-  db.prepare("UPDATE cycles SET start_date = ?, end_date = ? WHERE id = ?").run(start, end, cycle.id);
+  await sql`UPDATE cycles SET start_date = ${start}, end_date = ${end} WHERE id = ${cycle.id}`;
   if (body.member_ids !== undefined) {
-    db.prepare("DELETE FROM cycle_members WHERE cycle_id = ? AND user_id != ?").run(cycle.id, cycle.proposer_id);
-    const ins = db.prepare("INSERT OR IGNORE INTO cycle_members (cycle_id, user_id) VALUES (?, ?)");
+    await sql`DELETE FROM cycle_members WHERE cycle_id = ${cycle.id} AND user_id IS DISTINCT FROM ${cycle.proposer_id}`;
     for (const mid of body.member_ids) {
       const n = Number(mid);
-      if (n && n !== cycle.proposer_id && db.prepare("SELECT 1 FROM users WHERE id = ?").get(n)) {
-        ins.run(cycle.id, n);
+      if (n && n !== cycle.proposer_id && (await sql`SELECT 1 FROM users WHERE id = ${n}`).length) {
+        await sql`INSERT INTO cycle_members (cycle_id, user_id) VALUES (${cycle.id}, ${n}) ON CONFLICT DO NOTHING`;
       }
     }
   }
@@ -157,7 +158,7 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "未登入" }, { status: 401 });
   const { id } = await ctx.params;
-  const cycle = load(Number(id));
+  const cycle = await load(Number(id));
   if (!cycle) return NextResponse.json({ error: "週期不存在" }, { status: 404 });
   const ownerPending =
     cycle.proposer_id === user.id &&
@@ -168,6 +169,6 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
       { status: 403 }
     );
   }
-  db.prepare("DELETE FROM cycles WHERE id = ?").run(cycle.id);
+  await sql`DELETE FROM cycles WHERE id = ${cycle.id}`;
   return NextResponse.json({ ok: true });
 }

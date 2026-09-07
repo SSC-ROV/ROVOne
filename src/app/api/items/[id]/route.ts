@@ -1,26 +1,17 @@
-import { isStaff } from "@/lib/roles";
 import { NextRequest, NextResponse } from "next/server";
-import db from "@/lib/db";
+import { sql } from "@/lib/pg";
 import { getSessionUser } from "@/lib/auth";
-import type { ChecklistItem } from "@/lib/types";
+import { isStaff } from "@/lib/roles";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-function canEdit(user: { id: number; role: string }, itemId: number): boolean {
-  const row = db
-    .prepare(
-      `SELECT t.assignee_id, t.created_by FROM checklist_items c
-       JOIN tasks t ON t.id = c.task_id WHERE c.id = ?`
-    )
-    .get(itemId) as
-    | { assignee_id: number | null; created_by: number | null }
-    | undefined;
+async function canEdit(user: { id: number; role: string }, itemId: number): Promise<boolean> {
+  const [row] = await sql`
+    SELECT t.assignee_id, t.created_by FROM checklist_items c
+    JOIN tasks t ON t.id = c.task_id WHERE c.id = ${itemId}`;
   if (!row) return false;
-  return (
-    isStaff(user.role) ||
-    user.id === row.assignee_id ||
-    user.id === row.created_by
-  );
+  const r = row as { assignee_id: number | null; created_by: number | null };
+  return isStaff(user.role) || user.id === r.assignee_id || user.id === r.created_by;
 }
 
 export async function PATCH(req: NextRequest, ctx: Ctx) {
@@ -28,7 +19,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   if (!user) return NextResponse.json({ error: "未登入" }, { status: 401 });
   const { id } = await ctx.params;
   const itemId = Number(id);
-  if (!canEdit(user, itemId)) {
+  if (!(await canEdit(user, itemId))) {
     return NextResponse.json({ error: "沒有權限" }, { status: 403 });
   }
   const body = (await req.json().catch(() => null)) as {
@@ -36,22 +27,14 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     text?: string;
   } | null;
   if (body?.done !== undefined) {
-    db.prepare("UPDATE checklist_items SET done = ? WHERE id = ?").run(
-      body.done ? 1 : 0,
-      itemId
-    );
+    await sql`UPDATE checklist_items SET done = ${body.done ? 1 : 0} WHERE id = ${itemId}`;
   }
   if (body?.text !== undefined) {
     const text = String(body.text).trim();
     if (!text) return NextResponse.json({ error: "內容不可空白" }, { status: 400 });
-    db.prepare("UPDATE checklist_items SET text = ? WHERE id = ?").run(
-      text,
-      itemId
-    );
+    await sql`UPDATE checklist_items SET text = ${text} WHERE id = ${itemId}`;
   }
-  const item = db
-    .prepare("SELECT * FROM checklist_items WHERE id = ?")
-    .get(itemId) as unknown as ChecklistItem;
+  const [item] = await sql`SELECT * FROM checklist_items WHERE id = ${itemId}`;
   return NextResponse.json({ item });
 }
 
@@ -60,9 +43,9 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
   if (!user) return NextResponse.json({ error: "未登入" }, { status: 401 });
   const { id } = await ctx.params;
   const itemId = Number(id);
-  if (!canEdit(user, itemId)) {
+  if (!(await canEdit(user, itemId))) {
     return NextResponse.json({ error: "沒有權限" }, { status: 403 });
   }
-  db.prepare("DELETE FROM checklist_items WHERE id = ?").run(itemId);
+  await sql`DELETE FROM checklist_items WHERE id = ${itemId}`;
   return NextResponse.json({ ok: true });
 }

@@ -1,8 +1,9 @@
+import { sql } from "./pg";
 import { getSettingValue } from "./db";
 
 /** 有設定 Discord Webhook 就發通知；失敗靜默（不影響主流程） */
 export async function notifyDiscord(content: string): Promise<boolean> {
-  const url = getSettingValue("discord_webhook");
+  const url = await getSettingValue("discord_webhook");
   if (!url) return false;
   try {
     const res = await fetch(url, {

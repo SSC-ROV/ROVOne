@@ -1,7 +1,9 @@
-import { isStaff } from "@/lib/roles";
 import { NextRequest, NextResponse } from "next/server";
-import db from "@/lib/db";
+import { sql } from "@/lib/pg";
 import { getSessionUser } from "@/lib/auth";
+import { isStaff } from "@/lib/roles";
+import { getPartByToken } from "@/lib/db";
+import { notifyDiscord } from "@/lib/notify";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -10,77 +12,53 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   if (!user) return NextResponse.json({ error: "未登入" }, { status: 401 });
   if (!isStaff(user.role)) {
     return NextResponse.json(
-      { error: "採買進度由隊長更新；申請中的項目可直接請隊長處理" },
+      { error: "採買進度由隊長或老師更新；申請中的項目可直接請隊長處理" },
       { status: 403 }
     );
   }
   const { id } = await ctx.params;
   const partId = Number(id);
-  const existing = db.prepare("SELECT status FROM parts WHERE id = ?").get(partId) as
-    | { status: string }
-    | undefined;
+  const [existing] = await sql`SELECT status FROM parts WHERE id = ${partId}`;
   if (!existing) return NextResponse.json({ error: "零件不存在" }, { status: 404 });
 
-  const body = (await req.json().catch(() => null)) as Record<
-    string,
-    unknown
-  > | null;
+  const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   if (!body) return NextResponse.json({ error: "格式錯誤" }, { status: 400 });
 
-  const fields: string[] = [];
-  const values: unknown[] = [];
-  for (const key of [
-    "name",
-    "spec",
-    "link",
-    "unit",
-    "purpose",
-    "subteam",
-    "order_vendor",
-    "order_ref",
-  ] as const) {
-    if (body[key] !== undefined) {
-      fields.push(`${key} = ?`);
-      values.push(String(body[key]));
-    }
+  const [cur] = await sql`SELECT * FROM parts WHERE id = ${partId}`;
+  const c = cur as unknown as {
+    name: string; spec: string; link: string; qty: number; unit: string;
+    est_price: number; actual_price: number | null; purpose: string;
+    subteam: string; status: string; decided_at: string | null;
+    order_vendor: string; order_ref: string; ordered_by: number | null; arrived_at: string | null;
+  };
+  const status = body.status !== undefined ? String(body.status) : c.status;
+  if (!["pending", "approved", "rejected", "ordered", "arrived"].includes(status)) {
+    return NextResponse.json({ error: "狀態不正確" }, { status: 400 });
   }
-  for (const key of ["qty", "est_price"] as const) {
-    if (body[key] !== undefined) {
-      fields.push(`${key} = ?`);
-      values.push(Math.max(0, Number(body[key]) || 0));
-    }
-  }
-  if (body.actual_price !== undefined) {
-    fields.push("actual_price = ?");
-    values.push(body.actual_price === null || body.actual_price === "" ? null : Number(body.actual_price));
-  }
-  if (body.status !== undefined) {
-    const status = String(body.status);
-    if (!["pending", "approved", "rejected", "ordered", "arrived"].includes(status)) {
-      return NextResponse.json({ error: "狀態不正確" }, { status: 400 });
-    }
-    fields.push("status = ?");
-    values.push(status);
-    if (status === "approved" || status === "rejected") {
-      fields.push("decided_at = ?");
-      values.push(new Date().toISOString());
-    }
-    if (status === "ordered") {
-      fields.push("ordered_by = ?");
-      values.push(user.id);
-    }
-    if (status === "arrived") {
-      fields.push("arrived_at = ?");
-      values.push(new Date().toISOString());
-    }
-  }
-  if (fields.length === 0) {
-    return NextResponse.json({ error: "沒有要更新的欄位" }, { status: 400 });
-  }
-  values.push(partId);
-  db.prepare(`UPDATE parts SET ${fields.join(", ")} WHERE id = ?`).run(
-    ...(values as never[])
-  );
+  const actual =
+    body.actual_price !== undefined
+      ? body.actual_price === null || body.actual_price === ""
+        ? null
+        : Number(body.actual_price)
+      : (c.actual_price as number | null);
+  await sql`
+    UPDATE parts SET
+      name = ${body.name !== undefined ? String(body.name).trim() || String(c.name) : String(c.name)},
+      spec = ${body.spec !== undefined ? String(body.spec) : String(c.spec)},
+      link = ${body.link !== undefined ? String(body.link) : String(c.link)},
+      qty = ${body.qty !== undefined ? Math.max(1, Number(body.qty) || 1) : Number(c.qty)},
+      unit = ${body.unit !== undefined ? String(body.unit) : String(c.unit)},
+      est_price = ${body.est_price !== undefined ? Math.max(0, Number(body.est_price) || 0) : Number(c.est_price)},
+      actual_price = ${actual},
+      purpose = ${body.purpose !== undefined ? String(body.purpose) : String(c.purpose)},
+      subteam = ${body.subteam !== undefined ? String(body.subteam) : String(c.subteam)},
+      status = ${status},
+      decided_at = ${["approved", "rejected"].includes(status) ? (c.decided_at ? String(c.decided_at) : new Date().toISOString()) : c.decided_at},
+      order_vendor = ${body.order_vendor !== undefined ? String(body.order_vendor) : String(c.order_vendor)},
+      order_ref = ${body.order_ref !== undefined ? String(body.order_ref) : String(c.order_ref)},
+      ordered_by = ${status === "ordered" ? user.id : c.ordered_by},
+      arrived_at = ${status === "arrived" ? new Date().toISOString() : c.arrived_at}
+    WHERE id = ${partId}`;
   return NextResponse.json({ ok: true });
 }
 
@@ -89,20 +67,17 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
   if (!user) return NextResponse.json({ error: "未登入" }, { status: 401 });
   const { id } = await ctx.params;
   const partId = Number(id);
-  const part = db
-    .prepare("SELECT status, requested_by FROM parts WHERE id = ?")
-    .get(partId) as
-    | { status: string; requested_by: number | null }
-    | undefined;
+  const [part] = await sql`
+    SELECT status, requested_by FROM parts WHERE id = ${partId}`;
   if (!part) return NextResponse.json({ error: "零件不存在" }, { status: 404 });
-  const isOwnerPending =
-    part.status === "pending" && part.requested_by === user.id;
+  const p = part as { status: string; requested_by: number | null };
+  const isOwnerPending = p.status === "pending" && p.requested_by === user.id;
   if (!isStaff(user.role) && !isOwnerPending) {
     return NextResponse.json(
       { error: "只有隊長可以刪除；申請人只能刪除自己待審批的申請" },
       { status: 403 }
     );
   }
-  db.prepare("DELETE FROM parts WHERE id = ?").run(partId);
+  await sql`DELETE FROM parts WHERE id = ${partId}`;
   return NextResponse.json({ ok: true });
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import db, { getPartByToken } from "@/lib/db";
+import { sql } from "@/lib/pg";
+import { getPartByToken } from "@/lib/db";
 import { notifyDiscord } from "@/lib/notify";
 
 type Ctx = { params: Promise<{ token: string }> };
@@ -7,7 +8,7 @@ type Ctx = { params: Promise<{ token: string }> };
 /** 老師審批頁讀取零件資訊（免登入，用一次性連結 token） */
 export async function GET(_req: NextRequest, ctx: Ctx) {
   const { token } = await ctx.params;
-  const part = getPartByToken(token);
+  const part = await getPartByToken(token);
   if (!part) return NextResponse.json({ error: "找不到這個審批連結" }, { status: 404 });
   return NextResponse.json({
     part: {
@@ -28,7 +29,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
 /** 老師按核准 / 駁回 */
 export async function POST(req: NextRequest, ctx: Ctx) {
   const { token } = await ctx.params;
-  const part = getPartByToken(token);
+  const part = await getPartByToken(token);
   if (!part) return NextResponse.json({ error: "找不到這個審批連結" }, { status: 404 });
   if (part.status !== "pending") {
     return NextResponse.json({ error: "這筆申請已經審核過了" }, { status: 400 });
@@ -41,9 +42,10 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   if (decision !== "approved" && decision !== "rejected") {
     return NextResponse.json({ error: "參數不正確" }, { status: 400 });
   }
-  db.prepare(
-    "UPDATE parts SET status = ?, decided_at = ?, decided_note = ? WHERE id = ?"
-  ).run(decision, new Date().toISOString(), String(body?.note ?? "").trim(), part.id);
+  await sql`
+    UPDATE parts SET status = ${decision}, decided_at = ${new Date().toISOString()},
+                     decided_note = ${String(body?.note ?? "").trim()}
+    WHERE id = ${part.id}`;
 
   await notifyDiscord(
     decision === "approved"

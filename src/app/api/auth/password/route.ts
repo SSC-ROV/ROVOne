@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import db from "@/lib/db";
+import { sql } from "@/lib/pg";
 import { getSessionUser } from "@/lib/auth";
 import { hashPassword, verifyPassword } from "@/lib/password";
 
@@ -16,15 +16,11 @@ export async function POST(req: NextRequest) {
   if (body.next.length < 6) {
     return NextResponse.json({ error: "新密碼至少 6 個字" }, { status: 400 });
   }
-  const row = db
-    .prepare("SELECT password_hash FROM users WHERE id = ?")
-    .get(me.id) as { password_hash: string } | undefined;
-  if (!row || !verifyPassword(body.current, row.password_hash)) {
+  const [row] = await sql`
+    SELECT password_hash FROM users WHERE id = ${me.id}`;
+  if (!row || !verifyPassword(body.current, String(row.password_hash))) {
     return NextResponse.json({ error: "目前密碼不正確" }, { status: 400 });
   }
-  db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(
-    hashPassword(body.next),
-    me.id
-  );
+  await sql`UPDATE users SET password_hash = ${hashPassword(body.next)} WHERE id = ${me.id}`;
   return NextResponse.json({ ok: true });
 }

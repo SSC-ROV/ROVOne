@@ -11,7 +11,7 @@ export default async function AppLayout({
 }) {
   const user = await getSessionUser();
   if (!user) redirect("/login");
-  const settings = getSettings();
+  const settings = await getSettings();
   return (
     <DialogProvider>
       <div className="flex min-h-screen flex-col">

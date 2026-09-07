@@ -1,4 +1,5 @@
-import db, { getOrCreateIcalToken } from "./db";
+import { sql } from "./pg";
+import { getOrCreateIcalToken } from "./db";
 
 function esc(s: string): string {
   return s
@@ -16,9 +17,15 @@ function stampDateTime(date: string, time: string): string {
   return `${stampDate(date)}T${time.replace(":", "")}00`;
 }
 
+function addHour(hhmm: string): string {
+  const [h, m] = hhmm.split(":").map(Number);
+  const next = (h + 1) % 24;
+  return `${String(next).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
 /** 產生 iCal（.ics）訂閱內容：活動含時間，任務截止為整天事件 */
-export function buildIcs(): { body: string; token: string } {
-  const token = getOrCreateIcalToken();
+export async function buildIcs(): Promise<{ body: string; token: string }> {
+  const token = await getOrCreateIcalToken();
   const lines: string[] = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
@@ -27,49 +34,34 @@ export function buildIcs(): { body: string; token: string } {
     "X-WR-CALNAME:ROV 隊任務日曆",
   ];
 
-  const events = db
-    .prepare("SELECT * FROM events ORDER BY date")
-    .all() as unknown as {
-    id: number;
-    title: string;
-    type: string;
-    date: string;
-    time: string | null;
-    location: string;
-    notes: string;
-  }[];
+  const events = await sql`
+    SELECT id, title, type, date, time, location, notes
+    FROM events ORDER BY date`;
   for (const e of events) {
     lines.push("BEGIN:VEVENT");
     lines.push(`UID:event-${e.id}@rov-team-hub`);
     if (e.time) {
-      lines.push(`DTSTART:${stampDateTime(e.date, e.time)}`);
-      lines.push(`DTEND:${stampDateTime(e.date, addHour(e.time))}`);
+      lines.push(`DTSTART:${stampDateTime(String(e.date), String(e.time))}`);
+      lines.push(`DTEND:${stampDateTime(String(e.date), addHour(String(e.time)))}`);
     } else {
-      lines.push(`DTSTART;VALUE=DATE:${stampDate(e.date)}`);
+      lines.push(`DTSTART;VALUE=DATE:${stampDate(String(e.date))}`);
     }
     lines.push(`SUMMARY:${esc(`[${e.type}] ${e.title}`)}`);
-    if (e.location) lines.push(`LOCATION:${esc(e.location)}`);
-    if (e.notes) lines.push(`DESCRIPTION:${esc(e.notes)}`);
+    if (e.location) lines.push(`LOCATION:${esc(String(e.location))}`);
+    if (e.notes) lines.push(`DESCRIPTION:${esc(String(e.notes))}`);
     lines.push("END:VEVENT");
   }
 
-  const tasks = db
-    .prepare("SELECT id, title, due_date FROM tasks WHERE due_date IS NOT NULL")
-    .all() as unknown as { id: number; title: string; due_date: string }[];
+  const tasks = await sql`
+    SELECT id, title, due_date FROM tasks WHERE due_date IS NOT NULL`;
   for (const t of tasks) {
     lines.push("BEGIN:VEVENT");
     lines.push(`UID:task-${t.id}@rov-team-hub`);
-    lines.push(`DTSTART;VALUE=DATE:${stampDate(t.due_date)}`);
+    lines.push(`DTSTART;VALUE=DATE:${stampDate(String(t.due_date))}`);
     lines.push(`SUMMARY:${esc(`⚑ 截止：${t.title}`)}`);
     lines.push("END:VEVENT");
   }
 
   lines.push("END:VCALENDAR");
   return { body: lines.join("\r\n"), token };
-}
-
-function addHour(hhmm: string): string {
-  const [h, m] = hhmm.split(":").map(Number);
-  const next = (h + 1) % 24;
-  return `${String(next).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }

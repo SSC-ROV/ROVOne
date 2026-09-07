@@ -1,7 +1,7 @@
-import { isStaff } from "@/lib/roles";
 import { NextRequest, NextResponse } from "next/server";
-import db from "@/lib/db";
+import { sql } from "@/lib/pg";
 import { getSessionUser } from "@/lib/auth";
+import { isStaff } from "@/lib/roles";
 import { hashPassword } from "@/lib/password";
 import type { Member } from "@/lib/types";
 
@@ -22,10 +22,7 @@ export async function POST(req: NextRequest) {
   const displayName = String(body?.display_name ?? "").trim();
   const password = String(body?.password ?? "");
   if (!/^[a-zA-Z0-9_]{2,20}$/.test(username)) {
-    return NextResponse.json(
-      { error: "帳號限 2–20 個英數字或底線" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "帳號限 2–20 個英數字或底線" }, { status: 400 });
   }
   if (!displayName) {
     return NextResponse.json({ error: "請填寫顯示名稱" }, { status: 400 });
@@ -33,23 +30,14 @@ export async function POST(req: NextRequest) {
   if (password.length < 6) {
     return NextResponse.json({ error: "密碼至少 6 個字" }, { status: 400 });
   }
+  const role = ["leader", "teacher", "member"].includes(String(body?.role))
+    ? String(body?.role)
+    : "member";
   try {
-    const info = db
-      .prepare(
-        "INSERT INTO users (username, display_name, password_hash, role, subteam) VALUES (?, ?, ?, ?, ?)"
-      )
-      .run(
-        username,
-        displayName,
-        hashPassword(password),
-        ["leader", "teacher", "member"].includes(String(body?.role)) ? String(body?.role) : "member",
-        String(body?.subteam ?? "general")
-      );
-    const member = db
-      .prepare(
-        "SELECT id, username, display_name, role, subteam FROM users WHERE id = ?"
-      )
-      .get(info.lastInsertRowid) as unknown as Member;
+    const [member] = await sql`
+      INSERT INTO users (username, display_name, password_hash, role, subteam)
+      VALUES (${username}, ${displayName}, ${hashPassword(password)}, ${role}, ${String(body?.subteam ?? "general")})
+      RETURNING id, username, display_name, role, subteam`;
     return NextResponse.json({ member });
   } catch {
     return NextResponse.json({ error: "帳號已存在" }, { status: 400 });
