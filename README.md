@@ -87,7 +87,33 @@ npm start     # 開 http://localhost:3000
 - 備份 = 複製這個檔案；重置 = 刪掉 `data/` 資料夾再重啟
 - 建議每週把 `data/rov.db` 複製一份到雲端硬碟
 
-## 完全上線指南（給零基礎）
+## 部署架構（目前線上：2026-09-07）
+
+```
+隊員/老師 ──> https://rov.sscrov.com（Cloudflare DNS 直連）
+                  │
+                  ▼
+              Vercel（Next.js 無伺服器，Hobby 免費層）
+                  │
+                  ▼
+   Supabase（PostgreSQL，新加坡 ap-southeast-1，Free 專案）
+```
+
+- 程式碼：`github.com/lyunnamed/rov-team-hub`（private）→ push 即自動部署
+- 環境變數（Vercel Project Settings → Environment Variables）：`DATABASE_URL`
+  用 Supabase 的 **Transaction pooler** 連線（`...pooler.supabase.com:6543`，
+  必須 `prepare: false`，見 `src/lib/pg.ts`）
+- 資料與備份：全部在 Supabase（Free 方案一週無活動會暫停，控制台按一下 Restore 即恢復）；
+  `data/rov.db` 只是遷移前的舊檔，可刪
+- 本機（Mac）已不再承載網站；`com.rov.next`／`com.rov.tunnel` 兩個 LaunchAgent 與
+  Cloudflare Tunnel `rov-hub` 均已移除
+
+### 首次架設步驟（供未來複製）
+
+Supabase：建 Free 專案（新加坡）→ 用 `npm run migrate` 建表與搬資料
+（本地需 `DATABASE_URL` 環境變數）。Vercel：GitHub 匯入 repo →
+設定 `DATABASE_URL` → Deploy → 在 Cloudflare 新增 CNAME
+`rov → <vercel-dns-xxx>.vercel-dns.com`（DNS only，不要開橘雲代理）。
 
 ### 階段一：只在學校／隊內使用（最簡單，建議先這樣）
 
