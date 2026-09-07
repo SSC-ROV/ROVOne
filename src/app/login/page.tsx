@@ -79,12 +79,6 @@ export default function LoginPage() {
           >
             {busy ? "登入中…" : "登入"}
           </button>
-          <p className="rounded-lg bg-slate-800/60 px-3 py-2 text-xs leading-5 text-slate-400">
-            預設帳號：<span className="text-cyan-300">leader</span> / 密碼{" "}
-            <span className="text-cyan-300">rov2026</span>（隊長）
-            <br />
-            登入後請到「帳號」頁修改密碼，並在「管理」頁替隊員開帳號。
-          </p>
         </form>
       </div>
     </main>

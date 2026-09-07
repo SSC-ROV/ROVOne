@@ -141,8 +141,27 @@ ngrok 也是類似工具，免費版網址同樣會換，二選一即可。
 Next.js 16（App Router）· React 19 · Tailwind CSS 4 · better-sqlite3 ·
 原生 HTML5 拖曳 · cookie session（無外部依賴）
 
+## API 接口文件（給未來 iPad / iPhone App）
+
+所有功能都是 JSON REST API（`/api/...`），登入後憑 cookie session 呼叫
+（iOS 的 URLSession / WKWebView 會自動帶 cookie），未來做原生 App 直接對接即可：
+
+| 端點 | 方法 | 說明 |
+|---|---|---|
+| `/api/auth/login` `/logout` `/me` `/password` | POST/GET | 登入、登出、當前使用者、改密碼 |
+| `/api/tasks` `/api/tasks/[id]` `/api/tasks/[id]/items` `/api/items/[id]` | CRUD | 任務與子任務（可帶 `mission_id`、`cycle_id`） |
+| `/api/events` `/api/events/[id]` | CRUD | 日曆活動 |
+| `/api/cycles` `/api/cycles/[id]` | CRUD | 開發週期（`action: approve/reject/complete/resubmit`） |
+| `/api/parts` `/api/parts/[id]` | CRUD | 零件採買 |
+| `/api/approve/[token]` | GET/POST | 老師免登入審批 |
+| `/api/equipment` `/api/equipment/[id]` | CRUD | 設備借用（`action: borrow/return/maintenance`） |
+| `/api/missions` `/api/missions/[id]` | CRUD | 比賽任務對照 |
+| `/api/divelogs` `/api/divelogs/[id]` | CRUD | 水測日誌 |
+| `/api/members` `/api/settings` `/api/ical?token=` | GET | 成員、設定、日曆訂閱 |
+
 ## 之後可以加的
 
 1. 截止日自動提醒（需要排程器，例如 pm2 cron 或系統排程打 API）
 2. 檔案附件上傳（接線圖、3D 列印檔）
 3. 多隊／多屆資料切換
+4. iOS / iPadOS 原生 App（直接吃上面的 API）
