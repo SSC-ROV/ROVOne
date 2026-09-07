@@ -24,6 +24,28 @@ export async function getSettingValue(key: string): Promise<string | null> {
 }
 
 /** iCal 訂閱 token：沒有就現場產生 */
+export const DEFAULT_SUBTEAMS: { key: string; zh: string; en: string }[] = [
+  { key: "mech", zh: "機械", en: "Mechanical" },
+  { key: "elec", zh: "電控", en: "Electronics" },
+  { key: "sw", zh: "軟體", en: "Software" },
+  { key: "pilot", zh: "操控", en: "Pilot" },
+  { key: "general", zh: "全隊", en: "Team" },
+];
+
+export async function getSubteams(): Promise<{ key: string; zh: string; en: string }[]> {
+  const raw = await getSettingValue("subteams");
+  if (!raw) return DEFAULT_SUBTEAMS;
+  try {
+    const list = JSON.parse(raw) as { key: string; zh: string; en: string }[];
+    if (Array.isArray(list) && list.length > 0) return list;
+  } catch {}
+  return DEFAULT_SUBTEAMS;
+}
+
+export async function setSubteams(list: { key: string; zh: string; en: string }[]) {
+  await setSetting("subteams", JSON.stringify(list));
+}
+
 export async function getOrCreateIcalToken(): Promise<string> {
   let token = await getSettingValue("ical_token");
   if (!token) {

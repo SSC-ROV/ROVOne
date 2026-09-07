@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { getOrCreateIcalToken, getSettingValue, setSetting } from "@/lib/db";
+import { getOrCreateIcalToken, getSettingValue, getSubteams, setSetting } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 import { isStaff } from "@/lib/roles";
 import { logAudit } from "@/lib/audit";
@@ -16,6 +16,7 @@ async function currentSettings() {
     google_domains: (await getSettingValue("google_domains")) ?? "",
     google_leader_emails: (await getSettingValue("google_leader_emails")) ?? "",
     google_teacher_emails: (await getSettingValue("google_teacher_emails")) ?? "",
+    subteams: await getSubteams(),
   };
 }
 

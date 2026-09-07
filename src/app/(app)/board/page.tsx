@@ -8,7 +8,6 @@ import {
   CHIP,
   SELECT_CLS,
   STATUSES,
-  SUBTEAMS,
   SUBTEAM_CLS,
   priorityDot,
   subteamLabel,
@@ -16,10 +15,12 @@ import {
 import type { Cycle, Me, Member, Task, TaskStatus } from "@/lib/types";
 import TaskModal from "@/components/TaskModal";
 import { useI18n } from "@/lib/i18n";
+import { useSubteams } from "@/lib/subteams";
 import { useDialogs } from "@/components/ui/Dialogs";
 
 export default function BoardPage() {
   const { t } = useI18n();
+  const { subteams } = useSubteams();
   const { toast } = useDialogs();
   const [tasks, setTasks] = useState<Task[] | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
@@ -111,7 +112,7 @@ export default function BoardPage() {
             onChange={(e) => setFSub(e.target.value)}
           >
             <option value="all">{t("全部組別")}</option>
-            {SUBTEAMS.map((s) => (
+            {subteams.map((s) => (
               <option key={s.key} value={s.key}>
                 {s.label}
               </option>

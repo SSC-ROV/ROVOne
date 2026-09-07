@@ -25,6 +25,7 @@ export async function POST(req: NextRequest) {
     time?: string;
     location?: string;
     notes?: string;
+    subteam?: string;
   } | null;
   const title = String(body?.title ?? "").trim();
   const date = String(body?.date ?? "");
@@ -32,10 +33,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "請填寫標題與日期" }, { status: 400 });
   }
   const [event] = await sql`
-    INSERT INTO events (title, type, date, time, location, notes, created_by)
+    INSERT INTO events (title, type, date, time, location, notes, subteam, created_by)
     VALUES (${title}, ${String(body?.type ?? "other")}, ${date},
             ${body?.time ? String(body.time) : null}, ${String(body?.location ?? "")},
-            ${String(body?.notes ?? "")}, ${user.id})
+            ${String(body?.notes ?? "")}, ${body?.subteam ? String(body.subteam) : null}, ${user.id})
     RETURNING *`;
   notifyDiscord(`📅 新活動：「${title}」@ ${date}${body?.time ? " " + body.time : ""}`).catch(() => {});
   return NextResponse.json({ event });

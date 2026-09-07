@@ -1,4 +1,7 @@
 export const DICT: Record<string, string> = {
+  "組別管理": "Subteam Management", "自訂全站使用的組別（任務、成員、活動都會跟著）；刪除組別時，原屬成員與任務會自動改到第一個剩餘組別": "Customize the subteams used across the site (tasks, members & events follow). Deleting a subteam auto-moves its members & tasks to the first remaining one",
+  "中文名稱": "Chinese name", "英文名稱": "English name", "新增組別": "Add Subteam", "儲存組別": "Save Subteams", "組別已更新": "Subteams updated",
+  "組別：全隊（不限）": "Subteam: Whole team (any)",
   "測試通知已發送到 Discord，去頻道看看！（網址已自動保存）": "Test notification sent to Discord! (URL auto-saved)",
   "Discord 說這個網址無效：請回 Discord 頻道 → 整合 → Webhook，重新「Copy Webhook URL」": "Discord rejected this URL (invalid/deleted). Re-copy the Webhook URL from channel → Integrations → Webhooks",
   "這台伺服器連不上 Discord（可能被網路防火牆擋住）；正式站 rov.sscrov.com 會從 Vercel 發送，請到那裡再測一次": "This server can't reach Discord (firewall?). The production site rov.sscrov.com sends via Vercel — test there.",

@@ -15,9 +15,9 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   const { id } = await ctx.params;
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   if (!body) return NextResponse.json({ error: "格式錯誤" }, { status: 400 });
-  const [cur] = await sql`SELECT title, type, date, time, location, notes FROM events WHERE id = ${Number(id)}`;
+  const [cur] = await sql`SELECT title, type, date, time, location, notes, subteam FROM events WHERE id = ${Number(id)}`;
   if (!cur) return NextResponse.json({ error: "活動不存在" }, { status: 404 });
-  const c = cur as { title: string; type: string; date: string; time: string | null; location: string; notes: string };
+  const c = cur as { title: string; type: string; date: string; time: string | null; location: string; notes: string; subteam: string | null };
   await sql`
     UPDATE events SET
       title = ${body.title !== undefined ? String(body.title).trim() || c.title : c.title},
@@ -25,7 +25,8 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       date = ${body.date !== undefined && /^\d{4}-\d{2}-\d{2}$/.test(String(body.date)) ? String(body.date) : c.date},
       time = ${body.time !== undefined ? (body.time ? String(body.time) : null) : c.time},
       location = ${body.location !== undefined ? String(body.location) : c.location},
-      notes = ${body.notes !== undefined ? String(body.notes) : c.notes}
+      notes = ${body.notes !== undefined ? String(body.notes) : c.notes},
+      subteam = ${body.subteam !== undefined ? (body.subteam ? String(body.subteam) : null) : c.subteam}
     WHERE id = ${Number(id)}`;
   return NextResponse.json({ ok: true });
 }

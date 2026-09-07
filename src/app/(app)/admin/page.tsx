@@ -1,17 +1,19 @@
 "use client";
 import { useI18n } from "@/lib/i18n";
+import { useSubteams } from "@/lib/subteams";
 import { isStaff } from "@/lib/roles";
 
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
-import { BTN, BTN_GHOST, INPUT_CLS, SUBTEAMS, subteamLabel } from "@/lib/ui";
+import { BTN, BTN_GHOST, INPUT_CLS, subteamLabel } from "@/lib/ui";
 import { useDialogs } from "@/components/ui/Dialogs";
 import type { Me, Member, Settings } from "@/lib/types";
 
 type AdminSettings = Settings & {
   discord_webhook: string;
   ical_token: string;
+  subteams: { key: string; zh: string; en: string }[];
   google_client_id: string;
   google_client_secret: string;
   google_domains: string;
@@ -21,6 +23,7 @@ type AdminSettings = Settings & {
 
 export default function AdminPage() {
   const { t } = useI18n();
+  const { subteams } = useSubteams();
   const { confirm, prompt, toast } = useDialogs();
   const [me, setMe] = useState<Me | null>(null);
   const [settings, setSettings] = useState<AdminSettings | null>(null);
@@ -36,6 +39,7 @@ export default function AdminPage() {
   const [googleDomains, setGoogleDomains] = useState("");
   const [googleLeaderEmails, setGoogleLeaderEmails] = useState("");
   const [googleTeacherEmails, setGoogleTeacherEmails] = useState("");
+  const [stList, setStList] = useState<{ key: string; zh: string; en: string }[]>([]);
 
   const [newName, setNewName] = useState("");
   const [newUsername, setNewUsername] = useState("");
@@ -63,6 +67,7 @@ export default function AdminPage() {
     setGoogleLeaderEmails(s.google_leader_emails ?? "");
     setGoogleTeacherEmails(s.google_teacher_emails ?? "");
     setMembers(m.members);
+    setStList(JSON.parse(JSON.stringify(s.subteams ?? [])));
   }
 
   useEffect(() => {
@@ -109,6 +114,19 @@ export default function AdminPage() {
       setSettings(s);
       setMsg(t("設定已儲存") + "（" + t("重新整理後隊名生效於導覽列") + "）");
       toast(t("設定已儲存"));
+    } catch (err) {
+      toast(t((err as Error).message), "err");
+    }
+  }
+
+  async function saveSubteams() {
+    try {
+      await api<{ subteams: unknown[] }>("/api/subteams", {
+        method: "PUT",
+        body: JSON.stringify({ subteams: stList.filter((x) => x.zh.trim()) }),
+      });
+      toast(t("組別已更新"));
+      await load();
     } catch (err) {
       toast(t((err as Error).message), "err");
     }
@@ -290,6 +308,52 @@ export default function AdminPage() {
       </section>
 
       <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+        <h2 className="mb-1 font-bold">{t("組別管理")}</h2>
+        <p className="mb-3 text-xs text-slate-500">{t("自訂全站使用的組別（任務、成員、活動都會跟著）；刪除組別時，原屬成員與任務會自動改到第一個剩餘組別")}</p>
+        <div className="space-y-2">
+          {stList.map((row, i) => (
+            <div key={row.key || "new" + i} className="flex flex-wrap items-center gap-2">
+              <input
+                className="w-40 rounded-lg border border-slate-700 bg-slate-800/80 px-3 py-2 text-sm text-slate-100"
+                placeholder={t("中文名稱")}
+                value={row.zh}
+                onChange={(e) => {
+                  const next = [...stList];
+                  next[i] = { ...row, zh: e.target.value };
+                  setStList(next);
+                }}
+              />
+              <input
+                className="w-40 rounded-lg border border-slate-700 bg-slate-800/80 px-3 py-2 text-sm text-slate-100"
+                placeholder={t("英文名稱")}
+                value={row.en}
+                onChange={(e) => {
+                  const next = [...stList];
+                  next[i] = { ...row, en: e.target.value };
+                  setStList(next);
+                }}
+              />
+              <button
+                className="text-sm text-slate-500 transition hover:text-rose-400"
+                onClick={() => setStList(stList.filter((_, j) => j !== i))}
+                disabled={stList.length <= 1}
+              >
+                {t("刪除")}
+              </button>
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 flex gap-2">
+          <button className={BTN_GHOST} onClick={() => setStList([...stList, { key: "", zh: "", en: "" }])}>
+            ＋ {t("新增組別")}
+          </button>
+          <button className={BTN} onClick={saveSubteams}>
+            {t("儲存組別")}
+          </button>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
         <h2 className="mb-1 font-bold">{t("Google 登入")}</h2>
         <p className="mb-3 text-xs text-slate-500">
           {t("設定後隊員可在登入頁用學校 Google 帳號登入（首次自動建立帳號）。")} {t("回呼網址（複製到 Google Cloud OAuth 設定）")}：
@@ -383,7 +447,7 @@ export default function AdminPage() {
                       value={m.subteam}
                       onChange={(e) => updateMember(m, { subteam: e.target.value })}
                     >
-                      {SUBTEAMS.map((x) => (
+                      {subteams.map((x) => (
                         <option key={x.key} value={x.key}>{x.label}</option>
                       ))}
                     </select>
@@ -465,7 +529,7 @@ export default function AdminPage() {
             value={newSubteam}
             onChange={(e) => setNewSubteam(e.target.value)}
           >
-            {SUBTEAMS.map((s) => (
+            {subteams.map((s) => (
               <option key={s.key} value={s.key}>
                 {t("組別")}：{s.label}
               </option>

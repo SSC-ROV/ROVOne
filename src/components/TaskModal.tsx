@@ -1,5 +1,6 @@
 "use client";
 import { useI18n } from "@/lib/i18n";
+import { useSubteams } from "@/lib/subteams";
 import { isStaff } from "@/lib/roles";
 
 
@@ -11,7 +12,6 @@ import {
   INPUT_CLS,
   PRIORITIES,
   STATUSES,
-  SUBTEAMS,
 } from "@/lib/ui";
 import { useDialogs } from "@/components/ui/Dialogs";
 import { cycleStatus } from "@/lib/ui";
@@ -35,6 +35,7 @@ export default function TaskModal({
   onChanged: () => void;
 }) {
   const { t } = useI18n();
+  const { subteams } = useSubteams();
   const { confirm, toast } = useDialogs();
   const canEdit =
     mode === "create" ||
@@ -214,7 +215,7 @@ export default function TaskModal({
                 onChange={(e) => setSubteam(e.target.value as Task["subteam"])}
                 disabled={!canEdit}
               >
-                {SUBTEAMS.map((s) => (
+                {subteams.map((s) => (
                   <option key={s.key} value={s.key}>
                     {s.label}
                   </option>

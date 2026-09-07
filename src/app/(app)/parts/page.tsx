@@ -1,5 +1,6 @@
 "use client";
 import { useI18n } from "@/lib/i18n";
+import { useSubteams } from "@/lib/subteams";
 import { isStaff } from "@/lib/roles";
 
 
@@ -12,6 +13,7 @@ import type { Me, Part, PartStatus } from "@/lib/types";
 
 export default function PartsPage() {
   const { t } = useI18n();
+  const { subteams } = useSubteams();
   const { confirm, prompt, toast } = useDialogs();
   const [parts, setParts] = useState<Part[] | null>(null);
   const [me, setMe] = useState<Me | null>(null);
@@ -187,8 +189,8 @@ export default function PartsPage() {
             </div>
             <input className={INPUT_CLS} type="number" min="0" placeholder={`${t("預估單價")} $`} value={estPrice} onChange={(e) => setEstPrice(e.target.value)} />
             <select className={INPUT_CLS} value={subteam} onChange={(e) => setSubteam(e.target.value)}>
-              {SUBTEAMS.map((s) => (
-                <option key={s.key} value={s.key}>組別：{s.label}</option>
+              {subteams.map((s) => (
+                <option key={s.key} value={s.key}>{s.label}</option>
               ))}
             </select>
             <input className={`${INPUT_CLS} sm:col-span-3`} placeholder={t("用途（給老師看的說明）")} value={purpose} onChange={(e) => setPurpose(e.target.value)} />

@@ -1,5 +1,6 @@
 "use client";
 import { useI18n } from "@/lib/i18n";
+import { useSubteams } from "@/lib/subteams";
 import { tt } from "@/lib/i18n-core";
 import { isStaff } from "@/lib/roles";
 
@@ -23,6 +24,7 @@ const WEEKDAYS = ["一", "二", "三", "四", "五", "六", "日"];
 
 export default function CalendarPage() {
   const { t } = useI18n();
+  const { subteams } = useSubteams();
   const { confirm, toast } = useDialogs();
   const [now, setNow] = useState(() => new Date());
   const [tasks, setTasks] = useState<Task[] | null>(null);
@@ -35,6 +37,7 @@ export default function CalendarPage() {
   const [evType, setEvType] = useState<EventType>("meeting");
   const [evTime, setEvTime] = useState("");
   const [evLocation, setEvLocation] = useState("");
+  const [evSubteam, setEvSubteam] = useState("");
   const [busy, setBusy] = useState(false);
 
   async function load() {
@@ -105,11 +108,13 @@ export default function CalendarPage() {
           date: sel,
           time: evTime || null,
           location: evLocation,
+          subteam: evSubteam || null,
         }),
       });
       setEvTitle("");
       setEvTime("");
       setEvLocation("");
+      setEvSubteam("");
       toast(t("活動已新增"));
       await load();
     } catch (err) {
@@ -264,7 +269,14 @@ export default function CalendarPage() {
                         className="flex items-center gap-2 rounded-lg bg-slate-800/60 px-2.5 py-2 text-sm"
                       >
                         <span className={`h-2 w-2 shrink-0 rounded-full ${eventType(e.type).dot}`} />
-                        <span className="flex-1">{e.title}</span>
+                        <span className="flex-1">
+                          {e.title}
+                          {e.subteam && (
+                            <span className="ml-1 text-xs text-slate-500">
+                              [{subteams.find((x) => x.key === e.subteam)?.label ?? e.subteam}]
+                            </span>
+                          )}
+                        </span>
                         {e.time && <span className="text-xs text-slate-400">{e.time}</span>}
                         {e.location && (
                           <span className="text-xs text-slate-500">@{e.location}</span>
@@ -344,6 +356,18 @@ export default function CalendarPage() {
                   value={evLocation}
                   onChange={(e) => setEvLocation(e.target.value)}
                 />
+                <select
+                  className={INPUT_CLS}
+                  value={evSubteam}
+                  onChange={(e) => setEvSubteam(e.target.value)}
+                >
+                  <option value="">{t("組別：全隊（不限）")}</option>
+                  {subteams.map((s) => (
+                    <option key={s.key} value={s.key}>
+                      {t("組別")}：{s.label}
+                    </option>
+                  ))}
+                </select>
                 <button className={`${BTN} w-full`} onClick={addEvent} disabled={busy || !evTitle.trim()}>
                   {busy ? t("處理中…") : t("新增活動")}
                 </button>

@@ -1,5 +1,12 @@
 export type Role = "leader" | "teacher" | "member";
 
+// ---- 自訂組別 ----
+export interface SubteamDef {
+  key: string;
+  zh: string;
+  en: string;
+}
+
 // ---- 開發週期 ----
 export type CycleStatus =
   | "pending_leader"
@@ -81,6 +88,7 @@ export interface TeamEvent {
   time: string | null; // HH:MM
   location: string;
   notes: string;
+  subteam: string | null; // null = 全隊
   created_by: number | null;
 }
 
