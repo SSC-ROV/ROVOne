@@ -1,4 +1,5 @@
 export const DICT: Record<string, string> = {
+  "租借設備": "Rental Equipment",
   "核准": "Approve", "駁回": "Reject", "給申請人的備註（可留空）": "Note to requester (optional)",
   "（也可以複製連結給老師審批，兩種方式都可以）": "(or copy the approval link for the teacher — both work)",
   "遲交": "Late", "標記遲交": "⏰ Mark Late", "已標記為遲交": "Marked as late",
