@@ -27,6 +27,7 @@ export default function Navbar({
     { href: "/", label: "首頁" },
     { href: "/board", label: "看板" },
     { href: "/calendar", label: "日曆" },
+    { href: "/cycles", label: "開發週期" },
     { href: "/missions", label: "比賽任務" },
     { href: "/parts", label: "零件採買" },
     { href: "/equipment", label: "設備" },

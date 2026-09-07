@@ -43,8 +43,8 @@ export async function POST(req: NextRequest) {
   }
   const info = db
     .prepare(
-      `INSERT INTO tasks (title, description, status, priority, subteam, due_date, assignee_id, created_by, mission_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO tasks (title, description, status, priority, subteam, due_date, assignee_id, created_by, mission_id, cycle_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       title,
@@ -55,7 +55,8 @@ export async function POST(req: NextRequest) {
       (body?.due_date as string) || null,
       (body?.assignee_id as number) || null,
       user.id,
-      (body?.mission_id as number) || null
+      (body?.mission_id as number) || null,
+      (body?.cycle_id as number) || null
     );
   const task = db
     .prepare(

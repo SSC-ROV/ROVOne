@@ -13,13 +13,15 @@ import {
   SUBTEAMS,
 } from "@/lib/ui";
 import { useDialogs } from "@/components/ui/Dialogs";
-import type { ChecklistItem, Me, Member, MissionTask, Task } from "@/lib/types";
+import { cycleStatus } from "@/lib/ui";
+import type { ChecklistItem, Cycle, Me, Member, MissionTask, Task } from "@/lib/types";
 
 export default function TaskModal({
   mode,
   task,
   members,
   missions,
+  cycles,
   me,
   onClose,
   onChanged,
@@ -28,6 +30,7 @@ export default function TaskModal({
   task: Task | null;
   members: Member[];
   missions: MissionTask[];
+  cycles?: Cycle[];
   me: Me;
   onClose: () => void;
   onChanged: () => void;
@@ -50,6 +53,9 @@ export default function TaskModal({
   );
   const [missionId, setMissionId] = useState<string>(
     task?.mission_id ? String(task.mission_id) : ""
+  );
+  const [cycleId, setCycleId] = useState<string>(
+    task?.cycle_id ? String(task.cycle_id) : ""
   );
   const [items, setItems] = useState<ChecklistItem[]>(task?.items ?? []);
   const [newItem, setNewItem] = useState("");
@@ -80,6 +86,7 @@ export default function TaskModal({
       due_date: dueDate || null,
       assignee_id: assigneeId ? Number(assigneeId) : null,
       mission_id: missionId ? Number(missionId) : null,
+      cycle_id: cycleId ? Number(cycleId) : null,
     };
     try {
       if (mode === "create") {
@@ -277,6 +284,24 @@ export default function TaskModal({
                     {m.title}
                   </option>
                 ))}
+              </select>
+            </div>
+            <div className="col-span-2">
+              <label className="mb-1 block text-sm text-slate-400">所屬開發週期（選填）</label>
+              <select
+                className={INPUT_CLS}
+                value={cycleId}
+                onChange={(e) => setCycleId(e.target.value)}
+                disabled={!canEdit}
+              >
+                <option value="">不對應</option>
+                {(cycles ?? [])
+                  .filter((c) => c.status === "active" || c.status === "pending_leader" || c.status === "pending_teacher")
+                  .map((c) => (
+                    <option key={c.id} value={String(c.id)}>
+                      {c.title}（{cycleStatus(c.status).label}）
+                    </option>
+                  ))}
               </select>
             </div>
             <div className="col-span-2">

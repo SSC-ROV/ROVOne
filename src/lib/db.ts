@@ -118,11 +118,35 @@ CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS cycles (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  start_date TEXT NOT NULL,
+  end_date TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending_leader',
+  proposer_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  decided_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  decided_note TEXT NOT NULL DEFAULT '',
+  completed_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS cycle_members (
+  cycle_id INTEGER NOT NULL REFERENCES cycles(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  PRIMARY KEY (cycle_id, user_id)
+);
 `);
 
 // 舊版資料庫遷移：tasks 補 mission_id 欄位
 try {
   db.exec("ALTER TABLE tasks ADD COLUMN mission_id INTEGER REFERENCES mission_tasks(id) ON DELETE SET NULL");
+} catch {
+  /* 欄位已存在 */
+}
+// 舊版資料庫遷移：tasks 補 cycle_id 欄位
+try {
+  db.exec("ALTER TABLE tasks ADD COLUMN cycle_id INTEGER REFERENCES cycles(id) ON DELETE SET NULL");
 } catch {
   /* 欄位已存在 */
 }
@@ -360,6 +384,25 @@ const seedV2 = db.transaction(() => {
       "驗證 v3 水密艙；確認推進器接頭在低溫下是否復發",
       leaderId ?? null
     );
+  }
+
+  if ((db.prepare("SELECT COUNT(*) AS c FROM cycles").get() as { c: number }).c === 0 && leaderId && memberId) {
+    const insCycle = db.prepare(
+      "INSERT INTO cycles (title, description, start_date, end_date, status, proposer_id, decided_by, decided_note) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    );
+    const activeCycle = insCycle.run(
+      "推進系統重構週期",
+      "更換 T200 推進器、重寫推進混合程式並完成水測驗證。",
+      daysFromNow(-5), daysFromNow(9), "active", leaderId, null, ""
+    ).lastInsertRowid as number;
+    db.prepare("INSERT OR IGNORE INTO cycle_members (cycle_id, user_id) VALUES (?, ?)").run(activeCycle, memberId);
+    db.prepare("UPDATE tasks SET cycle_id = ? WHERE id IN (1, 6)").run(activeCycle);
+    const pendingCycle = insCycle.run(
+      "自動對焦機構開發週期",
+      "為前向攝影機加入自動對焦與燈光補償，提升道具辨識成功率。",
+      daysFromNow(3), daysFromNow(20), "pending_leader", memberId, null, ""
+    ).lastInsertRowid as number;
+    db.prepare("INSERT OR IGNORE INTO cycle_members (cycle_id, user_id) VALUES (?, ?)").run(pendingCycle, leaderId);
   }
 
   void leaderId;

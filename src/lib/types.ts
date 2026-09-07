@@ -1,4 +1,36 @@
 export type Role = "leader" | "teacher" | "member";
+
+// ---- 開發週期 ----
+export type CycleStatus =
+  | "pending_leader"
+  | "pending_teacher"
+  | "active"
+  | "completed"
+  | "rejected";
+
+export interface CycleMemberRef {
+  id: number;
+  display_name: string;
+}
+
+export interface Cycle {
+  id: number;
+  title: string;
+  description: string;
+  start_date: string;
+  end_date: string;
+  status: CycleStatus;
+  proposer_id: number | null;
+  proposer_name: string | null;
+  decided_by: number | null;
+  decided_by_name: string | null;
+  decided_note: string;
+  completed_at: string | null;
+  created_at: string;
+  members: CycleMemberRef[];
+  task_total: number;
+  task_done: number;
+}
 export type Subteam = "mech" | "elec" | "sw" | "pilot" | "general";
 export type TaskStatus = "todo" | "doing" | "done";
 export type Priority = "high" | "medium" | "low";
@@ -32,6 +64,7 @@ export interface Task {
   assignee_name: string | null;
   created_by: number | null;
   mission_id: number | null;
+  cycle_id: number | null;
   sort_order: number;
   completed_at: string | null;
   items: ChecklistItem[];

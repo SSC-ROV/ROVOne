@@ -13,7 +13,7 @@ import {
   priorityDot,
   subteamLabel,
 } from "@/lib/ui";
-import type { Me, Member, MissionTask, Task, TaskStatus } from "@/lib/types";
+import type { Cycle, Me, Member, MissionTask, Task, TaskStatus } from "@/lib/types";
 import TaskModal from "@/components/TaskModal";
 import { useDialogs } from "@/components/ui/Dialogs";
 
@@ -22,6 +22,7 @@ export default function BoardPage() {
   const [tasks, setTasks] = useState<Task[] | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [missions, setMissions] = useState<MissionTask[]>([]);
+  const [cycles, setCycles] = useState<Cycle[]>([]);
   const [me, setMe] = useState<Me | null>(null);
   const [fSub, setFSub] = useState<string>("all");
   const [fAssignee, setFAssignee] = useState<string>("all"); // all | none | <id>
@@ -32,15 +33,17 @@ export default function BoardPage() {
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
-    const [t, m, ms, u] = await Promise.all([
+    const [t, m, ms, cy, u] = await Promise.all([
       api<{ tasks: Task[] }>("/api/tasks"),
       api<{ members: Member[] }>("/api/members"),
       api<{ missions: MissionTask[] }>("/api/missions").catch(() => ({ missions: [] as MissionTask[] })),
+      api<{ cycles: Cycle[] }>("/api/cycles").catch(() => ({ cycles: [] as Cycle[] })),
       api<{ user: Me | null }>("/api/auth/me"),
     ]);
     setTasks(t.tasks);
     setMembers(m.members);
     setMissions(ms.missions);
+    setCycles(cy.cycles);
     setMe(u.user);
   }, []);
 
@@ -194,6 +197,7 @@ export default function BoardPage() {
           task={modal.mode === "edit" ? modal.task : null}
           members={members}
           missions={missions}
+          cycles={cycles}
           me={me}
           onClose={() => setModal(null)}
           onChanged={() => load().catch(() => {})}

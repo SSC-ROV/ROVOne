@@ -68,6 +68,10 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     fields.push("mission_id = ?");
     values.push((body.mission_id as number) || null);
   }
+  if (body.cycle_id !== undefined) {
+    fields.push("cycle_id = ?");
+    values.push((body.cycle_id as number) || null);
+  }
   if (body.status !== undefined) {
     fields.push("completed_at = ?");
     values.push(body.status === "done" ? new Date().toISOString() : null);

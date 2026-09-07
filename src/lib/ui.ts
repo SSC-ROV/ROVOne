@@ -1,4 +1,5 @@
 import type {
+  CycleStatus,
   EventType,
   PartStatus,
   Priority,
@@ -69,6 +70,21 @@ export const PART_STATUSES: {
 
 export const partStatus = (k: string) =>
   PART_STATUSES.find((p) => p.key === k) ?? PART_STATUSES[0];
+
+export const CYCLE_STATUSES: {
+  key: CycleStatus;
+  label: string;
+  chip: string;
+}[] = [
+  { key: "pending_leader", label: "待隊長審批", chip: "border-amber-500/40 bg-amber-500/10 text-amber-300" },
+  { key: "pending_teacher", label: "待老師審批", chip: "border-violet-500/40 bg-violet-500/10 text-violet-300" },
+  { key: "active", label: "進行中", chip: "border-cyan-500/40 bg-cyan-500/10 text-cyan-300" },
+  { key: "completed", label: "已完成", chip: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300" },
+  { key: "rejected", label: "已駁回", chip: "border-rose-500/40 bg-rose-500/10 text-rose-300" },
+];
+
+export const cycleStatus = (k: string) =>
+  CYCLE_STATUSES.find((c) => c.key === k) ?? CYCLE_STATUSES[0];
 
 export const EQUIPMENT_CATEGORIES = [
   "推進器",
