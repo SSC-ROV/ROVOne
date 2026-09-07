@@ -8,10 +8,12 @@ import { api } from "@/lib/api-client";
 import { daysBetween, fmtMD, todayStr, weekdayCn } from "@/lib/date";
 import { CHIP, SUBTEAM_CLS, priorityDot, subteamLabel } from "@/lib/ui";
 import { useI18n } from "@/lib/i18n";
+import { useRouter } from "next/navigation";
 import type { Me, Settings, Task, TeamEvent } from "@/lib/types";
 
 export default function DashboardPage() {
   const { t } = useI18n();
+  const router = useRouter();
   const [me, setMe] = useState<Me | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [tasks, setTasks] = useState<Task[] | null>(null);
@@ -26,6 +28,10 @@ export default function DashboardPage() {
         api<{ tasks: Task[] }>("/api/tasks"),
         api<{ events: TeamEvent[] }>("/api/events"),
       ]);
+      if (!u.user) {
+        router.replace("/login");
+        return;
+      }
       setMe(u.user);
       setSettings(s);
       setTasks(ts.tasks);

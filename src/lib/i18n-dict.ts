@@ -1,4 +1,5 @@
 export const DICT: Record<string, string> = {
+  "載入逾時，請檢查網路後重新整理": "Load timed out. Check your connection and refresh.",
   "請先設定新密碼再開始使用（首次登入或密碼已被重設）": "Please set a new password before continuing (first sign-in or password was reset)",
   "這項資料已被其他人修改，請重新整理後再試": "This item was changed by someone else. Refresh and try again.",
   "嘗試次數過多，請 15 分鐘後再試": "Too many attempts. Try again in 15 minutes.",
