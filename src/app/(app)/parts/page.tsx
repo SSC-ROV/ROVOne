@@ -19,6 +19,7 @@ export default function PartsPage() {
   const [me, setMe] = useState<Me | null>(null);
   const [fStatus, setFStatus] = useState("all");
   const [showForm, setShowForm] = useState(false);
+  const [ordering, setOrdering] = useState<{ part: Part; vendor: string; price: string } | null>(null);
   const [error, setError] = useState("");
 
   const [name, setName] = useState("");
@@ -94,31 +95,33 @@ export default function PartsPage() {
 
   async function setStatus(p: Part, status: PartStatus) {
     try {
-      let actual: string | null = null;
-      let vendor = p.order_vendor;
       if (status === "ordered") {
-        const v = await prompt({
-          title: `${p.name} — ${t("在哪裡下單？")}`,
-          initial: p.order_vendor,
-          placeholder: t("例如：蝦皮 / Blue Robotics 官網"),
-        });
-        if (v === null) return;
-        vendor = v;
-        const price = await prompt({
-          title: t("實際金額（整筆總價，可留空）"),
-          placeholder: `${t("預估")} $${p.est_price * p.qty}`,
-        });
-        if (price === null) return;
-        actual = price;
+        setOrdering({ part: p, vendor: p.order_vendor, price: "" });
+        return;
       }
       await api(`/api/parts/${p.id}`, {
         method: "PATCH",
+        body: JSON.stringify({ status }),
+      });
+      await load();
+    } catch (err) {
+      toast(t((err as Error).message), "err");
+    }
+  }
+
+  async function confirmOrder() {
+    if (!ordering) return;
+    try {
+      await api(`/api/parts/${ordering.part.id}`, {
+        method: "PATCH",
         body: JSON.stringify({
-          status,
-          order_vendor: vendor,
-          actual_price: actual === null ? undefined : Number(actual) || null,
+          status: "ordered",
+          order_vendor: ordering.vendor,
+          actual_price: ordering.price === "" ? null : Number(ordering.price) || null,
         }),
       });
+      toast(t("已標記為已下單"));
+      setOrdering(null);
       await load();
     } catch (err) {
       toast(t((err as Error).message), "err");

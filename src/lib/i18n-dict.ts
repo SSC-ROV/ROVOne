@@ -1,4 +1,7 @@
 export const DICT: Record<string, string> = {
+  "在哪裡下單？": "Where did you order?", "✓ 確認下單": "✓ Confirm Order",
+  "實際金額（整筆總價，可留空）": "Actual price (total, optional)",
+  "已標記為已下單": "Marked as ordered",
   "已核准": "Approved", "開始日期": "Start date", "後自動進入進行中": "then auto-starts",
   "✓ 批准（標記已核准）": "✓ Approve (marks Approved)", "✓ 批准，送老師審批": "✓ Approve → Teacher",
   "已核准！開始日期後自動進行": "Approved! It auto-starts on its begin date",
@@ -89,7 +92,6 @@ export const DICT: Record<string, string> = {
   "單位": "Unit",
   "回呼網址已複製！在 Google Cloud 的 OAuth 設定裡貼上即可": "Callback URL copied! Paste it into Google Cloud OAuth settings.",
   "回呼網址（複製到 Google Cloud OAuth 設定）": "Callback URL (copy into Google Cloud OAuth)",
-  "在哪裡下單？": "Where are you ordering?",
   "地點（選填）": "Location (optional)",
   "天": "days",
   "子任務": "Subtasks",
@@ -97,7 +99,6 @@ export const DICT: Record<string, string> = {
   "密碼已更新": "Password updated",
   "密碼至少 6 個字": "Password must be at least 6 characters",
   "實際": "Actual",
-  "實際金額（整筆總價，可留空）": "Actual price (total, optional)",
   "審批中": "Reviewing",
   "審批備註": "Review note",
   "審批連結已複製！用 LINE / Messenger 傳給老師，打開就能按核准": "Approval link copied! Send it to the teacher via LINE / Messenger.",
