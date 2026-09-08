@@ -113,7 +113,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <CycleTimeline cycles={cycles} today={today} compact />
+      <CycleTimeline cycles={cycles} today={today} />
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">

@@ -1,7 +1,7 @@
 "use client";
 import { useI18n } from "@/lib/i18n";
 import TaskModal from "@/components/TaskModal";
-import CycleTimeline, { computeConflicts } from "@/components/CycleTimeline";
+import CycleTimeline from "@/components/CycleTimeline";
 import { useSubteams } from "@/lib/subteams";
 
 import { useCallback, useEffect, useState } from "react";
@@ -63,7 +63,6 @@ export default function CyclesPage() {
   const history = cycles.filter((c) => c.status === "completed" || c.status === "rejected");
   const today = todayStr();
   const myRole = me.role;
-  const conflicts = computeConflicts(cycles);
   const meId = me.id;
 
   // 樂觀更新：任務勾選（立即改畫面，背景同步；失敗則還原）
@@ -179,7 +178,7 @@ export default function CyclesPage() {
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-lg font-bold">{t("開發週期")}</h1>
         <span className="text-sm text-slate-500">
-          {t("提案 → 隊長審批 → 老師審批 → 進行中；任務在看板可歸屬到週期")}
+          {t("提案 → 隊長審批 → 老師審批 → 進行中；任務在週期卡片內直接新增")}
         </span>
         <button className={`${BTN} ml-auto`} onClick={() => setForm({ editing: null })}>
           {t("＋ 提案新週期")}
@@ -226,7 +225,7 @@ export default function CyclesPage() {
               const dec = canDecide(c);
               return (
                 <div key={c.id} className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
-                  <CycleHead c={c} today={today} conflicts={conflicts} />
+                  <CycleHead c={c} today={today} />
                   <div className="mt-2 flex flex-wrap gap-2">
                     {dec === "approve" && (
                       <>
@@ -259,7 +258,7 @@ export default function CyclesPage() {
         )}
         {active.map((c) => (
           <div key={c.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-            <CycleHead c={c} today={today} conflicts={conflicts} />
+            <CycleHead c={c} today={today} />
             <TaskProgress done={c.task_done} total={c.task_total} />
             <div className="mt-2 flex flex-wrap gap-2">
               {(isStaff(me.role) || c.proposer_id === me.id) && (
@@ -282,7 +281,7 @@ export default function CyclesPage() {
           <h2 className="font-bold text-emerald-300">{t("已核准")}（{approvedNotStarted.length}）</h2>
           {approvedNotStarted.map((c) => (
             <div key={c.id} className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4">
-              <CycleHead c={c} today={today} conflicts={conflicts} />
+              <CycleHead c={c} today={today} />
               <TaskProgress done={c.task_done} total={c.task_total} />
               <p className="mt-2 text-xs text-slate-500">
                 {t("開始日期")} {fmtMD(c.start_date)} {t("後自動進入進行中")}
@@ -297,7 +296,7 @@ export default function CyclesPage() {
           <h2 className="font-bold text-orange-300">{t("遲交")}（{late.length}）</h2>
           {late.map((c) => (
             <div key={c.id} className="rounded-2xl border border-orange-400/30 bg-orange-400/5 p-4">
-              <CycleHead c={c} today={today} conflicts={conflicts} />
+              <CycleHead c={c} today={today} />
               <TaskProgress done={c.task_done} total={c.task_total} />
               <CycleTasks
                 cycle={c}
@@ -373,7 +372,7 @@ export default function CyclesPage() {
           <h2 className="font-bold text-slate-400">{t("歷史")}（{history.length}）</h2>
           {history.map((c) => (
             <div key={c.id} className="rounded-2xl border border-slate-800/70 bg-slate-900/40 p-4">
-              <CycleHead c={c} today={today} conflicts={conflicts} />
+              <CycleHead c={c} today={today} />
               {c.status === "rejected" && c.proposer_id === me.id && (
                 <button className={`${BTN_GHOST} mt-2`} onClick={() => act(c, "resubmit")}>
                   {t("修改後重新提交")}
@@ -392,7 +391,7 @@ export default function CyclesPage() {
   );
 }
 
-function CycleHead({ c, today, conflicts }: { c: Cycle; today: string; conflicts?: Map<number, { otherTitle: string; names: string[] }[]> }) {
+function CycleHead({ c, today }: { c: Cycle; today: string }) {
   const { t } = useI18n();
   const st = cycleStatus(c.status);
   const left = daysBetween(today, c.end_date);
@@ -429,12 +428,6 @@ function CycleHead({ c, today, conflicts }: { c: Cycle; today: string; conflicts
       {(c.status === "rejected" || c.status === "completed") && c.decided_note && (
         <p className="mt-1 text-xs text-slate-400">{t("審批備註")}：{c.decided_note}</p>
       )}
-      {conflicts?.get(c.id)?.map((w, i) => (
-        <p key={i} className="mt-1 text-xs text-rose-300">
-          ⚠ {t("與")}「{w.otherTitle}」{t("撞期")}
-          {w.names.length > 0 && <>（{t("共同成員")}：{w.names.join("、")}）</>}
-        </p>
-      ))}
     </div>
   );
 }
@@ -442,7 +435,7 @@ function CycleHead({ c, today, conflicts }: { c: Cycle; today: string; conflicts
 function TaskProgress({ done, total }: { done: number; total: number }) {
   const { t } = useI18n();
   if (total === 0) {
-    return <p className="mt-2 text-xs text-slate-500">{t("尚無歸屬任務（在看板編輯任務時可選擇所屬週期）")}</p>;
+    return <p className="mt-2 text-xs text-slate-500">{t("尚未新增任務，用下方輸入快速加入")}</p>;
   }
   const pct = Math.round((done / total) * 100);
   return (
@@ -649,7 +642,7 @@ function CycleTasks({
           ))}
           {tasks.length === 0 && (
             <p className="rounded-lg bg-slate-800/40 px-2.5 py-2 text-xs text-slate-500">
-              {t("尚無歸屬任務（在看板編輯任務時可選擇所屬週期）")}
+              {t("尚未新增任務，用下方輸入快速加入")}
             </p>
           )}
           <div className="flex gap-2">
