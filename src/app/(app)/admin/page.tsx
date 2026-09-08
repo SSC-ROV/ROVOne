@@ -12,6 +12,10 @@ import type { Me, Member, Settings } from "@/lib/types";
 
 type AdminSettings = Settings & {
   discord_webhook: string;
+  discord_webhook_cycle_audit: string;
+  discord_webhook_cycle_progress: string;
+  discord_webhook_parts: string;
+  discord_webhook_members: string;
   ical_token: string;
   subteams: { key: string; zh: string; en: string }[];
   google_client_id: string;
@@ -34,6 +38,10 @@ export default function AdminPage() {
   const [teamName, setTeamName] = useState("");
   const [compDate, setCompDate] = useState("");
   const [webhook, setWebhook] = useState("");
+  const [whCycleAudit, setWhCycleAudit] = useState("");
+  const [whCycleProgress, setWhCycleProgress] = useState("");
+  const [whParts, setWhParts] = useState("");
+  const [whMembers, setWhMembers] = useState("");
   const [googleClientId, setGoogleClientId] = useState("");
   const [googleClientSecret, setGoogleClientSecret] = useState("");
   const [googleDomains, setGoogleDomains] = useState("");
@@ -61,6 +69,10 @@ export default function AdminPage() {
     setTeamName(s.team_name);
     setCompDate(s.competition_date ?? "");
     setWebhook(s.discord_webhook ?? "");
+    setWhCycleAudit(s.discord_webhook_cycle_audit ?? "");
+    setWhCycleProgress(s.discord_webhook_cycle_progress ?? "");
+    setWhParts(s.discord_webhook_parts ?? "");
+    setWhMembers(s.discord_webhook_members ?? "");
     setGoogleClientId(s.google_client_id ?? "");
     setGoogleClientSecret(s.google_client_secret ?? "");
     setGoogleDomains(s.google_domains ?? "");
@@ -104,6 +116,10 @@ export default function AdminPage() {
           team_name: teamName,
           competition_date: compDate || null,
           discord_webhook: webhook,
+          discord_webhook_cycle_audit: whCycleAudit,
+          discord_webhook_cycle_progress: whCycleProgress,
+          discord_webhook_parts: whParts,
+          discord_webhook_members: whMembers,
           google_client_id: googleClientId,
           google_client_secret: googleClientSecret,
           google_domains: googleDomains,
@@ -287,22 +303,24 @@ export default function AdminPage() {
       <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
         <h2 className="mb-1 font-bold">{t("通知與整合")}</h2>
         <p className="mb-3 text-xs text-slate-500">
-          {t("設定 Discord Webhook 後，任務指派、零件審核結果會自動推到你的頻道")}（{t("Discord 頻道設定 → 整合 → Webhook → 建立並複製網址")}）
+          {t("設定 Discord Webhook 後，各類事件會自動推到對應的頻道")}（{t("Discord 頻道設定 → 整合 → Webhook → 建立並複製網址）")}）。
+          {t("只填「通用」的話，全部事件都會發到同一個頻道")}
         </p>
-        <div className="flex flex-wrap gap-2">
-          <input
-            className={`${INPUT_CLS} flex-1 sm:min-w-96`}
-            placeholder="https://discord.com/api/webhooks/…"
-            value={webhook}
-            onChange={(e) => setWebhook(e.target.value)}
-          />
-          <button className={BTN_GHOST} onClick={testNotify}>{t("發送測試通知")}</button>
+        <div className="space-y-2">
+          <WebhookRow label={t("通用（任務指派等）")} value={webhook} onChange={setWebhook} />
+          <WebhookRow label={t("週期審核（批准／駁回／重新提交）")} value={whCycleAudit} onChange={setWhCycleAudit} />
+          <WebhookRow label={t("週期進度（完成／遲交）")} value={whCycleProgress} onChange={setWhCycleProgress} />
+          <WebhookRow label={t("購買進度（申請／核准／下單／到貨／駁回）")} value={whParts} onChange={setWhParts} />
+          <WebhookRow label={t("人員變動（加入／刪除／角色變更）")} value={whMembers} onChange={setWhMembers} />
+        </div>
+        <div className="mt-3">
+          <button className={BTN_GHOST} onClick={testNotify}>{t("發送測試通知（測試通用頻道）")}</button>
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <span className="text-sm text-slate-400">{t("日曆訂閱（iCal）")}：</span>
           <button className={BTN_GHOST} onClick={copyIcalUrl}>{t("複製訂閱連結")}</button>
           <span className="text-xs text-slate-500">
-            {t("隊員在手機日曆 App「訂閱日曆」貼上，例會、水測、任務截止自動同步")}
+            {t("隊員在手機日曆 App「訂閱日曆」貼上，例會、水測自動同步")}
           </span>
         </div>
       </section>
@@ -551,6 +569,29 @@ export default function AdminPage() {
           >{t("新增")}</button>
         </div>
       </section>
+    </div>
+  );
+}
+
+
+function WebhookRow({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="w-64 shrink-0 text-sm text-slate-400">{label}</span>
+      <input
+        className="min-w-64 flex-1 rounded-lg border border-slate-700 bg-slate-800/80 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-500 focus:outline-none"
+        placeholder="https://discord.com/api/webhooks/…"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
     </div>
   );
 }

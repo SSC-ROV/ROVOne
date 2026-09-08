@@ -16,6 +16,10 @@ async function currentSettings() {
     google_domains: (await getSettingValue("google_domains")) ?? "",
     google_leader_emails: (await getSettingValue("google_leader_emails")) ?? "",
     google_teacher_emails: (await getSettingValue("google_teacher_emails")) ?? "",
+    discord_webhook_cycle_audit: (await getSettingValue("discord_webhook_cycle_audit")) ?? "",
+    discord_webhook_cycle_progress: (await getSettingValue("discord_webhook_cycle_progress")) ?? "",
+    discord_webhook_parts: (await getSettingValue("discord_webhook_parts")) ?? "",
+    discord_webhook_members: (await getSettingValue("discord_webhook_members")) ?? "",
     subteams: await getSubteams(),
   };
 }
@@ -52,6 +56,16 @@ export async function PUT(req: NextRequest) {
   if (body.rotate_ical === true) {
     await setSetting("ical_token", crypto.randomBytes(16).toString("hex"));
     await logAudit(user.id, user.username, "ical.rotate", "");
+  }
+  for (const key of [
+    "discord_webhook_cycle_audit",
+    "discord_webhook_cycle_progress",
+    "discord_webhook_parts",
+    "discord_webhook_members",
+  ] as const) {
+    if (body?.[key] !== undefined) {
+      await setSetting(key, String(body[key]).trim());
+    }
   }
   for (const key of [
     "google_client_id",

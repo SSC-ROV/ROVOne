@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/pg";
 import { getSessionUser } from "@/lib/auth";
 import { isStaff } from "@/lib/roles";
-import { notifyDiscord } from "@/lib/notify";
+import { notifyChannel } from "@/lib/notify";
 import type { Cycle, CycleMemberRef } from "@/lib/types";
 
 export async function GET() {
@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
     await sql`INSERT INTO cycle_members (cycle_id, user_id) VALUES (${cycleId}, ${id}) ON CONFLICT DO NOTHING`;
   }
 
-  await notifyDiscord(
+  await notifyChannel("cycle_audit",
     `🚀 新開發週期提案：「${title}」（${start} ~ ${end}）— ${
       status === "approved"
         ? "老師提案，直接核准"

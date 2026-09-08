@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/pg";
 import { getSessionUser } from "@/lib/auth";
 import { isStaff } from "@/lib/roles";
-import { notifyDiscord } from "@/lib/notify";
+import { notifyChannel } from "@/lib/notify";
 import { logAudit } from "@/lib/audit";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -55,7 +55,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
                decided_note = ${String(body.note ?? "").trim()}
         WHERE id = ${cycle.id}`;
       await logAudit(user.id, user.username, "cycle.approve", `cycle:${cycle.id}`, `${cycle.title} → ${next}`);
-      await notifyDiscord(
+      await notifyChannel("cycle_audit",
         next === "approved"
           ? `✅ 老師已核准開發週期：「${cycle.title}」（開始日期後自動進行）`
           : `✅ 隊長核准開發週期：「${cycle.title}」，待老師最終審批`
@@ -71,7 +71,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
                decided_note = ${String(body.note ?? "").trim()}
         WHERE id = ${cycle.id}`;
       await logAudit(user.id, user.username, "cycle.approve", `cycle:${cycle.id}`, `${cycle.title} → approved`);
-      await notifyDiscord(`✅ 老師已核准開發週期：「${cycle.title}」（開始日期後自動進行）`);
+      await notifyChannel("cycle_audit", `✅ 老師已核准開發週期：「${cycle.title}」（開始日期後自動進行）`);
       return NextResponse.json({ ok: true, status: "approved" });
     }
     return NextResponse.json({ error: "這個狀態不能審批" }, { status: 400 });
@@ -92,7 +92,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
              decided_note = ${String(body.note ?? "").trim()}
       WHERE id = ${cycle.id}`;
     await logAudit(user.id, user.username, "cycle.reject", `cycle:${cycle.id}`, cycle.title);
-    await notifyDiscord(
+    await notifyChannel("cycle_audit",
       `❌ 開發週期「${cycle.title}」被駁回${body.note ? `— 備註：${body.note}` : ""}`
     );
     return NextResponse.json({ ok: true, status: "rejected" });
@@ -109,7 +109,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       UPDATE cycles SET status = 'late', completed_at = NULL
       WHERE id = ${cycle.id}`;
     await logAudit(user.id, user.username, "cycle.marklate", `cycle:${cycle.id}`, cycle.title);
-    await notifyDiscord(`⏰ 開發週期「${cycle.title}」已標記為遲交。`);
+    await notifyChannel("cycle_progress", `⏰ 開發週期「${cycle.title}」已標記為遲交。`);
     return NextResponse.json({ ok: true, status: "late" });
   }
 
@@ -124,7 +124,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       UPDATE cycles SET status = 'completed', completed_at = ${new Date().toISOString()}
       WHERE id = ${cycle.id}`;
     await logAudit(user.id, user.username, "cycle.complete", `cycle:${cycle.id}`, cycle.title);
-    await notifyDiscord(`🏁 開發週期「${cycle.title}」已完成！`);
+    await notifyChannel("cycle_progress", `🏁 開發週期「${cycle.title}」已完成！`);
     return NextResponse.json({ ok: true, status: "completed" });
   }
 
@@ -137,7 +137,8 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     }
     const next = isStaff(user.role) ? "pending_teacher" : "pending_leader";
     await sql`UPDATE cycles SET status = ${next}, decided_note = '' WHERE id = ${cycle.id}`;
-    await notifyDiscord(
+    await notifyChannel(
+      "cycle_audit",
       `🔄 開發週期「${cycle.title}」重新提交${next === "pending_teacher" ? "，待老師審批" : "，待隊長審批"}`
     );
     return NextResponse.json({ ok: true, status: next });

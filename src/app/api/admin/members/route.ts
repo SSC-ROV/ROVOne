@@ -3,6 +3,7 @@ import { sql } from "@/lib/pg";
 import { getSessionUser } from "@/lib/auth";
 import { isStaff } from "@/lib/roles";
 import { logAudit } from "@/lib/audit";
+import { notifyChannel } from "@/lib/notify";
 import { hashPassword } from "@/lib/password";
 import type { Member } from "@/lib/types";
 
@@ -40,6 +41,7 @@ export async function POST(req: NextRequest) {
       VALUES (${username}, ${displayName}, ${hashPassword(password)}, ${role}, ${String(body?.subteam ?? "general")})
       RETURNING id, username, display_name, role, subteam`;
     await logAudit(me.id, me.username, "member.create", `user:${username}`).catch(() => {});
+    await notifyChannel("members", `👤 新成員「${displayName}」（${username}）已由 ${me.display_name} 加入`).catch(() => {});
     return NextResponse.json({ member });
   } catch {
     return NextResponse.json({ error: "帳號已存在" }, { status: 400 });
