@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/pg";
 import { getSessionUser } from "@/lib/auth";
 import { isStaff } from "@/lib/roles";
-import { notifyChannel } from "@/lib/notify";
+import { notifyTeams } from "@/lib/notify";
 import { logAudit } from "@/lib/audit";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -23,6 +23,7 @@ async function load(id: number): Promise<CycleRow | undefined> {
 }
 
 export async function PATCH(req: NextRequest, ctx: Ctx) {
+  const origin = req.nextUrl.origin;
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "未登入" }, { status: 401 });
   const { id } = await ctx.params;
@@ -55,11 +56,12 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
                decided_note = ${String(body.note ?? "").trim()}
         WHERE id = ${cycle.id}`;
       await logAudit(user.id, user.username, "cycle.approve", `cycle:${cycle.id}`, `${cycle.title} → ${next}`);
-      await notifyChannel("cycle_audit",
-        next === "approved"
-          ? `✅ 老師已核准開發週期：「${cycle.title}」（開始日期後自動進行）`
-          : `✅ 隊長核准開發週期：「${cycle.title}」，待老師最終審批`
-      );
+      if (next === "pending_teacher") {
+        await notifyTeams("teacher_cycle",
+          `📋 週期「${cycle.title}」待老師批准`,
+          `隊長 ${user.display_name} 已核准，進入最終審批`,
+          `${origin}/cycles`);
+      }
       return NextResponse.json({ ok: true, status: next });
     }
     if (cycle.status === "pending_teacher") {
@@ -71,7 +73,6 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
                decided_note = ${String(body.note ?? "").trim()}
         WHERE id = ${cycle.id}`;
       await logAudit(user.id, user.username, "cycle.approve", `cycle:${cycle.id}`, `${cycle.title} → approved`);
-      await notifyChannel("cycle_audit", `✅ 老師已核准開發週期：「${cycle.title}」（開始日期後自動進行）`);
       return NextResponse.json({ ok: true, status: "approved" });
     }
     return NextResponse.json({ error: "這個狀態不能審批" }, { status: 400 });
@@ -92,9 +93,6 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
              decided_note = ${String(body.note ?? "").trim()}
       WHERE id = ${cycle.id}`;
     await logAudit(user.id, user.username, "cycle.reject", `cycle:${cycle.id}`, cycle.title);
-    await notifyChannel("cycle_audit",
-      `❌ 開發週期「${cycle.title}」被駁回${body.note ? `— 備註：${body.note}` : ""}`
-    );
     return NextResponse.json({ ok: true, status: "rejected" });
   }
 
@@ -109,7 +107,6 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       UPDATE cycles SET status = 'late', completed_at = NULL
       WHERE id = ${cycle.id}`;
     await logAudit(user.id, user.username, "cycle.marklate", `cycle:${cycle.id}`, cycle.title);
-    await notifyChannel("cycle_progress", `⏰ 開發週期「${cycle.title}」已標記為遲交。`);
     return NextResponse.json({ ok: true, status: "late" });
   }
 
@@ -124,7 +121,6 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       UPDATE cycles SET status = 'completed', completed_at = ${new Date().toISOString()}
       WHERE id = ${cycle.id}`;
     await logAudit(user.id, user.username, "cycle.complete", `cycle:${cycle.id}`, cycle.title);
-    await notifyChannel("cycle_progress", `🏁 開發週期「${cycle.title}」已完成！`);
     return NextResponse.json({ ok: true, status: "completed" });
   }
 
@@ -137,10 +133,6 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     }
     const next = isStaff(user.role) ? "pending_teacher" : "pending_leader";
     await sql`UPDATE cycles SET status = ${next}, decided_note = '' WHERE id = ${cycle.id}`;
-    await notifyChannel(
-      "cycle_audit",
-      `🔄 開發週期「${cycle.title}」重新提交${next === "pending_teacher" ? "，待老師審批" : "，待隊長審批"}`
-    );
     return NextResponse.json({ ok: true, status: next });
   }
 

@@ -5,7 +5,6 @@ import { getSettingValue } from "@/lib/db";
 import { exchangeCode, fetchGoogleUser } from "@/lib/google";
 import { createSession, sessionCookieOptions } from "@/lib/auth";
 import { SESSION_COOKIE } from "@/lib/session";
-import { notifyChannel } from "@/lib/notify";
 
 function fail(origin: string, code: string) {
   return NextResponse.redirect(new URL(`/login?error=${code}`, origin));
@@ -79,9 +78,6 @@ export async function GET(req: NextRequest) {
               ${role}, 'general', ${email}, 'google', now())
       RETURNING id, role`;
     user = created;
-    await notifyChannel("members",
-      `🆕 新成員「${name || localPart}」（${email}）透過 Google 登入自動加入！`
-    );
   } else {
     // 已存在的密碼帳號，用 Google 登入 → 補綁 email 與登入方式
     await sql`

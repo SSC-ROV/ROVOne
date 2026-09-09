@@ -3,7 +3,6 @@ import { sql } from "@/lib/pg";
 import { getSessionUser } from "@/lib/auth";
 import { isStaff } from "@/lib/roles";
 import { getPartByToken } from "@/lib/db";
-import { notifyChannel } from "@/lib/notify";
 import { logAudit } from "@/lib/audit";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -68,11 +67,6 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     ["approved", "rejected"].includes(status) &&
     String(existing.status) !== status
   ) {
-    await notifyChannel("parts",
-      status === "approved"
-        ? `✅ ${user.display_name}已核准零件申請：「${String(c.name)}」`
-        : `❌ ${user.display_name}駁回零件申請：「${String(c.name)}」${decidedNote ? `— 備註：${decidedNote}` : ""}`
-    );
   }
   return NextResponse.json({ ok: true });
 }

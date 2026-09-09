@@ -3,7 +3,6 @@ import { sql } from "@/lib/pg";
 import { getSessionUser } from "@/lib/auth";
 import { isStaff } from "@/lib/roles";
 import { getEvents } from "@/lib/db";
-import { notifyDiscord } from "@/lib/notify";
 import type { TeamEvent } from "@/lib/types";
 
 export async function GET() {
@@ -38,6 +37,5 @@ export async function POST(req: NextRequest) {
             ${body?.time ? String(body.time) : null}, ${String(body?.location ?? "")},
             ${String(body?.notes ?? "")}, ${body?.subteam ? String(body.subteam) : null}, ${user.id})
     RETURNING *`;
-  notifyDiscord(`📅 新活動：「${title}」@ ${date}${body?.time ? " " + body.time : ""}`).catch(() => {});
   return NextResponse.json({ event });
 }

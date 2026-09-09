@@ -4,7 +4,6 @@ import { getSessionUser } from "@/lib/auth";
 import { isStaff } from "@/lib/roles";
 import { hashPassword } from "@/lib/password";
 import { logAudit } from "@/lib/audit";
-import { notifyChannel } from "@/lib/notify";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -46,7 +45,6 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     }
     await sql`UPDATE users SET role = ${role} WHERE id = ${userId}`;
     await logAudit(me.id, me.username, "member.role", `user:${userId}`, role);
-    await notifyChannel("members", `👔 成員 #${userId} 的角色已變更為 ${role}（由 ${me.display_name} 操作）`).catch(() => {});
   }
   if (body.password !== undefined) {
     if (body.password.length < 6) {
@@ -58,7 +56,6 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       WHERE id = ${userId}`;
     await sql`DELETE FROM sessions WHERE user_id = ${userId}`;
     await logAudit(me.id, me.username, "member.password_reset", `user:${userId}`);
-    await notifyChannel("members", `🔑 ${me.display_name}重設了成員 #${userId} 的密碼`).catch(() => {});
   }
   return NextResponse.json({ ok: true });
 }
@@ -79,6 +76,5 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
     return NextResponse.json({ error: "成員不存在" }, { status: 404 });
   }
   await logAudit(me.id, me.username, "member.delete", `user:${userId}`);
-  await notifyChannel("members", `👋 成員 #${userId} 已由 ${me.display_name} 刪除`).catch(() => {});
   return NextResponse.json({ ok: true });
 }

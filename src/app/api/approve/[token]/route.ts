@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/pg";
 import { getPartByToken } from "@/lib/db";
-import { notifyChannel } from "@/lib/notify";
 import { logAudit } from "@/lib/audit";
 
 type Ctx = { params: Promise<{ token: string }> };
@@ -52,10 +51,5 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     WHERE id = ${part.id}`;
 
   await logAudit(null, "teacher-link", "part.approve", `part:${part.id}`, `${decision}${body?.note ? "；備註：" + body.note : ""}`);
-  await notifyChannel("parts",
-    decision === "approved"
-      ? `✅ 老師已核准零件申請：「${part.name}」× ${part.qty}${part.unit}（預估 $${part.est_price}）`
-      : `❌ 老師駁回零件申請：「${part.name}」${body?.note ? `— 備註：${body.note}` : ""}`
-  );
   return NextResponse.json({ ok: true });
 }
