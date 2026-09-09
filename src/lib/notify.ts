@@ -25,7 +25,25 @@ async function postJson(url: string, payload: unknown, timeoutMs = 2500): Promis
   }
 }
 
-/** 發送 Teams 頻道通知（MessageCard 格式，可附「開啟」按鈕連結） */
+/** 依序嘗試多種 payload：Power Automate 觸發器可能限制 schema，任一 2xx 即成功 */
+async function postAny(
+  url: string,
+  payloads: Record<string, unknown>[],
+  timeoutMs = 2500
+): Promise<{ ok: boolean; status: number | null; message: string }> {
+  let last: number | null = null;
+  for (const payload of payloads) {
+    try {
+      last = await postJson(url, payload, timeoutMs);
+      if (last === 200 || last === 202 || last === 204) return { ok: true, status: last, message: "sent" };
+    } catch {
+      return { ok: false, status: null, message: "unreachable" };
+    }
+  }
+  return { ok: false, status: last, message: `http_${last}` };
+}
+
+/** 發送 Teams 頻道通知（先試 MessageCard 卡，失敗自動改用純文字；兩種都通） */
 export async function notifyTeams(
   hook: TeamsHook,
   title: string,
@@ -35,7 +53,7 @@ export async function notifyTeams(
   const url = await getSettingValue(SETTING_KEY[hook]);
   if (!url) return false;
 
-  const payload: Record<string, unknown> = {
+  const card: Record<string, unknown> = {
     "@type": "MessageCard",
     "@context": "http://schema.org/extensions",
     summary: title,
@@ -43,22 +61,15 @@ export async function notifyTeams(
     sections: [{ activityTitle: title, text }],
   };
   if (link) {
-    payload.potentialAction = [
-      {
-        "@type": "OpenUri",
-        name: "開啟",
-        targets: [{ os: "default", uri: link }],
-      },
+    card.potentialAction = [
+      { "@type": "OpenUri", name: "開啟", targets: [{ os: "default", uri: link }] },
     ];
-    payload.text = `${text}\n\n${link}`;
+    card.text = `${text}\n\n${link}`;
   }
+  const plain = { text: link ? `${title}\n${text}\n${link}` : `${title}\n${text}` };
 
-  try {
-    const status = await postJson(url, payload);
-    return status === 200 || status === 202;
-  } catch {
-    return false;
-  }
+  const r = await postAny(url, [card, plain]);
+  return r.ok;
 }
 
 /** 相容舊呼叫（任務指派等）：有設定 Discord Webhook 才會發，否則靜默不做 */
@@ -87,17 +98,18 @@ export async function testWebhook(
 ): Promise<{ ok: boolean; status: number | null; message: string }> {
   try {
     // Power Automate 冷啟動可能需 5~15 秒，測試按鈕放寬等待（平時通知仍 2.5 秒）
-    const status = await postJson(
+    const r = await postAny(
       url,
-      { text: "🔔 ROV 任務平台測試通知：設定成功，之後相關事件會推到這裡。" },
+      [
+        { "@type": "MessageCard", "@context": "http://schema.org/extensions", summary: "ROV 測試", sections: [{ activityTitle: "🔔 ROV 任務平台測試通知", text: "設定成功，之後審批事件會推到這裡。" }] },
+        { text: "🔔 ROV 任務平台測試通知：設定成功，之後審批事件會推到這裡。" },
+      ],
       15000
     );
-    // Power Automate 收下請求即回 202（Accepted）；隨後流程慢慢執行
-    if (status === 202 || status === 204 || status === 200)
-      return { ok: true, status, message: "sent" };
-    if (status === 404 || status === 401 || status === 403)
-      return { ok: false, status, message: "invalid" };
-    return { ok: false, status, message: `http_${status}` };
+    if (r.ok) return r;
+    if (r.status === 404 || r.status === 401 || r.status === 403)
+      return { ok: false, status: r.status, message: "invalid" };
+    return r;
   } catch {
     return { ok: false, status: null, message: "unreachable" };
   }
