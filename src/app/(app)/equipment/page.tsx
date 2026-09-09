@@ -61,7 +61,7 @@ export default function EquipmentPage() {
     try {
       if (action === "borrow") {
         const due = await prompt({
-          title: `借用「${e.name}」`,
+          title: `${t("借用「")}${e.name}${t("」")}`,
           label: t("預計歸還日（留空表示未定）"),
           type: "date",
         });
@@ -73,8 +73,8 @@ export default function EquipmentPage() {
         toast(t("已登記借用") + `「${e.name}」` + t("，記得按時歸還！"));
       } else if (action === "return") {
         const ok = await confirm({
-          title: `歸還「${e.name}」？`,
-          confirmText: "歸還",
+          title: `${t("歸還「")}${e.name}${t("」？")}`,
+          confirmText: t("歸還"),
         });
         if (!ok) return;
         await api(`/api/equipment/${e.id}`, {
@@ -113,8 +113,8 @@ export default function EquipmentPage() {
   async function remove(e: Equipment) {
     const ok = await confirm({
       title: `${t("刪除設備")}「${e.name}」？`,
-      message: "刪除後無法復原。",
-      confirmText: "刪除",
+      message: t("刪除後無法復原。"),
+      confirmText: t("刪除"),
       danger: true,
     });
     if (!ok) return;

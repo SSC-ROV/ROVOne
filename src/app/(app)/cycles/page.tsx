@@ -123,11 +123,11 @@ export default function CyclesPage() {
       });
       toast(
         action === "approve"
-          ? r.status === "active" ? "" : "已核准，送老師最終審批"
-          : action === "reject" ? "已駁回"
-          : action === "complete" ? "週期已完成，辛苦了！"
-          : action === "marklate" ? "已標記為遲交"
-          : "已重新提交",
+          ? r.status === "active" ? "" : t("已核准，送老師最終審批")
+          : action === "reject" ? t("已駁回")
+          : action === "complete" ? t("週期已完成，辛苦了！")
+          : action === "marklate" ? t("已標記為遲交")
+          : t("已重新提交"),
         "ok"
       );
       await load();
@@ -137,11 +137,11 @@ export default function CyclesPage() {
   }
 
   async function removeCycle(c: Cycle) {
-    const ok = await confirm({ title: `刪除週期「${c.title}」？`, message: "任務不會被刪除，只會解除關聯。", confirmText: "刪除", danger: true });
+    const ok = await confirm({ title: `${t("刪除週期「")}${c.title}${t("」？")}`, message: t("任務不會被刪除，只會解除關聯。"), confirmText: t("刪除"), danger: true });
     if (!ok) return;
     try {
       await api(`/api/cycles/${c.id}`, { method: "DELETE" });
-      toast("已刪除");
+      toast(t("已刪除"));
       await load();
     } catch (err) {
       toast(t((err as Error).message), "err");

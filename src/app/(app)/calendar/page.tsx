@@ -20,10 +20,10 @@ import {
 import { useDialogs } from "@/components/ui/Dialogs";
 import type { EventType, Me, Task, TeamEvent } from "@/lib/types";
 
-const WEEKDAYS = ["一", "二", "三", "四", "五", "六", "日"];
+const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"] as const;
 
 export default function CalendarPage() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { subteams } = useSubteams();
   const { confirm, toast } = useDialogs();
   const [now, setNow] = useState(() => new Date());
@@ -152,7 +152,7 @@ export default function CalendarPage() {
             ‹
           </button>
           <span className="min-w-32 text-center font-semibold">
-            {y} 年 {m + 1} 月
+            {lang === "en" ? `${m + 1}/${y}` : `${y} 年 ${m + 1} 月`}
           </span>
           <button
             className={BTN_GHOST}
@@ -167,7 +167,7 @@ export default function CalendarPage() {
               setSel(today);
             }}
           >
-            今天
+            {t("今天")}
           </button>
         </div>
       </div>
@@ -241,7 +241,7 @@ export default function CalendarPage() {
                     ))}
                     {(data?.events.length ?? 0) + (data?.tasks.length ?? 0) > 3 && (
                       <div className="px-1 text-[11px] text-slate-500">
-                        +{(data!.events.length + data!.tasks.length) - 3} 更多
+                        +{(data!.events.length + data!.tasks.length) - 3} {t("更多")}
                       </div>
                     )}
                   </div>
@@ -285,7 +285,7 @@ export default function CalendarPage() {
                           <button
                             onClick={() => removeEvent(e)}
                             className="text-slate-500 transition hover:text-rose-400"
-                            title="刪除活動"
+                            title={t("刪除活動")}
                           >
                             ✕
                           </button>

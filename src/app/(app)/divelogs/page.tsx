@@ -92,8 +92,8 @@ export default function DiveLogsPage() {
       await api("/api/tasks", {
         method: "POST",
         body: JSON.stringify({
-          title: `驗證：${log.title} 的修正項`,
-          description: `來自水測日誌（${log.date}）\n測試：${log.tested}\n問題：${log.issues}\n修正：${log.fixes}\n待驗證：${log.next_steps}`,
+          title: `${t("驗證：")}${log.title}${t(" 的修正項")}`,
+          description: `${t("來自水測日誌（")}${log.date}${t("）\n測試：")}${log.tested}${t("\n問題：")}${log.issues}${t("\n修正：")}${log.fixes}${t("\n待驗證：")}${log.next_steps}`,
           subteam: "general",
           priority: "high",
           assignee_id: me!.id,
@@ -181,7 +181,7 @@ export default function DiveLogsPage() {
               )}
               {isStaff(me.role) && (
                 <button className="ml-auto text-slate-500 transition hover:text-rose-400" onClick={() => remove(log)}>
-                  刪除
+                  {t("刪除")}
                 </button>
               )}
             </div>

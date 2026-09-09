@@ -167,7 +167,7 @@ export default function PartsPage() {
   async function removePart(p: Part) {
     const ok = await confirm({
       title: `${t("刪除")}「${p.name}」${t("的申請？")}`,
-      confirmText: "刪除",
+      confirmText: t("刪除"),
       danger: true,
     });
     if (!ok) return;
@@ -209,10 +209,10 @@ export default function PartsPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-4">
-        <StatCard label="待老師審批" value={String(pendingCount)} accent="text-amber-300" />
-        <StatCard label="核准後採買中" value={String(buying.length)} accent="text-cyan-300" />
-        <StatCard label="已到貨" value={String(arrived.length)} accent="text-emerald-300" />
-        <StatCard label="花費 / 預估" value={`$${Math.round(totalSpent).toLocaleString()} / $${Math.round(totalEst).toLocaleString()}`} accent="text-slate-200" />
+        <StatCard label={t("待老師審批")} value={String(pendingCount)} accent="text-amber-300" />
+        <StatCard label={t("核准後採買中")} value={String(buying.length)} accent="text-cyan-300" />
+        <StatCard label={t("已到貨")} value={String(arrived.length)} accent="text-emerald-300" />
+        <StatCard label={t("花費 / 預估")} value={`$${Math.round(totalSpent).toLocaleString()} / $${Math.round(totalEst).toLocaleString()}`} accent="text-slate-200" />
       </div>
 
       {showForm && (
@@ -313,7 +313,7 @@ export default function PartsPage() {
 
                 {canDelete && (
                   <button className="ml-auto text-xs text-slate-500 transition hover:text-rose-400" onClick={() => removePart(p)}>
-                    刪除
+                    {t("刪除")}
                   </button>
                 )}
               </div>

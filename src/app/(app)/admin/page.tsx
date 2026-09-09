@@ -93,7 +93,7 @@ export default function AdminPage() {
     );
   }
   if (!me || !settings) {
-    return <p className="py-20 text-center text-sm text-slate-500">載入中…</p>;
+    return <p className="py-20 text-center text-sm text-slate-500">{t("載入中…")}</p>;
   }
   if (!isStaff(me.role)) {
     return (
@@ -233,8 +233,8 @@ export default function AdminPage() {
   async function removeMember(m: Member) {
     const ok = await confirm({
       title: `${t("刪除成員")}「${m.display_name}」（${m.username}）？`,
-      message: "他負責的任務會變成未指派。",
-      confirmText: "刪除",
+      message: t("他負責的任務會變成未指派。"),
+      confirmText: t("刪除"),
       danger: true,
     });
     if (!ok) return;
@@ -287,7 +287,7 @@ export default function AdminPage() {
           </div>
           <div>
             <label className="mb-1 block text-sm text-slate-400">
-              比賽日期（首頁倒數用）
+              {t("比賽日期（首頁倒數用）")}
             </label>
             <input
               type="date"
@@ -407,7 +407,7 @@ export default function AdminPage() {
             <input
               className={INPUT_CLS}
               type="password"
-              placeholder="（從 Google Cloud 複製的 Client Secret）"
+              placeholder={t("（從 Google Cloud 複製的 Client Secret）")}
               value={googleClientSecret}
               onChange={(e) => setGoogleClientSecret(e.target.value)}
             />

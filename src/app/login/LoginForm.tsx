@@ -72,7 +72,7 @@ function LoginInner({ googleEnabled }: { googleEnabled: boolean }) {
 
         {error && (
           <p className="mb-4 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm leading-6 text-rose-300">
-            {error}
+            {t(error)}
           </p>
         )}
 

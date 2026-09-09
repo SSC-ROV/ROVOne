@@ -173,6 +173,7 @@ function PromptModal({
   opts: PromptOpts & { resolve: (s: string | null) => void };
   onClose: (s: string | null) => void;
 }) {
+  const { t } = useI18n();
   const [value, setValue] = useState(opts.initial ?? "");
   return (
     <Modal onClose={() => onClose(null)}>
@@ -191,10 +192,10 @@ function PromptModal({
       />
       <div className="mt-5 flex justify-end gap-2">
         <button className={BTN_GHOST} onClick={() => onClose(null)}>
-          取消
+          {t("取消")}
         </button>
         <button className={BTN} onClick={() => onClose(value)}>
-          確定
+          {t("確定")}
         </button>
       </div>
     </Modal>
