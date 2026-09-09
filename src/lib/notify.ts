@@ -68,7 +68,8 @@ export async function notifyTeams(
   }
   const plain = { text: link ? `${title}\n${text}\n${link}` : `${title}\n${text}` };
 
-  const r = await postAny(url, [card, plain]);
+  // 8 秒預算：Power Automate 流程冷啟動可能要 5~15 秒（配合 after() 背景執行，不阻塞回應）
+  const r = await postAny(url, [card, plain], 8000);
   return r.ok;
 }
 

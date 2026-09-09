@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { sql } from "@/lib/pg";
 import { getSessionUser } from "@/lib/auth";
 import { isStaff } from "@/lib/roles";
@@ -57,10 +57,10 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
         WHERE id = ${cycle.id}`;
       await logAudit(user.id, user.username, "cycle.approve", `cycle:${cycle.id}`, `${cycle.title} → ${next}`);
       if (next === "pending_teacher") {
-        notifyTeams("teacher_cycle",
+        after(() => notifyTeams("teacher_cycle",
           `📋 週期「${cycle.title}」待老師批准`,
           `隊長 ${user.display_name} 已核准，進入最終審批`,
-          `${origin}/cycles`).catch(() => {});
+          `${origin}/cycles`));
       }
       return NextResponse.json({ ok: true, status: next });
     }

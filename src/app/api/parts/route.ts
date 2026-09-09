@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { sql } from "@/lib/pg";
 import { getSessionUser } from "@/lib/auth";
 import { notifyTeams } from "@/lib/notify";
@@ -30,10 +30,10 @@ export async function POST(req: NextRequest) {
             ${String(body?.subteam ?? "general")}, 'pending', ${user.id}, ${token},
             now() + interval '72 hours')`;
   const origin = req.nextUrl.origin;
-  notifyTeams("teacher_parts",
+  after(() => notifyTeams("teacher_parts",
     `🛒 新零件申請「${name}」待批准`,
     `申請人：${user.display_name}｜數量：${Math.max(1, Number(body?.qty) || 1)}｜預估：$${Math.max(0, Number(body?.est_price) || 0)}`,
-    `${origin}/approve/${token}`).catch(() => {});
+    `${origin}/approve/${token}`));
   return NextResponse.json({ ok: true });
 }
 

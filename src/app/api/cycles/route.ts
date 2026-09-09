@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { sql } from "@/lib/pg";
 import { getSessionUser } from "@/lib/auth";
 import { isStaff } from "@/lib/roles";
@@ -98,16 +98,17 @@ export async function POST(req: NextRequest) {
   }
 
   const origin = req.nextUrl.origin;
+  // after()：回應先返回，通知在背景發送（Power Automate 冷啟動慢也不拖慢提案）
   if (status === "pending_leader") {
-    notifyTeams("leader_cycle",
+    after(() => notifyTeams("leader_cycle",
       `📋 新週期提案「${title}」待隊長批准`,
       `提案人：${user.display_name}｜期間：${start} ~ ${end}`,
-      `${origin}/cycles`).catch(() => {});
+      `${origin}/cycles`));
   } else if (status === "pending_teacher") {
-    notifyTeams("teacher_cycle",
+    after(() => notifyTeams("teacher_cycle",
       `📋 新週期提案「${title}」待老師批准`,
       `提案人：${user.display_name}｜期間：${start} ~ ${end}`,
-      `${origin}/cycles`).catch(() => {});
+      `${origin}/cycles`));
   }
 
   return NextResponse.json({ ok: true, id: cycleId });
