@@ -278,10 +278,26 @@ export default function PartsPage() {
                 {p.arrived_at && <span>{t("到貨")}：{fmtMD(p.arrived_at.slice(0, 10))}</span>}
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                {p.status === "pending" && isStaff(me.role) && p.approve_token && (
-                  <button className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-sm text-amber-300 transition hover:bg-amber-500/20" onClick={() => copyApproveLink(p)}>
-                    {t("複製老師審批連結")}
-                  </button>
+                {p.status === "pending" && isStaff(me.role) && (
+                  <>
+                    <button
+                      className="rounded-lg bg-emerald-500 px-5 py-2 text-sm font-bold text-white shadow transition hover:bg-emerald-400"
+                      onClick={() => decide(p, "approved")}
+                    >
+                      ✓ {t("批准")}
+                    </button>
+                    <button
+                      className="rounded-lg bg-rose-500 px-5 py-2 text-sm font-bold text-white shadow transition hover:bg-rose-400"
+                      onClick={() => decide(p, "rejected")}
+                    >
+                      ✕ {t("駁回")}
+                    </button>
+                    {p.approve_token && (
+                      <button className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-sm text-amber-300 transition hover:bg-amber-500/20" onClick={() => copyApproveLink(p)}>
+                        {t("複製老師審批連結")}
+                      </button>
+                    )}
+                  </>
                 )}
                 {isStaff(me.role) && p.status !== "pending" && (
                   <select
@@ -294,9 +310,7 @@ export default function PartsPage() {
                     ))}
                   </select>
                 )}
-                {isStaff(me.role) && p.status === "pending" && (
-                  <span className="text-xs text-slate-500">({t("等老師按連結核准；或先改狀態繞過")}：<button className="text-cyan-300 hover:underline" onClick={() => setStatus(p, "approved")}>{t("直接標記已核准")}</button>)</span>
-                )}
+
                 {canDelete && (
                   <button className="ml-auto text-xs text-slate-500 transition hover:text-rose-400" onClick={() => removePart(p)}>
                     刪除
