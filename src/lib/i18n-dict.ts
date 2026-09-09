@@ -365,4 +365,7 @@ export const DICT: Record<string, string> = {
   "機構": "Mechanism",
   "其他": "Other",
   "個": "pcs",
+  "可借用": "Available",
+  "借出中": "Borrowed",
+  "維修中": "Under repair",
 };

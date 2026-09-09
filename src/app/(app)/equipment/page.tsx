@@ -164,7 +164,7 @@ export default function EquipmentPage() {
                   <td className="px-4 py-3 text-slate-400">{t(e.category)}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${st.chip}`}>
-                      {st.label}
+                      {t(st.label)}
                     </span>
                   </td>
                   <td className="px-4 py-3">{e.borrower_name ?? <span className="text-slate-600">—</span>}</td>
