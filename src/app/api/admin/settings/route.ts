@@ -20,6 +20,9 @@ async function currentSettings() {
     discord_webhook_cycle_progress: (await getSettingValue("discord_webhook_cycle_progress")) ?? "",
     discord_webhook_parts: (await getSettingValue("discord_webhook_parts")) ?? "",
     discord_webhook_members: (await getSettingValue("discord_webhook_members")) ?? "",
+    teams_webhook_teacher_cycle: (await getSettingValue("teams_webhook_teacher_cycle")) ?? "",
+    teams_webhook_leader_cycle: (await getSettingValue("teams_webhook_leader_cycle")) ?? "",
+    teams_webhook_teacher_parts: (await getSettingValue("teams_webhook_teacher_parts")) ?? "",
     subteams: await getSubteams(),
   };
 }
@@ -62,6 +65,9 @@ export async function PUT(req: NextRequest) {
     "discord_webhook_cycle_progress",
     "discord_webhook_parts",
     "discord_webhook_members",
+    "teams_webhook_teacher_cycle",
+    "teams_webhook_leader_cycle",
+    "teams_webhook_teacher_parts",
   ] as const) {
     if (body?.[key] !== undefined) {
       await setSetting(key, String(body[key]).trim());

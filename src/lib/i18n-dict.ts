@@ -1,4 +1,9 @@
 export const DICT: Record<string, string> = {
+  "週期審批頻道（老師收到）": "Cycle review channel (teacher)", "週期審批頻道（隊長收到）": "Cycle review channel (leader)",
+  "零件審批頻道（老師收到）": "Parts review channel (teacher)",
+  "設定 Microsoft Teams Webhook 後，審批事件會自動推到對應的頻道": "With Teams webhooks set, approval events post to the matching channel",
+  "Teams 頻道 → 連接器 → 傳入 Webhook → 複製網址": "Teams channel → Connectors → Incoming Webhook → copy URL",
+  "發送測試通知（測試第一個頻道）": "Send test (first channel)",
   "已建立任務": "Task created", "，記得到看板補截止日": " — add a due date on the board",
   "登入方式": "Sign-in method", "此帳號使用學校 Google 帳號登入，無需設定密碼。": "This account signs in with the school Google account. No password needed.",
   "目前沒有進行中的開發週期，請先在「開發週期」頁提案": "No active development cycle right now. Propose one on the Development Cycles page first.",
