@@ -27,12 +27,19 @@ export function useI18n(): I18n {
 }
 
 export default function I18nProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLangState] = useState<Lang>(() => {
-    if (typeof window === "undefined") return "zh";
+  // 初值固定 "zh"（與 SSR 一致，避免水合不匹配）；掛載後才讀 localStorage／瀏覽器語言再切換
+  const [lang, setLangState] = useState<Lang>("zh");
+
+  useEffect(() => {
     const saved = localStorage.getItem("rov_lang");
-    if (saved === "en" || saved === "zh") return saved;
-    return (navigator.language || "").toLowerCase().startsWith("en") ? "en" : "zh";
-  });
+    const initial: Lang =
+      saved === "en" || saved === "zh"
+        ? saved
+        : (navigator.language || "").toLowerCase().startsWith("en")
+          ? "en"
+          : "zh";
+    setLangState(initial);
+  }, []);
 
   useEffect(() => {
     setLangProxy(lang);

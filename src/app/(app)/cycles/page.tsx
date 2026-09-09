@@ -54,6 +54,8 @@ export default function CyclesPage() {
     return <p className="py-20 text-center text-sm text-slate-500">{t("載入中…")}</p>;
   }
 
+  // today 必須在下方 filter 之前宣告（approvedNotStarted 會用到，否則暫時性死區 ReferenceError）
+  const today = todayStr();
   const pending = cycles.filter((c) => c.status === "pending_leader" || c.status === "pending_teacher");
   const active = cycles.filter((c) => c.status === "active");
   const approvedNotStarted = cycles.filter(
@@ -61,7 +63,6 @@ export default function CyclesPage() {
   );
   const late = cycles.filter((c) => c.status === "late");
   const history = cycles.filter((c) => c.status === "completed" || c.status === "rejected");
-  const today = todayStr();
   const myRole = me.role;
   const meId = me.id;
 
