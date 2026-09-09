@@ -57,10 +57,10 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
         WHERE id = ${cycle.id}`;
       await logAudit(user.id, user.username, "cycle.approve", `cycle:${cycle.id}`, `${cycle.title} → ${next}`);
       if (next === "pending_teacher") {
-        await notifyTeams("teacher_cycle",
+        notifyTeams("teacher_cycle",
           `📋 週期「${cycle.title}」待老師批准`,
           `隊長 ${user.display_name} 已核准，進入最終審批`,
-          `${origin}/cycles`);
+          `${origin}/cycles`).catch(() => {});
       }
       return NextResponse.json({ ok: true, status: next });
     }

@@ -30,10 +30,10 @@ export async function POST(req: NextRequest) {
             ${String(body?.subteam ?? "general")}, 'pending', ${user.id}, ${token},
             now() + interval '72 hours')`;
   const origin = req.nextUrl.origin;
-  await notifyTeams("teacher_parts",
+  notifyTeams("teacher_parts",
     `🛒 新零件申請「${name}」待批准`,
     `申請人：${user.display_name}｜數量：${Math.max(1, Number(body?.qty) || 1)}｜預估：$${Math.max(0, Number(body?.est_price) || 0)}`,
-    `${origin}/approve/${token}`);
+    `${origin}/approve/${token}`).catch(() => {});
   return NextResponse.json({ ok: true });
 }
 

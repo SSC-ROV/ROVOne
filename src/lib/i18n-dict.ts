@@ -1,4 +1,6 @@
 export const DICT: Record<string, string> = {
+  "以下三個網址就是一組「儲存鍵」：貼上 Teams 或 Power Automate 的 Webhook 網址，按下方「儲存設定」後即永久保存；審批事件會自動發到對應頻道": "These three URLs are the storage fields: paste a Teams or Power Automate webhook URL each, then press Save Settings — approval events will post to the matching channel",
+  "Teams 或 Power Automate 的 Webhook 網址": "Teams or Power Automate webhook URL",
   "週期審批頻道（老師收到）": "Cycle review channel (teacher)", "週期審批頻道（隊長收到）": "Cycle review channel (leader)",
   "零件審批頻道（老師收到）": "Parts review channel (teacher)",
   "設定 Microsoft Teams Webhook 後，審批事件會自動推到對應的頻道": "With Teams webhooks set, approval events post to the matching channel",

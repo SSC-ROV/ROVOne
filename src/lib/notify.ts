@@ -8,10 +8,10 @@ const SETTING_KEY: Record<TeamsHook, string> = {
   teacher_parts: "teams_webhook_teacher_parts",
 };
 
-async function postJson(url: string, payload: unknown): Promise<number | null> {
-  // 逾時上限 2.5 秒：通知絕不拖慢使用者操作（網路被擋時快速放棄）
+async function postJson(url: string, payload: unknown, timeoutMs = 2500): Promise<number | null> {
+  // 預設逾時 2.5 秒：通知絕不拖慢使用者操作（網路被擋時快速放棄）
   const ac = new AbortController();
-  const timer = setTimeout(() => ac.abort(), 2500);
+  const timer = setTimeout(() => ac.abort(), timeoutMs);
   try {
     const res = await fetch(url, {
       method: "POST",
@@ -86,9 +86,11 @@ export async function testWebhook(
   url: string
 ): Promise<{ ok: boolean; status: number | null; message: string }> {
   try {
+    // Power Automate 冷啟動可能需 5~15 秒，測試按鈕放寬等待（平時通知仍 2.5 秒）
     const status = await postJson(
       url,
-      { text: "🔔 ROV 任務平台測試通知：設定成功，之後相關事件會推到這裡。" }
+      { text: "🔔 ROV 任務平台測試通知：設定成功，之後相關事件會推到這裡。" },
+      15000
     );
     if (status === 204 || status === 200) return { ok: true, status, message: "sent" };
     if (status === 404 || status === 401 || status === 403)

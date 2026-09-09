@@ -99,15 +99,15 @@ export async function POST(req: NextRequest) {
 
   const origin = req.nextUrl.origin;
   if (status === "pending_leader") {
-    await notifyTeams("leader_cycle",
+    notifyTeams("leader_cycle",
       `📋 新週期提案「${title}」待隊長批准`,
       `提案人：${user.display_name}｜期間：${start} ~ ${end}`,
-      `${origin}/cycles`);
+      `${origin}/cycles`).catch(() => {});
   } else if (status === "pending_teacher") {
-    await notifyTeams("teacher_cycle",
+    notifyTeams("teacher_cycle",
       `📋 新週期提案「${title}」待老師批准`,
       `提案人：${user.display_name}｜期間：${start} ~ ${end}`,
-      `${origin}/cycles`);
+      `${origin}/cycles`).catch(() => {});
   }
 
   return NextResponse.json({ ok: true, id: cycleId });
