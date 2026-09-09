@@ -5,6 +5,9 @@ import { getSessionUser } from "@/lib/auth";
 import { notifyTeams } from "@/lib/notify";
 import type { Part } from "@/lib/types";
 
+// after() 背景通知要等 Power Automate 冷啟動，需要更長的函數壽命
+export const maxDuration = 60;
+
 export async function GET() {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "未登入" }, { status: 401 });

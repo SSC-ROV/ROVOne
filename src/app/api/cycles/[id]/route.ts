@@ -5,6 +5,9 @@ import { isStaff } from "@/lib/roles";
 import { notifyTeams } from "@/lib/notify";
 import { logAudit } from "@/lib/audit";
 
+// after() 背景通知要等 Power Automate 冷啟動，需要更長的函數壽命
+export const maxDuration = 60;
+
 type Ctx = { params: Promise<{ id: string }> };
 
 type CycleRow = {

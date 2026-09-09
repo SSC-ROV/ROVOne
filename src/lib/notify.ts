@@ -68,8 +68,9 @@ export async function notifyTeams(
   }
   const plain = { text: link ? `${title}\n${text}\n${link}` : `${title}\n${text}` };
 
-  // 8 秒預算：Power Automate 流程冷啟動可能要 5~15 秒（配合 after() 背景執行，不阻塞回應）
-  const r = await postAny(url, [card, plain], 8000);
+  // 30 秒預算：Power Automate 冷啟動 5~15 秒，冷流程首次觸發可能超過 8 秒
+  // （after() 背景執行不阻塞回應；路由需 export const maxDuration = 60 才有足夠函數壽命）
+  const r = await postAny(url, [card, plain], 30000);
   return r.ok;
 }
 
