@@ -161,7 +161,7 @@ export default function EquipmentPage() {
                     {e.name}
                     {e.note && <p className="text-xs text-slate-500">{e.note}</p>}
                   </td>
-                  <td className="px-4 py-3 text-slate-400">{e.category}</td>
+                  <td className="px-4 py-3 text-slate-400">{t(e.category)}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${st.chip}`}>
                       {st.label}
@@ -214,7 +214,7 @@ export default function EquipmentPage() {
           <input className={INPUT_CLS} placeholder={t("設備名稱，例如：T200 備用推進器")} value={name} onChange={(e) => setName(e.target.value)} />
           <select className={INPUT_CLS} value={category} onChange={(e) => setCategory(e.target.value)}>
             {EQUIPMENT_CATEGORIES.map((c) => (
-              <option key={c} value={c}>{c}</option>
+              <option key={c} value={c}>{t(c)}</option>
             ))}
           </select>
           <input className={INPUT_CLS} placeholder={t("備註（序號、位置…選填）")} value={note} onChange={(e) => setNote(e.target.value)} />

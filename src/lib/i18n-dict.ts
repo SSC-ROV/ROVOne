@@ -356,4 +356,13 @@ export const DICT: Record<string, string> = {
   "Google 回傳發生錯誤，請重試；若持續出現請聯絡隊長。": "Google returned an error — please try again; if it persists, contact the leader.",
   "你的 Google 帳號電子郵件尚未驗證，請先在 Gmail 完成驗證。": "Your Google account email isn't verified — verify it in Gmail first.",
   "這個 Google 帳號不屬於學校網域，無法登入（只允許學校的 @stu.ssc.edu.hk / @ssc.edu.hk 帳號）。": "This Google account isn't in the school domain (@stu.ssc.edu.hk / @ssc.edu.hk only).",
+  "沒有任務截止": "No task deadlines",
+  "推進器": "Thrusters",
+  "相機": "Cameras",
+  "纜線": "Cables",
+  "電子": "Electronics",
+  "工具": "Tools",
+  "機構": "Mechanism",
+  "其他": "Other",
+  "個": "pcs",
 };

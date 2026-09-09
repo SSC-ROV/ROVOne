@@ -12,7 +12,7 @@ import { useDialogs } from "@/components/ui/Dialogs";
 import type { Me, Part, PartStatus } from "@/lib/types";
 
 export default function PartsPage() {
-  const { t } = useI18n();
+  const { lang, t } = useI18n();
   const { subteams } = useSubteams();
   const { confirm, prompt, toast } = useDialogs();
   const [parts, setParts] = useState<Part[] | null>(null);
@@ -26,7 +26,7 @@ export default function PartsPage() {
   const [spec, setSpec] = useState("");
   const [link, setLink] = useState("");
   const [qty, setQty] = useState("1");
-  const [unit, setUnit] = useState("個");
+  const [unit, setUnit] = useState(lang === "en" ? "pcs" : "個");
   const [estPrice, setEstPrice] = useState("");
   const [purpose, setPurpose] = useState("");
   const [subteam, setSubteam] = useState("general");
@@ -254,7 +254,7 @@ export default function PartsPage() {
                   {st.label}
                 </span>
                 <span className="font-bold">{p.name}</span>
-                <span className="text-sm text-slate-400">× {p.qty} {p.unit}</span>
+                <span className="text-sm text-slate-400">× {p.qty} {t(p.unit)}</span>
                 <span className={`${CHIP} ${SUBTEAM_CLS[p.subteam] ?? ""}`}>{subteamLabel(p.subteam)}</span>
                 <span className="ml-auto text-sm tabular-nums">
                   {p.actual_price != null ? (

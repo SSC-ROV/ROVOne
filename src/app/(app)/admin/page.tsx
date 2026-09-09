@@ -593,12 +593,13 @@ function WebhookRow({
   value: string;
   onChange: (v: string) => void;
 }) {
+  const { t } = useI18n();
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span className="w-64 shrink-0 text-sm text-slate-400">{label}</span>
       <input
         className="min-w-64 flex-1 rounded-lg border border-slate-700 bg-slate-800/80 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-500 focus:outline-none"
-        placeholder="https://…（Teams 或 Power Automate 的 Webhook 網址）"
+        placeholder={`https://…（${t("Teams 或 Power Automate 的 Webhook 網址")}）`}
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />

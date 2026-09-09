@@ -298,7 +298,7 @@ export default function CalendarPage() {
               <div>
                 <p className="mb-1 text-xs font-semibold text-slate-500">{t("任務截止")}</p>
                 {selData.tasks.length === 0 ? (
-                  <p className="text-sm text-slate-500">沒有{t("任務截止")}</p>
+                  <p className="text-sm text-slate-500">{t("沒有任務截止")}</p>
                 ) : (
                   <ul className="space-y-1.5">
                     {selData.tasks.map((t) => {
