@@ -2,6 +2,7 @@
 
 html {
   color-scheme: dark;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -29,4 +30,47 @@ body {
 }
 ::-webkit-scrollbar-track {
   background: transparent;
+}
+
+/* ── 觸控／iPad 適配 ─────────────────────────────── */
+
+/* 去除觸控高亮；可點擊元素消除雙擊縮放延遲 */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+a,
+button,
+[role="button"],
+select,
+label,
+summary {
+  touch-action: manipulation;
+}
+
+/* 觸控裝置：表單控制項不小於 44pt 可點面積；輸入框 16px 起（防 iOS 聚焦自動放大） */
+@media (pointer: coarse) {
+  button,
+  select {
+    min-height: 44px;
+  }
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* App 殼／瀏覽器安全區（劉海、Home 指示條） */
+@media (viewport-fit: cover) {
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* 平板橫屏（≥1024px 寬的觸控裝置）：頂欄緊湊，一屏容納更多資訊 */
+@media (pointer: coarse) and (min-width: 1024px) {
+  table {
+    font-size: 0.9rem;
+  }
 }
