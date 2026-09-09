@@ -92,10 +92,12 @@ export async function testWebhook(
       { text: "🔔 ROV 任務平台測試通知：設定成功，之後相關事件會推到這裡。" },
       15000
     );
-    if (status === 204 || status === 200) return { ok: true, status, message: "sent" };
+    // Power Automate 收下請求即回 202（Accepted）；隨後流程慢慢執行
+    if (status === 202 || status === 204 || status === 200)
+      return { ok: true, status, message: "sent" };
     if (status === 404 || status === 401 || status === 403)
       return { ok: false, status, message: "invalid" };
-    return { ok: false, status, message: "unexpected" };
+    return { ok: false, status, message: `http_${status}` };
   } catch {
     return { ok: false, status: null, message: "unreachable" };
   }

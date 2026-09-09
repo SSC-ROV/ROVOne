@@ -148,18 +148,20 @@ export default function AdminPage() {
 
   async function testNotify() {
     try {
-      const r = await api<{ sent: boolean; reason?: string }>("/api/admin/settings/test-notify", {
+      const r = await api<{ sent: boolean; reason?: string; status?: number | null }>("/api/admin/settings/test-notify", {
         method: "POST",
         body: JSON.stringify({ webhook }),
       });
       if (r.sent) {
-        toast(t("測試通知已發送到 Discord，去頻道看看！（網址已自動保存）"), "ok");
+        toast(t("✔ 測試成功！查看 Teams 頻道是否有訊息（Power Automate 可能需等 5–15 秒）"), "ok");
       } else if (r.reason === "invalid") {
-        toast(t("Discord 說這個網址無效：請回 Discord 頻道 → 整合 → Webhook，重新「Copy Webhook URL」"), "err");
+        toast(t("網址無效（Discord/Teams 回 404/401），請重新複製完整網址"), "err");
       } else if (r.reason === "unreachable") {
-        toast(t("這台伺服器連不上 Discord（可能被網路防火牆擋住）；正式站 rov.sscrov.com 會從 Vercel 發送，請到那裡再測一次"), "err");
+        toast(t("連不上該網址（網路被擋或網址不可達）"), "err");
       } else if (r.reason === "empty") {
         toast(t("請先貼上 Webhook 網址"), "err");
+      } else if (r.reason?.startsWith("http_")) {
+        toast(t("對方回傳 HTTP ") + (r.status ?? "") + t("（202=已接收但流程仍在跑也算成功；其他碼請檢查 Power Automate 流程的「回應」步驟）"), "err");
       } else {
         toast(t("測試失敗，請確認網址"), "err");
       }
