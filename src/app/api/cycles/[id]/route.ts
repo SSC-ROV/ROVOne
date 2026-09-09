@@ -4,6 +4,7 @@ import { getSessionUser } from "@/lib/auth";
 import { isStaff } from "@/lib/roles";
 import { notifyTeams } from "@/lib/notify";
 import { logAudit } from "@/lib/audit";
+import { pushToUsers, roleUserIds } from "@/lib/push";
 
 // after() 背景通知要等 Power Automate 冷啟動，需要更長的函數壽命
 export const maxDuration = 60;
@@ -64,6 +65,17 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
           `📋 週期「${cycle.title}」待老師批准`,
           `隊長 ${user.display_name} 已核准，進入最終審批`,
           `${origin}/cycles`));
+        after(async () => {
+          await pushToUsers([cycle.proposer_id],
+            "✅ 你的週期已被隊長批准",
+            `「${cycle.title}」進入老師最終審批`,
+            "/cycles", user.id);
+          const teachers = await roleUserIds("teacher");
+          await pushToUsers(teachers,
+            "📋 有週期待你最終審批",
+            `「${cycle.title}」由隊長 ${user.display_name} 核准`,
+            "/cycles", user.id);
+        });
       }
       return NextResponse.json({ ok: true, status: next });
     }
@@ -76,6 +88,10 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
                decided_note = ${String(body.note ?? "").trim()}
         WHERE id = ${cycle.id}`;
       await logAudit(user.id, user.username, "cycle.approve", `cycle:${cycle.id}`, `${cycle.title} → approved`);
+      after(() => pushToUsers([cycle.proposer_id],
+        "🎉 你的週期已獲老師核准",
+        `「${cycle.title}」將在開始日自動開始`,
+        "/cycles", user.id));
       return NextResponse.json({ ok: true, status: "approved" });
     }
     return NextResponse.json({ error: "這個狀態不能審批" }, { status: 400 });
@@ -96,6 +112,10 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
              decided_note = ${String(body.note ?? "").trim()}
       WHERE id = ${cycle.id}`;
     await logAudit(user.id, user.username, "cycle.reject", `cycle:${cycle.id}`, cycle.title);
+    after(() => pushToUsers([cycle.proposer_id],
+      "❌ 你的週期被駁回",
+      `「${cycle.title}」${String(body?.note ?? "").trim() || "請查看駁回原因或修改後重新提交"}`,
+      "/cycles", user.id));
     return NextResponse.json({ ok: true, status: "rejected" });
   }
 

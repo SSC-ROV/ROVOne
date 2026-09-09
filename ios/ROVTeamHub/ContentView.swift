@@ -7,6 +7,31 @@ final class WebViewModel: ObservableObject {
     let home = URL(string: "https://rov.sscrov.com")!
 }
 
+/// 原生 ↔ 網頁橋：把 APNs 設備令牌交給頁面（頁面再以登入者身分上報伺服器）
+final class PushBridge {
+    static let shared = PushBridge()
+    weak var webView: WKWebView?
+    var pendingToken: String?
+
+    func deliver(token: String) {
+        pendingToken = token
+        send(token: token)
+    }
+
+    /// 頁面每次載入完成都重發一次（SPA 導航或刷新後 window 變數會重置）
+    func resendIfPending() {
+        guard let token = pendingToken else { return }
+        send(token: token)
+    }
+
+    private func send(token: String) {
+        webView?.evaluateJavaScript(
+            "window.__setPushToken && window.__setPushToken(\"\(token)\")",
+            completionHandler: nil
+        )
+    }
+}
+
 struct AppWebView: UIViewRepresentable {
     @ObservedObject var model: WebViewModel
 
@@ -16,12 +41,29 @@ struct AppWebView: UIViewRepresentable {
         let config = WKWebViewConfiguration()
         // 預設資料倉庫：cookie 持久化，登入一次之後不用再登
         config.websiteDataStore = .default()
+        // 網頁端接收設備令牌的函式（收到後帶著 session cookie 上報 /api/push/register）
+        let pushScript = WKUserScript(
+            source: """
+            window.__setPushToken = function(t) {
+              fetch('/api/push/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: t })
+              });
+            };
+            """,
+            injectionTime: .atDocumentEnd,
+            forMainFrameOnly: true
+        )
+        config.userContentController.addUserScript(pushScript)
+
         let web = WKWebView(frame: .zero, configuration: config)
         web.navigationDelegate = context.coordinator
         web.allowsBackForwardNavigationGestures = true
         web.isOpaque = false
         web.backgroundColor = UIColor(red: 0.008, green: 0.024, blue: 0.09, alpha: 1) // #020617
         web.scrollView.backgroundColor = web.backgroundColor
+        PushBridge.shared.webView = web
 
         // 下拉重新整理
         let refresh = UIRefreshControl()
@@ -78,6 +120,7 @@ struct AppWebView: UIViewRepresentable {
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             refreshControl?.endRefreshing()
             model.progress = 1
+            PushBridge.shared.resendIfPending()
         }
 
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
@@ -102,6 +145,7 @@ struct AppWebView: UIViewRepresentable {
 
 struct ContentView: View {
     @StateObject private var model = WebViewModel()
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -115,6 +159,9 @@ struct ContentView: View {
                     .animation(.easeInOut(duration: 0.15), value: model.progress)
                     .zIndex(1)
             }
+        }
+        .onAppear {
+            appDelegate.requestPushPermission()
         }
     }
 }

@@ -4,6 +4,7 @@ import { getSessionUser } from "@/lib/auth";
 import { isStaff } from "@/lib/roles";
 import { notifyTeams } from "@/lib/notify";
 import type { Cycle, CycleMemberRef } from "@/lib/types";
+import { pushToUsers, roleUserIds } from "@/lib/push";
 
 // after() 背景通知要等 Power Automate 冷啟動，需要更長的函數壽命
 export const maxDuration = 60;
@@ -112,6 +113,21 @@ export async function POST(req: NextRequest) {
       `📋 新週期提案「${title}」待老師批准`,
       `提案人：${user.display_name}｜期間：${start} ~ ${end}`,
       `${origin}/cycles`));
+  }
+  {
+    const proposer = user.display_name;
+    const summary = `「${title}」（${start} ~ ${end}）由 ${proposer} 提出`;
+    if (status === "pending_leader") {
+      after(async () => {
+        const leaders = await roleUserIds("leader");
+        await pushToUsers(leaders, "📋 有新的週期提案待你審批", summary, "/cycles", user.id);
+      });
+    } else if (status === "pending_teacher") {
+      after(async () => {
+        const teachers = await roleUserIds("teacher");
+        await pushToUsers(teachers, "📋 有新的週期提案待老師審批", summary, "/cycles", user.id);
+      });
+    }
   }
 
   return NextResponse.json({ ok: true, id: cycleId });

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse, after } from "next/server";
 import { sql } from "@/lib/pg";
 import { getSessionUser } from "@/lib/auth";
 import { notifyTeams } from "@/lib/notify";
+import { pushToUsers, roleUserIds } from "@/lib/push";
 import type { Part } from "@/lib/types";
 
 // after() 背景通知要等 Power Automate 冷啟動，需要更長的函數壽命
@@ -37,6 +38,15 @@ export async function POST(req: NextRequest) {
     `🛒 新零件申請「${name}」待批准`,
     `申請人：${user.display_name}｜數量：${Math.max(1, Number(body?.qty) || 1)}｜預估：$${Math.max(0, Number(body?.est_price) || 0)}`,
     `${origin}/approve/${token}`));
+  const qty = Math.max(1, Number(body?.qty) || 1);
+  const est = Math.max(0, Number(body?.est_price) || 0);
+  after(async () => {
+    const teachers = await roleUserIds("teacher");
+    await pushToUsers(teachers,
+      "🛒 有一份新的零件需求待批准",
+      `「${name}」× ${qty}（預估 $${est}）由 ${user.display_name} 提出`,
+      "/parts", user.id);
+  });
   return NextResponse.json({ ok: true });
 }
 

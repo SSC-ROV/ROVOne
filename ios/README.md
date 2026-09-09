@@ -24,6 +24,31 @@
 
 改任何東西後：把 `MARKETING_VERSION`（目前 1.0.0）遞增 → 重新 Archive → Upload。TestFlight 舊版會自動提示更新。
 
+## 個人化推送通知（APNs）
+
+App 會請求通知權限並註冊設備令牌；令牌以登入者身分上報到 `push_tokens` 表。事件發生時伺服器按用戶定向推送：
+
+| 事件 | 誰收到 |
+|---|---|
+| 有新的週期提案待審批 | 隊長（或老師，視層級） |
+| 你的週期已被隊長批准 | 提案人 |
+| 有週期待你最終審批 | 老師 |
+| 你的週期已獲老師核准 / 被駁回 | 提案人 |
+| 有一份新的零件需求待批准 | 老師 |
+| 你的零件申請已被批准 / 被駁回 | 申請人 |
+
+**啟用推送只需一次設定（需要付費開發者帳號）**：
+
+1. [developer.apple.com](https://developer.apple.com/account/resources/authkeys/list) → Keys → **+** → 勾選 **Apple Push Notifications service (APNs)** → 下載 `.p8` 金鑰（只能下載一次，妥善保存），記下頁面上的 **Key ID**
+2. Membership 頁面記下 **Team ID**（10 碼）
+3. Vercel 專案 → Settings → Environment Variables，加入三個值後 **Redeploy**：
+   - `APNS_KEY_ID` = 金鑰的 Key ID
+   - `APNS_TEAM_ID` = 你的 Team ID
+   - `APNS_KEY_B64` = .p8 檔案內容的 Base64（終端機執行 `base64 -i AuthKey_XXXXXXXXXX.p8 | pbcopy` 直接複製）
+4. 測試：真機（模擬器收不到遠端推送）登入 App → 同意通知權限 → 用另一個帳號觸發事件（例如成員提案）
+
+未設定金鑰時一切正常運作，只是不會有推送（伺服器靜默跳過）。
+
 ## 目錄
 
 - `ROVTeamHub/ContentView.swift` — WKWebView 殼（進度條、下拉刷新、外鏈交給 Safari）

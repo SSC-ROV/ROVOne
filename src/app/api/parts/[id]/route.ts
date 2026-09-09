@@ -4,6 +4,8 @@ import { getSessionUser } from "@/lib/auth";
 import { isStaff } from "@/lib/roles";
 import { getPartByToken } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
+import { pushToUsers } from "@/lib/push";
+import { after } from "next/server";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -30,6 +32,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     est_price: number; actual_price: number | null; purpose: string;
     subteam: string; status: string; decided_at: string | null; decided_note: string | null;
     order_vendor: string; order_ref: string; ordered_by: number | null; arrived_at: string | null;
+    requested_by: number;
   };
   const status = body.status !== undefined ? String(body.status) : c.status;
   if (!["pending", "approved", "rejected", "ordered", "arrived"].includes(status)) {
@@ -67,6 +70,11 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     ["approved", "rejected"].includes(status) &&
     String(existing.status) !== status
   ) {
+    const approved = status === "approved";
+    after(() => pushToUsers([c.requested_by],
+      approved ? "✅ 你的零件申請已被批准" : "❌ 你的零件申請被駁回",
+      `「${c.name}」× ${c.qty}${approved ? "，可以開始採買了" : ""}`,
+      "/parts", user.id));
   }
   return NextResponse.json({ ok: true });
 }
