@@ -19,7 +19,7 @@ export default async function AppLayout({
       <PasswordChangedGuard />
       <div className="flex min-h-screen flex-col">
         <Navbar user={user as Me} teamName={settings.team_name} />
-        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">
+        <main className="app-main mx-auto w-full max-w-7xl flex-1 px-4 py-6">
           {children}
         </main>
       </div>

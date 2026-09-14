@@ -101,10 +101,9 @@ summary {
     background: rgba(2, 6, 23, 0.92); /* slate-950/92 */
     backdrop-filter: blur(8px);
   }
-  .rail-spacer {
-    display: block;
-    flex-shrink: 0;
-    width: 84px;
+  .app-main {
+    /* 內容避開左側欄（側欄 84px） */
+    margin-left: 84px;
   }
 }
 

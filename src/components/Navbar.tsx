@@ -175,7 +175,6 @@ export default function Navbar({
           </button>
         </div>
       </aside>
-      <div className="rail-spacer" aria-hidden />
 
       {/* ── 手機／桌面：原本的頂欄 ── */}
       <header className="topbar sticky top-0 z-40 border-b border-slate-800 bg-slate-950/85 backdrop-blur">
