@@ -68,6 +68,47 @@ summary {
   }
 }
 
+/* ── iPad 側欄（Instagram iPad 版風格的左側圖標欄） ────────────── */
+
+.rail {
+  display: none;
+}
+.rail-spacer {
+  display: none;
+}
+
+@media (pointer: coarse) and (min-width: 1024px) {
+  /* 頂欄退場，改用固定左側欄 */
+  .topbar {
+    display: none !important;
+  }
+  body {
+    /* 側欄自行處理左側安全區；右側保留 */
+    padding-left: 0;
+    padding-right: env(safe-area-inset-right);
+  }
+  .rail {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: max(0px, env(safe-area-inset-left));
+    z-index: 40;
+    width: 84px;
+    padding: 12px 0 16px;
+    border-right: 1px solid rgb(30 41 59); /* slate-800 */
+    background: rgba(2, 6, 23, 0.92); /* slate-950/92 */
+    backdrop-filter: blur(8px);
+  }
+  .rail-spacer {
+    display: block;
+    flex-shrink: 0;
+    width: 84px;
+  }
+}
+
+
 /* 平板橫屏（≥1024px 寬的觸控裝置）：頂欄緊湊，一屏容納更多資訊 */
 @media (pointer: coarse) and (min-width: 1024px) {
   table {

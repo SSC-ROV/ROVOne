@@ -68,7 +68,7 @@
 /* Begin PBXNativeTarget section */
 		7A0000050000000000000001 /* ROVTeamHub */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 7A0000070000000000000003;
+			buildConfigurationList = 7A0000070000000000000003 /* Build configuration list for PBXNativeTarget "ROVTeamHub" */;
 			buildPhases = (
 				7A0000060000000000000001 /* Sources */,
 				7A0000030000000000000001 /* Frameworks */,
@@ -98,10 +98,12 @@
 					};
 				};
 			};
-			buildConfigurationList = 7A0000070000000000000001;
+			buildConfigurationList = 7A0000070000000000000001 /* Build configuration list for PBXProject "ROVTeamHub" */;
+			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = zh_HK;
 			hasScannedForEncodings = 0;
 			knownRegions = (
+				zh_HK,
 				en,
 				Base,
 				"zh-HK",
@@ -212,6 +214,7 @@
 				CODE_SIGN_ENTITLEMENTS = ROVTeamHub/ROVTeamHub.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = XWD8YP3R86;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ROVTeamHub/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -237,6 +240,7 @@
 				CODE_SIGN_ENTITLEMENTS = ROVTeamHub/ROVTeamHub.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = XWD8YP3R86;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ROVTeamHub/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
