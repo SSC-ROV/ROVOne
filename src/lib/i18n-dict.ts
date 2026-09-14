@@ -368,4 +368,12 @@ export const DICT: Record<string, string> = {
   "可借用": "Available",
   "借出中": "Borrowed",
   "維修中": "Under repair",
+  "團隊看板（Raspberry Pi）": "Team display board (Raspberry Pi)",
+  "複製看板連結": "Copy display link",
+  "重新產生": "Regenerate",
+  "全屏顯示進行中週期與近兩週日程，每分鐘自動更新，免登入": "Fullscreen board of active cycles and the 2-week agenda; auto-refreshes every minute, no login needed",
+  "看板連結已複製！貼到 Raspberry Pi 的瀏覽器即可長期顯示": "Display link copied! Paste it into the Raspberry Pi browser for always-on display",
+  "重新產生看板連結？": "Regenerate display link?",
+  "舊連結立即失效，Raspberry Pi 要改用新連結。": "The old link stops working immediately — update the Raspberry Pi with the new one.",
+  "已重新產生": "Regenerated",
 };

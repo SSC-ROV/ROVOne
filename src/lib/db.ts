@@ -55,6 +55,16 @@ export async function getOrCreateIcalToken(): Promise<string> {
   return token;
 }
 
+/** 團隊看板（Raspberry Pi 長期顯示）專用連結令牌 */
+export async function getOrCreateDisplayToken(): Promise<string> {
+  let token = await getSettingValue("display_token");
+  if (!token) {
+    token = randomBytes(16).toString("hex");
+    await setSetting("display_token", token);
+  }
+  return token;
+}
+
 export type TaskRow = Omit<Task, "items">;
 
 export async function getTaskWithItems(id: number): Promise<Task | undefined> {

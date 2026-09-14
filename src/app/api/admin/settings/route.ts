@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { getOrCreateIcalToken, getSettingValue, getSubteams, setSetting } from "@/lib/db";
+import { getOrCreateDisplayToken, getOrCreateIcalToken, getSettingValue, getSubteams, setSetting } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 import { isStaff } from "@/lib/roles";
 import { logAudit } from "@/lib/audit";
@@ -11,6 +11,7 @@ async function currentSettings() {
     competition_date: (await getSettingValue("competition_date")) || null,
     discord_webhook: (await getSettingValue("discord_webhook")) ?? "",
     ical_token: await getOrCreateIcalToken(),
+    display_token: await getOrCreateDisplayToken(),
     google_client_id: (await getSettingValue("google_client_id")) ?? "",
     google_client_secret: (await getSettingValue("google_client_secret")) ?? "",
     google_domains: (await getSettingValue("google_domains")) ?? "",
@@ -59,6 +60,10 @@ export async function PUT(req: NextRequest) {
   if (body.rotate_ical === true) {
     await setSetting("ical_token", crypto.randomBytes(16).toString("hex"));
     await logAudit(user.id, user.username, "ical.rotate", "");
+  }
+  if (body.rotate_display === true) {
+    await setSetting("display_token", crypto.randomBytes(16).toString("hex"));
+    await logAudit(user.id, user.username, "display.rotate", "");
   }
   for (const key of [
     "discord_webhook_cycle_audit",

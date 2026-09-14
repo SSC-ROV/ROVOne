@@ -16,6 +16,7 @@ type AdminSettings = Settings & {
   teams_webhook_leader_cycle: string;
   teams_webhook_teacher_parts: string;
   ical_token: string;
+  display_token: string;
   subteams: { key: string; zh: string; en: string }[];
   google_client_id: string;
   google_client_secret: string;
@@ -181,6 +182,41 @@ export default function AdminPage() {
     }
   }
 
+  function displayUrl() {
+    if (!settings) return "";
+    return `${location.origin}/display?token=${settings.display_token}`;
+  }
+
+  async function copyDisplayUrl() {
+    const url = displayUrl();
+    try {
+      await navigator.clipboard.writeText(url);
+      toast(t("看板連結已複製！貼到 Raspberry Pi 的瀏覽器即可長期顯示"));
+    } catch {
+      await prompt({ title: "複製這個看板連結", initial: url });
+    }
+  }
+
+  async function rotateDisplay() {
+    const ok = await confirm({
+      title: t("重新產生看板連結？"),
+      message: t("舊連結立即失效，Raspberry Pi 要改用新連結。"),
+      confirmText: t("確定"),
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await api("/api/admin/settings", {
+        method: "PUT",
+        body: JSON.stringify({ rotate_display: true }),
+      });
+      toast(t("已重新產生"));
+      load();
+    } catch (err) {
+      toast(t((err as Error).message), "err");
+    }
+  }
+
   async function copyGoogleCallback() {
     const url = `${location.origin}/api/auth/google/callback`;
     try {
@@ -331,6 +367,14 @@ export default function AdminPage() {
           <button className={BTN_GHOST} onClick={copyIcalUrl}>{t("複製訂閱連結")}</button>
           <span className="text-xs text-slate-500">
             {t("隊員在手機日曆 App「訂閱日曆」貼上，例會、水測自動同步")}
+          </span>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className="text-sm text-slate-400">{t("團隊看板（Raspberry Pi）")}：</span>
+          <button className={BTN_GHOST} onClick={copyDisplayUrl}>{t("複製看板連結")}</button>
+          <button className={BTN_GHOST} onClick={rotateDisplay}>{t("重新產生")}</button>
+          <span className="text-xs text-slate-500">
+            {t("全屏顯示進行中週期與近兩週日程，每分鐘自動更新，免登入")}
           </span>
         </div>
       </section>
