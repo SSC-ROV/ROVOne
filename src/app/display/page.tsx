@@ -52,6 +52,12 @@ export default async function DisplayPage({
   }
 
   const today = hkToday();
+
+  // 與週期頁相同：已核准的週期到了開始日 → 自動轉為進行中（看板也會觸發，Pi 長期顯示不會卡在「即將開始」）
+  await sql`
+    UPDATE cycles SET status = 'active'
+    WHERE status = 'approved' AND start_date <= ((now() AT TIME ZONE 'Asia/Hong_Kong')::date)::text`;
+
   const plus14 = new Date(Date.parse(today + "T00:00:00+08:00") + 14 * 86400000)
     .toLocaleDateString("en-CA", { timeZone: "Asia/Hong_Kong" });
 
