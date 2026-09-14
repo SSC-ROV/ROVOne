@@ -84,7 +84,8 @@ export async function pushToUsers(
   try {
     const ids = [...new Set(userIds.filter((id): id is number => !!id && id !== excludeUserId))];
     if (!ids.length) return;
-    const rows = await sql`SELECT token FROM push_tokens WHERE user_id IN ${ids}`;
+    // postgres.js 此版本不支援 IN ${array}，須用 = ANY
+    const rows = await sql`SELECT token FROM push_tokens WHERE user_id = ANY(${ids})`;
     for (const r of rows) await sendApns(r.token, title, body, url);
   } catch {
     /* 通知失敗不影響主流程 */

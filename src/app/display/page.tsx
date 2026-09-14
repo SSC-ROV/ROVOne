@@ -81,12 +81,12 @@ export default async function DisplayPage({
   const taskAggs: TaskAgg[] = ids.length
     ? await sql`SELECT cycle_id, COUNT(*)::int AS total,
                        COUNT(*) FILTER (WHERE status = 'done')::int AS done
-                FROM tasks WHERE cycle_id IN ${ids} GROUP BY cycle_id`
+                FROM tasks WHERE cycle_id = ANY(${ids}) GROUP BY cycle_id`
     : [];
   const memberRows: MemberRow[] = ids.length
     ? await sql`SELECT cm.cycle_id, u.display_name
                 FROM cycle_members cm JOIN users u ON u.id = cm.user_id
-                WHERE cm.cycle_id IN ${ids} ORDER BY cm.cycle_id, u.id`
+                WHERE cm.cycle_id = ANY(${ids}) ORDER BY cm.cycle_id, u.id`
     : [];
   const eventList: { id: number; title: string; type: string; date: string;
     time: string | null; location: string | null }[] = await sql`
