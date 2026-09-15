@@ -4,6 +4,7 @@ import { getSessionUser } from "@/lib/auth";
 import { getOrCreateDisplayToken, getSettingValue } from "@/lib/db";
 import Clock from "./Clock";
 import AutoRefresh, { FullscreenButton } from "./AutoRefresh";
+import MonthCalendar from "./MonthCalendar";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +61,10 @@ export default async function DisplayPage({
 
   const plus14 = new Date(Date.parse(today + "T00:00:00+08:00") + 14 * 86400000)
     .toLocaleDateString("en-CA", { timeZone: "Asia/Hong_Kong" });
+  const calFrom = new Date(Date.parse(today + "T00:00:00+08:00") - 100 * 86400000)
+    .toLocaleDateString("en-CA", { timeZone: "Asia/Hong_Kong" });
+  const calTo = new Date(Date.parse(today + "T00:00:00+08:00") + 200 * 86400000)
+    .toLocaleDateString("en-CA", { timeZone: "Asia/Hong_Kong" });
 
   const [teamName, competitionDate] = await Promise.all([
     getSettingValue("team_name"),
@@ -91,8 +96,14 @@ export default async function DisplayPage({
   const eventList: { id: number; title: string; type: string; date: string;
     time: string | null; location: string | null }[] = await sql`
     SELECT id, title, type, date, time, location
-    FROM events WHERE date >= ${today} AND date <= ${plus14}
+    FROM events WHERE date >= ${calFrom} AND date <= ${calTo}
     ORDER BY date, time NULLS LAST, id`;
+  const taskDue: { title: string; cycle_title: string; due_date: string }[] = await sql`
+    SELECT t.title, c.title AS cycle_title, t.due_date
+    FROM tasks t JOIN cycles c ON c.id = t.cycle_id
+    WHERE t.due_date IS NOT NULL AND t.due_date >= ${calFrom} AND t.due_date <= ${calTo}
+      AND t.status <> 'done'
+    ORDER BY t.due_date, t.id`;
 
   const taskMap = new Map(taskAggs.map((t) => [Number(t.cycle_id), t]));
   const memberMap = new Map<number, string[]>();
@@ -137,29 +148,29 @@ export default async function DisplayPage({
         className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5"
       >
         <div className="flex items-start justify-between gap-4">
-          <h3 className="text-2xl font-bold text-white">{c.title}</h3>
-          <span className={`shrink-0 rounded-full px-3 py-1 text-sm font-semibold ${chip}`}>
+          <h3 className="text-3xl font-bold text-white">{c.title}</h3>
+          <span className={`shrink-0 rounded-full px-4 py-1.5 text-base font-semibold ${chip}`}>
             {chipLabel}
           </span>
         </div>
-        <p className="mt-1 text-sm text-slate-400">
+        <p className="mt-2 text-base text-slate-400">
           {c.start_date} ~ {c.end_date}
           {c.status !== "approved" && (
-            <span className="ml-3 text-slate-300">
+            <span className="ml-3 text-lg text-slate-200">
               {c.status === "late" ? "已超時" : `剩餘 ${left} 日`}
             </span>
           )}
           {c.status === "approved" && (
-            <span className="ml-3 text-sky-300">{daysBetween(today, c.start_date)} 日後開始</span>
+            <span className="ml-3 text-lg text-sky-300">{daysBetween(today, c.start_date)} 日後開始</span>
           )}
         </p>
-        <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-slate-800">
+        <div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-800">
           <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-400">
+        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-base text-slate-400">
           <span>
             任務進度{" "}
-            <span className="font-semibold text-slate-200">
+            <span className="text-lg font-semibold text-slate-200">
               {task ? `${task.done}/${task.total}` : "0/0"}
             </span>
           </span>
@@ -177,12 +188,12 @@ export default async function DisplayPage({
       {/* 頂部：隊名＋比賽倒數｜大時鐘 */}
       <header className="flex items-end justify-between gap-6">
         <div>
-          <h1 className="text-4xl font-black tracking-tight text-white">
+          <h1 className="text-5xl font-black tracking-tight text-white">
             {teamName || "ROV 隊"}
           </h1>
-          <p className="mt-1 text-sm text-slate-500">團隊看板 · 每分鐘自動更新</p>
+          <p className="mt-1 text-base text-slate-500">團隊看板 · 每分鐘自動更新</p>
           {compDays !== null && (
-            <p className="mt-2 inline-block rounded-full bg-rose-500/15 px-4 py-1 text-lg font-bold text-rose-300">
+            <p className="mt-2 inline-block rounded-full bg-rose-500/15 px-5 py-1.5 text-xl font-bold text-rose-300">
               距比賽 {compDays} 日
             </p>
           )}
@@ -193,85 +204,71 @@ export default async function DisplayPage({
         </div>
       </header>
 
-      <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-3">
-        {/* 左：週期 */}
-        <section className="space-y-4 xl:col-span-2">
-          {late.length > 0 && (
-            <>
-              <h2 className="text-lg font-bold text-rose-300">⚠ 遲交（{late.length}）</h2>
-              <div className="space-y-4">{late.map(cycleCard)}</div>
-            </>
-          )}
-          <h2 className="text-lg font-bold text-slate-400">
-            進行中（{active.length}）
-          </h2>
-          {active.length === 0 && late.length === 0 ? (
-            <p className="rounded-2xl border border-slate-800 bg-slate-900/40 p-10 text-center text-slate-500">
-              目前沒有進行中的週期
-            </p>
-          ) : (
-            <div className="space-y-4">{active.map(cycleCard)}</div>
-          )}
-          {upcoming.length > 0 && (
-            <>
-              <h2 className="text-lg font-bold text-slate-400">
-                即將開始（{upcoming.length}）
-              </h2>
-              <div className="space-y-4">{upcoming.map(cycleCard)}</div>
-            </>
-          )}
-        </section>
-
-        {/* 右：近兩週日程 */}
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-          <h2 className="text-lg font-bold text-slate-300">未來兩週日程</h2>
-          {agenda.size === 0 ? (
-            <p className="py-10 text-center text-slate-500">沒有預定活動</p>
-          ) : (
-            <div className="mt-3 space-y-4">
-              {[...agenda.entries()].map(([date, items]) => {
-                const isToday = date === today;
-                return (
-                  <div key={date}>
-                    <div
-                      className={`mb-1 flex items-baseline gap-2 border-b border-slate-800 pb-1 ${
-                        isToday ? "text-cyan-300" : "text-slate-400"
-                      }`}
-                    >
-                      <span className="text-base font-bold">
-                        {Number(date.slice(5, 7))}月{Number(date.slice(8, 10))}日
-                      </span>
-                      <span className="text-sm">{weekdayZh(date)}</span>
-                      {isToday && (
-                        <span className="rounded-full bg-cyan-500/15 px-2 py-0.5 text-xs font-semibold">
-                          今天
-                        </span>
-                      )}
-                    </div>
-                    <ul className="space-y-1.5">
-                      {items.map((e) => (
-                        <li key={e.id} className="flex items-center gap-2 text-lg">
-                          <span
-                            className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-                              TYPE_DOT[e.type] ?? TYPE_DOT.other
-                            }`}
-                          />
-                          <span className="font-medium text-white">{e.title}</span>
-                          {e.time && (
-                            <span className="text-sm text-slate-400">{String(e.time).slice(0, 5)}</span>
-                          )}
-                          {e.location && (
-                            <span className="truncate text-sm text-slate-500">@{e.location}</span>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                );
-              })}
+      {/* 週期：雙列大卡 */}
+      <section className="mt-6">
+        {late.length > 0 && (
+          <>
+            <h2 className="text-2xl font-bold text-rose-300">⚠ 遲交（{late.length}）</h2>
+            <div className="mt-3 grid grid-cols-1 gap-4 2xl:grid-cols-2">
+              {late.map(cycleCard)}
             </div>
-          )}
+          </>
+        )}
+        <h2 className="text-2xl font-bold text-slate-300">
+          進行中（{active.length}）
+        </h2>
+        {active.length === 0 && late.length === 0 ? (
+          <p className="mt-3 rounded-2xl border border-slate-800 bg-slate-900/40 p-10 text-center text-xl text-slate-500">
+            目前沒有進行中的週期
+          </p>
+        ) : (
+          <div className="mt-3 grid grid-cols-1 gap-4 2xl:grid-cols-2">
+            {active.map(cycleCard)}
+          </div>
+        )}
+        {upcoming.length > 0 && (
+          <>
+            <h2 className="mt-5 text-2xl font-bold text-slate-400">
+              即將開始（{upcoming.length}）
+            </h2>
+            <div className="mt-3 grid grid-cols-1 gap-4 2xl:grid-cols-2">
+              {upcoming.map(cycleCard)}
+            </div>
+          </>
+        )}
+      </section>
+
+      {/* 未來兩週重點（大字清單） */}
+      {agenda.size > 0 && (
+        <section className="mt-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+          <h2 className="text-2xl font-bold text-slate-300">未來兩週重點</h2>
+          <div className="mt-3 flex flex-wrap gap-x-8 gap-y-2">
+            {[...agenda.entries()].map(([date, items]) => (
+              <div
+                key={date}
+                className={`flex items-baseline gap-2 ${
+                  date === today ? "text-cyan-300" : "text-slate-300"
+                }`}
+              >
+                <span className="text-xl font-bold">
+                  {Number(date.slice(5, 7))}/{Number(date.slice(8, 10))}
+                </span>
+                <span className="text-sm text-slate-500">{weekdayZh(date)}</span>
+                {items.map((e) => (
+                  <span key={e.id} className="flex items-center gap-1.5 text-lg text-white">
+                    <span className={`h-2 w-2 rounded-full ${TYPE_DOT[e.type] ?? TYPE_DOT.other}`} />
+                    {e.title}
+                  </span>
+                ))}
+              </div>
+            ))}
+          </div>
         </section>
+      )}
+
+      {/* 本月日曆（圖像化，可翻月） */}
+      <div className="mt-6">
+        <MonthCalendar events={eventList} tasks={taskDue} />
       </div>
     </main>
   );
