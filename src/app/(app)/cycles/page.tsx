@@ -65,6 +65,11 @@ export default function CyclesPage() {
   const history = cycles.filter((c) => c.status === "completed" || c.status === "rejected");
   const myRole = me.role;
   const meId = me.id;
+  // 示範帳號（leader/member/teacher）與所有老師帳號：不進週期邀請名單與成員統計
+  const DEMO_USERNAMES = ["leader", "member", "teacher"];
+  const invitableMembers = members.filter(
+    (m) => m.role !== "teacher" && !DEMO_USERNAMES.includes(m.username)
+  );
 
   // 樂觀更新：任務勾選（立即改畫面，背景同步；失敗則還原）
   async function toggleTaskDone(task: Task) {
@@ -155,7 +160,7 @@ export default function CyclesPage() {
   }
 
   // 幹部統計：每個成員參與（提案或合作）的週期數量
-  const stats = members
+  const stats = invitableMembers
     .map((m) => {
       const mine = cycles.filter(
         (c) => c.proposer_id === m.id || c.members.some((x) => x.id === m.id)
@@ -208,7 +213,7 @@ export default function CyclesPage() {
       {form && (
         <CycleForm
           editing={form.editing}
-          members={members.filter((m) => m.id !== meId)}
+          members={invitableMembers.filter((m) => m.id !== meId)}
           me={me}
           onClose={() => setForm(null)}
           onSaved={async () => {
