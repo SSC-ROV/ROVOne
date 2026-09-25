@@ -8,7 +8,7 @@ import type { Cycle } from "@/lib/types";
 const TRACKED = ["active", "approved", "late", "pending_teacher", "pending_leader"];
 
 const BAR_CLS: Record<string, string> = {
-  active: "bg-cyan-500",
+  active: "bg-primary",
   approved: "bg-emerald-500",
   late: "bg-orange-400",
   pending_teacher: "bg-amber-400/70",
@@ -35,15 +35,15 @@ export default function CycleTimeline({ cycles, today }: { cycles: Cycle[]; toda
   }
 
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+    <div className="rounded-2xl border border-hairline bg-surface-1 p-5">
       <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-bold">{t("週期時間軸")}</h2>
-        <span className="text-xs text-slate-500">
+        <span className="text-xs text-ink-tertiary">
           {fmtMD(minStart)} ~ {fmtMD(maxEnd)}
-          <span className="ml-2 text-cyan-300">│ {t("今天")} {fmtMD(today)}</span>
+          <span className="ml-2 text-primary-hover">│ {t("今天")} {fmtMD(today)}</span>
         </span>
       </div>
-      <p className="mb-3 text-xs text-slate-500">
+      <p className="mb-3 text-xs text-ink-tertiary">
         {t("每個長條＝一個週期的起訖；多個週期同時並行沒有問題")}
       </p>
       <div className="flex gap-2">
@@ -53,7 +53,7 @@ export default function CycleTimeline({ cycles, today }: { cycles: Cycle[]; toda
           <div className="space-y-2">
             {shown.map((c) => (
               <div key={c.id} className="flex h-6 items-center">
-                <span className="w-32 truncate text-xs text-slate-300" title={c.title}>
+                <span className="w-32 truncate text-xs text-ink-muted" title={c.title}>
                   {c.title}
                 </span>
               </div>
@@ -66,7 +66,7 @@ export default function CycleTimeline({ cycles, today }: { cycles: Cycle[]; toda
             {ticks.map((d) => (
               <span
                 key={d}
-                className="absolute top-0 -translate-x-1/2 text-[10px] text-slate-500"
+                className="absolute top-0 -translate-x-1/2 text-[10px] text-ink-tertiary"
                 style={{ left: `${pos(d)}%` }}
               >
                 {fmtMD(d)}
@@ -77,13 +77,13 @@ export default function CycleTimeline({ cycles, today }: { cycles: Cycle[]; toda
             {ticks.map((d) => (
               <div
                 key={"g" + d}
-                className="absolute inset-y-0 w-px bg-slate-700/60"
+                className="absolute inset-y-0 w-px bg-hairline/60"
                 style={{ left: `${pos(d)}%` }}
               />
             ))}
             {todayPos !== null && (
               <div
-                className="absolute inset-y-0 z-10 w-px bg-cyan-300/80"
+                className="absolute inset-y-0 z-10 w-px bg-primary-hover/80"
                 style={{ left: `${todayPos}%` }}
               />
             )}
@@ -94,8 +94,10 @@ export default function CycleTimeline({ cycles, today }: { cycles: Cycle[]; toda
                 return (
                   <div key={c.id} className="relative h-6">
                     <div
-                      className={`absolute top-0.5 flex h-5 items-center justify-center overflow-hidden rounded px-1 text-[10px] font-medium text-slate-950 ${
-                        BAR_CLS[c.status] ?? "bg-slate-500"
+                      className={`absolute top-0.5 flex h-5 items-center justify-center overflow-hidden rounded px-1 text-[10px] font-medium ${
+                        c.status === "active"
+                          ? "bg-primary text-white"
+                          : `text-slate-950 ${BAR_CLS[c.status] ?? "bg-ink-subtle"}`
                       }`}
                       style={{ left: `${left}%`, width: `${Math.max(3, width)}%` }}
                       title={`${c.title}（${cycleStatus(c.status).label}）`}

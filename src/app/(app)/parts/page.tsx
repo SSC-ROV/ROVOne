@@ -52,7 +52,7 @@ export default function PartsPage() {
     );
   }
   if (!parts || !me) {
-    return <p className="py-20 text-center text-sm text-slate-500">{t("載入中…")}</p>;
+    return <p className="py-20 text-center text-sm text-ink-tertiary">{t("載入中…")}</p>;
   }
 
   const filtered = parts.filter((p) => fStatus === "all" || p.status === fStatus);
@@ -194,7 +194,7 @@ export default function PartsPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-lg font-bold">{t("零件採買")}</h1>
-        <span className="text-sm text-slate-500">{t("需求 → 老師審批 → 下單 → 到貨，一頁追蹤")}</span>
+        <span className="text-sm text-ink-tertiary">{t("需求 → 老師審批 → 下單 → 到貨，一頁追蹤")}</span>
         <div className="ml-auto flex items-center gap-2">
           <select className={`${SELECT_CLS} w-32`} value={fStatus} onChange={(e) => setFStatus(e.target.value)}>
             <option value="all">{t("全部狀態")}</option>
@@ -210,13 +210,13 @@ export default function PartsPage() {
 
       <div className="grid gap-4 sm:grid-cols-4">
         <StatCard label={t("待老師審批")} value={String(pendingCount)} accent="text-amber-300" />
-        <StatCard label={t("核准後採買中")} value={String(buying.length)} accent="text-cyan-300" />
+        <StatCard label={t("核准後採買中")} value={String(buying.length)} accent="text-primary-hover" />
         <StatCard label={t("已到貨")} value={String(arrived.length)} accent="text-emerald-300" />
-        <StatCard label={t("花費 / 預估")} value={`$${Math.round(totalSpent).toLocaleString()} / $${Math.round(totalEst).toLocaleString()}`} accent="text-slate-200" />
+        <StatCard label={t("花費 / 預估")} value={`$${Math.round(totalSpent).toLocaleString()} / $${Math.round(totalEst).toLocaleString()}`} accent="text-ink" />
       </div>
 
       {showForm && (
-        <form onSubmit={submit} className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+        <form onSubmit={submit} className="space-y-3 rounded-2xl border border-hairline bg-surface-1 p-5">
           <h2 className="font-bold">{t("新增零件需求（送出後自動產生「老師審批連結」）")}</h2>
           <div className="grid gap-3 sm:grid-cols-3">
             <input className={INPUT_CLS} placeholder={t("零件名稱 *")} value={name} onChange={(e) => setName(e.target.value)} />
@@ -240,7 +240,7 @@ export default function PartsPage() {
 
       <div className="space-y-3">
         {filtered.length === 0 && (
-          <p className="rounded-2xl border border-slate-800 bg-slate-900/40 py-12 text-center text-sm text-slate-500">
+          <p className="rounded-2xl border border-hairline bg-surface-1 py-12 text-center text-sm text-ink-tertiary">
             {t("沒有符合的零件申請")}
           </p>
         )}
@@ -248,32 +248,32 @@ export default function PartsPage() {
           const st = partStatus(p.status);
           const canDelete = isStaff(me.role) || (p.requested_by === me.id && p.status === "pending");
           return (
-            <div key={p.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+            <div key={p.id} className="rounded-2xl border border-hairline bg-surface-1 p-4">
               <div className="flex flex-wrap items-center gap-2">
                 <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${st.chip}`}>
                   {st.label}
                 </span>
                 <span className="font-bold">{p.name}</span>
-                <span className="text-sm text-slate-400">× {p.qty} {t(p.unit)}</span>
+                <span className="text-sm text-ink-subtle">× {p.qty} {t(p.unit)}</span>
                 <span className={`${CHIP} ${SUBTEAM_CLS[p.subteam] ?? ""}`}>{subteamLabel(p.subteam)}</span>
                 <span className="ml-auto text-sm tabular-nums">
                   {p.actual_price != null ? (
                     <span className="text-emerald-300">{t("實際")} ${p.actual_price.toLocaleString()}</span>
                   ) : (
-                    <span className="text-slate-300">{t("預估")} ${(p.est_price * p.qty).toLocaleString()}</span>
+                    <span className="text-ink-muted">{t("預估")} ${(p.est_price * p.qty).toLocaleString()}</span>
                   )}
                 </span>
               </div>
-              {p.spec && <p className="mt-1 text-sm text-slate-400">{t("規格")}：{p.spec}</p>}
-              {p.purpose && <p className="mt-1 text-sm text-slate-400">{t("用途")}：{p.purpose}</p>}
+              {p.spec && <p className="mt-1 text-sm text-ink-subtle">{t("規格")}：{p.spec}</p>}
+              {p.purpose && <p className="mt-1 text-sm text-ink-subtle">{t("用途")}：{p.purpose}</p>}
               {p.link && (
-                <a href={p.link} target="_blank" rel="noreferrer" className="mt-1 inline-block text-sm text-cyan-300 hover:underline">
+                <a href={p.link} target="_blank" rel="noreferrer" className="mt-1 inline-block text-sm text-primary-hover hover:underline">
                   {t("購買連結")} ↗
                 </a>
               )}
-              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-tertiary">
                 <span>{t("申請人")}：{p.requested_by_name ?? "—"}</span>
-                {p.decided_note && <span className="text-slate-400">{t("審批備註")}：{p.decided_note}</span>}
+                {p.decided_note && <span className="text-ink-subtle">{t("審批備註")}：{p.decided_note}</span>}
                 {p.order_vendor && <span>{t("下單")}：{p.order_vendor}{p.order_ref ? `（${p.order_ref}）` : ""}</span>}
                 {p.arrived_at && <span>{t("到貨")}：{fmtMD(p.arrived_at.slice(0, 10))}</span>}
               </div>
@@ -281,13 +281,13 @@ export default function PartsPage() {
                 {p.status === "pending" && isStaff(me.role) && (
                   <>
                     <button
-                      className="rounded-lg bg-emerald-500 px-5 py-2 text-sm font-bold text-white shadow transition hover:bg-emerald-400"
+                      className="rounded-lg bg-emerald-500 px-5 py-2 text-sm font-bold text-ink shadow transition hover:bg-emerald-400"
                       onClick={() => decide(p, "approved")}
                     >
                       ✓ {t("批准")}
                     </button>
                     <button
-                      className="rounded-lg bg-rose-500 px-5 py-2 text-sm font-bold text-white shadow transition hover:bg-rose-400"
+                      className="rounded-lg bg-rose-500 px-5 py-2 text-sm font-bold text-ink shadow transition hover:bg-rose-400"
                       onClick={() => decide(p, "rejected")}
                     >
                       ✕ {t("駁回")}
@@ -312,7 +312,7 @@ export default function PartsPage() {
                 )}
 
                 {canDelete && (
-                  <button className="ml-auto text-xs text-slate-500 transition hover:text-rose-400" onClick={() => removePart(p)}>
+                  <button className="ml-auto text-xs text-ink-tertiary transition hover:text-rose-400" onClick={() => removePart(p)}>
                     {t("刪除")}
                   </button>
                 )}
@@ -327,9 +327,9 @@ export default function PartsPage() {
 
 function StatCard({ label, value, accent }: { label: string; value: string; accent: string }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+    <div className="rounded-2xl border border-hairline bg-surface-1 p-4">
       <p className={`text-xl font-black tabular-nums ${accent}`}>{value}</p>
-      <p className="mt-1 text-xs text-slate-400">{label}</p>
+      <p className="mt-1 text-xs text-ink-subtle">{label}</p>
     </div>
   );
 }

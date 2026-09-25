@@ -80,7 +80,7 @@ export default function CalendarPage() {
     );
   }
   if (!tasks || !events || !me) {
-    return <p className="py-20 text-center text-sm text-slate-500">{t("載入中…")}</p>;
+    return <p className="py-20 text-center text-sm text-ink-tertiary">{t("載入中…")}</p>;
   }
 
   const y = now.getFullYear();
@@ -172,7 +172,7 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-3 text-xs text-slate-400">
+      <div className="flex flex-wrap gap-3 text-xs text-ink-subtle">
         {EVENT_TYPES.map((e) => (
           <span key={e.key} className="flex items-center gap-1">
             <span className={`h-2 w-2 rounded-full ${e.dot}`} /> {e.label}
@@ -184,8 +184,8 @@ export default function CalendarPage() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1fr_20rem]">
-        <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/40">
-          <div className="grid grid-cols-7 border-b border-slate-800 text-center text-xs text-slate-500">
+        <div className="overflow-hidden rounded-2xl border border-hairline bg-surface-1">
+          <div className="grid grid-cols-7 border-b border-hairline text-center text-xs text-ink-tertiary">
             {WEEKDAYS.map((w, i) => (
               <div key={w} className="py-2">
                 {tt(w, ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][i])}
@@ -202,13 +202,13 @@ export default function CalendarPage() {
                 <button
                   key={cell}
                   onClick={() => setSel(cell)}
-                  className={`min-h-24 border-b border-r border-slate-800/60 p-1.5 text-left align-top transition hover:bg-slate-800/40 ${
+                  className={`min-h-24 border-b border-r border-hairline/60 p-1.5 text-left align-top transition hover:bg-surface-2/40 ${
                     inMonth ? "" : "opacity-40"
-                  } ${sel === cell ? "bg-cyan-500/10" : ""}`}
+                  } ${sel === cell ? "bg-primary/10" : ""}`}
                 >
                   <span
                     className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs ${
-                      isToday ? "bg-cyan-500 font-bold text-slate-950" : "text-slate-400"
+                      isToday ? "bg-primary font-bold text-white" : "text-ink-subtle"
                     }`}
                   >
                     {day}
@@ -231,7 +231,7 @@ export default function CalendarPage() {
                         key={`t${t.id}`}
                         className={`truncate rounded px-1 py-0.5 text-[11px] ${
                           t.status === "done"
-                            ? "bg-slate-500/15 text-slate-400 line-through"
+                            ? "bg-surface-2 text-ink-subtle line-through"
                             : "bg-amber-500/15 text-amber-300"
                         }`}
                         title={t.title}
@@ -240,7 +240,7 @@ export default function CalendarPage() {
                       </div>
                     ))}
                     {(data?.events.length ?? 0) + (data?.tasks.length ?? 0) > 3 && (
-                      <div className="px-1 text-[11px] text-slate-500">
+                      <div className="px-1 text-[11px] text-ink-tertiary">
                         +{(data!.events.length + data!.tasks.length) - 3} {t("更多")}
                       </div>
                     )}
@@ -252,39 +252,39 @@ export default function CalendarPage() {
         </div>
 
         <aside className="space-y-4">
-          <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+          <section className="rounded-2xl border border-hairline bg-surface-1 p-4">
             <h2 className="font-bold">
               {fmtMD(sel)}（{weekdayCn(sel)}）
             </h2>
             <div className="mt-3 space-y-3">
               <div>
-                <p className="mb-1 text-xs font-semibold text-slate-500">{t("活動")}</p>
+                <p className="mb-1 text-xs font-semibold text-ink-tertiary">{t("活動")}</p>
                 {selData.events.length === 0 ? (
-                  <p className="text-sm text-slate-500">{t("沒有活動")}</p>
+                  <p className="text-sm text-ink-tertiary">{t("沒有活動")}</p>
                 ) : (
                   <ul className="space-y-1.5">
                     {selData.events.map((e) => (
                       <li
                         key={e.id}
-                        className="flex items-center gap-2 rounded-lg bg-slate-800/60 px-2.5 py-2 text-sm"
+                        className="flex items-center gap-2 rounded-lg bg-surface-2 px-2.5 py-2 text-sm"
                       >
                         <span className={`h-2 w-2 shrink-0 rounded-full ${eventType(e.type).dot}`} />
                         <span className="flex-1">
                           {e.title}
                           {e.subteam && (
-                            <span className="ml-1 text-xs text-slate-500">
+                            <span className="ml-1 text-xs text-ink-tertiary">
                               [{subteams.find((x) => x.key === e.subteam)?.label ?? e.subteam}]
                             </span>
                           )}
                         </span>
-                        {e.time && <span className="text-xs text-slate-400">{e.time}</span>}
+                        {e.time && <span className="text-xs text-ink-subtle">{e.time}</span>}
                         {e.location && (
-                          <span className="text-xs text-slate-500">@{e.location}</span>
+                          <span className="text-xs text-ink-tertiary">@{e.location}</span>
                         )}
                         {isStaff(me.role) && (
                           <button
                             onClick={() => removeEvent(e)}
-                            className="text-slate-500 transition hover:text-rose-400"
+                            className="text-ink-tertiary transition hover:text-rose-400"
                             title={t("刪除活動")}
                           >
                             ✕
@@ -296,9 +296,9 @@ export default function CalendarPage() {
                 )}
               </div>
               <div>
-                <p className="mb-1 text-xs font-semibold text-slate-500">{t("任務截止")}</p>
+                <p className="mb-1 text-xs font-semibold text-ink-tertiary">{t("任務截止")}</p>
                 {selData.tasks.length === 0 ? (
-                  <p className="text-sm text-slate-500">{t("沒有任務截止")}</p>
+                  <p className="text-sm text-ink-tertiary">{t("沒有任務截止")}</p>
                 ) : (
                   <ul className="space-y-1.5">
                     {selData.tasks.map((t) => {
@@ -306,10 +306,10 @@ export default function CalendarPage() {
                       return (
                         <li
                           key={t.id}
-                          className="flex items-center gap-2 rounded-lg bg-slate-800/60 px-2.5 py-2 text-sm"
+                          className="flex items-center gap-2 rounded-lg bg-surface-2 px-2.5 py-2 text-sm"
                         >
                           <span className="flex-1 truncate">{t.title}</span>
-                          <span className={`${CHIP} border-slate-700 text-xs text-slate-400`}>
+                          <span className={`${CHIP} border-hairline-strong text-xs text-ink-subtle`}>
                             {st.label}
                           </span>
                         </li>
@@ -322,7 +322,7 @@ export default function CalendarPage() {
           </section>
 
           {isStaff(me.role) ? (
-            <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+            <section className="rounded-2xl border border-hairline bg-surface-1 p-4">
               <h2 className="mb-2 font-bold">{t("新增活動")} · {fmtMD(sel)}</h2>
               <div className="space-y-2">
                 <input
@@ -374,7 +374,7 @@ export default function CalendarPage() {
               </div>
             </section>
           ) : (
-            <p className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-xs text-slate-500">{t("活動由隊長安排；如需調整請跟隊長說。")}</p>
+            <p className="rounded-2xl border border-hairline bg-surface-1 p-4 text-xs text-ink-tertiary">{t("活動由隊長安排；如需調整請跟隊長說。")}</p>
           )}
         </aside>
       </div>

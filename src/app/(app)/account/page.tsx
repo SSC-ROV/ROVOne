@@ -32,7 +32,7 @@ export default function AccountPage() {
     );
   }
   if (!me) {
-    return <p className="py-20 text-center text-sm text-slate-500">{t("載入中…")}</p>;
+    return <p className="py-20 text-center text-sm text-ink-tertiary">{t("載入中…")}</p>;
   }
   const forceChange = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("force") === "1" || !me.password_changed_at;
 
@@ -69,39 +69,39 @@ export default function AccountPage() {
           {t("請先設定新密碼再開始使用（首次登入或密碼已被重設）")}
         </div>
       )}
-      <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 text-sm">
+      <section className="rounded-2xl border border-hairline bg-surface-1 p-5 text-sm">
         <dl className="space-y-2">
           <div className="flex justify-between">
-            <dt className="text-slate-400">{t("顯示名稱")}</dt>
+            <dt className="text-ink-subtle">{t("顯示名稱")}</dt>
             <dd>{me.display_name}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-slate-400">{t("帳號")}</dt>
-            <dd className="text-slate-300">{me.username}</dd>
+            <dt className="text-ink-subtle">{t("帳號")}</dt>
+            <dd className="text-ink-muted">{me.username}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-slate-400">{t("組別")}</dt>
+            <dt className="text-ink-subtle">{t("組別")}</dt>
             <dd>{subteamLabel(me.subteam)}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-slate-400">{t("角色")}</dt>
+            <dt className="text-ink-subtle">{t("角色")}</dt>
             <dd>{roleLabelCn(me.role)}</dd>
           </div>
         </dl>
-        <p className="mt-3 text-xs text-slate-500">
+        <p className="mt-3 text-xs text-ink-tertiary">
           {t("名稱與組別請請隊長在「管理」頁調整。")}
         </p>
       </section>
 
       {me.login_method === "google" ? (
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 text-sm">
+        <section className="rounded-2xl border border-hairline bg-surface-1 p-5 text-sm">
           <h2 className="mb-2 font-bold">{t("登入方式")}</h2>
-          <p className="text-slate-300">
+          <p className="text-ink-muted">
             {t("此帳號使用學校 Google 帳號登入，無需設定密碼。")}
           </p>
         </section>
       ) : (
-      <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+      <section className="rounded-2xl border border-hairline bg-surface-1 p-5">
         <h2 className="mb-3 font-bold">{t("修改密碼")}</h2>
         <form onSubmit={changePassword} className="space-y-3">
           <input

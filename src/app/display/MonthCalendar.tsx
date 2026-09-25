@@ -9,10 +9,10 @@ export type CalEvent = {
 export type CalTask = { title: string; cycle_title: string; due_date: string };
 
 const TYPE_DOT: Record<string, string> = {
-  meeting: "bg-cyan-400",
+  meeting: "bg-primary-hover",
   watertest: "bg-sky-400",
   competition: "bg-rose-400",
-  other: "bg-slate-400",
+  other: "bg-ink-subtle",
 };
 
 /** 香港時區今天 YYYY-MM-DD */
@@ -74,21 +74,21 @@ export default function MonthCalendar({
     view.getFullYear() === todayParts[0] && view.getMonth() + 1 === todayParts[1];
 
   return (
-    <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+    <section className="rounded-2xl border border-hairline bg-surface-1 p-5">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-slate-200">本月日曆</h2>
+        <h2 className="text-2xl font-bold text-ink">本月日曆</h2>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setOffset((o) => o - 1)}
-            className="h-10 w-10 rounded-lg border border-slate-700 text-lg text-slate-300 transition hover:border-slate-500 hover:text-white"
+            className="h-10 w-10 rounded-lg border border-hairline-strong text-lg text-ink-muted transition hover:border-hairline-strong hover:text-ink"
             aria-label="上個月"
           >
             ‹
           </button>
-          <span className="min-w-36 text-center text-xl font-bold text-white">{monthLabel}</span>
+          <span className="min-w-36 text-center text-xl font-bold text-ink">{monthLabel}</span>
           <button
             onClick={() => setOffset((o) => o + 1)}
-            className="h-10 w-10 rounded-lg border border-slate-700 text-lg text-slate-300 transition hover:border-slate-500 hover:text-white"
+            className="h-10 w-10 rounded-lg border border-hairline-strong text-lg text-ink-muted transition hover:border-hairline-strong hover:text-ink"
             aria-label="下個月"
           >
             ›
@@ -96,7 +96,7 @@ export default function MonthCalendar({
           {offset !== 0 && (
             <button
               onClick={() => setOffset(0)}
-              className="h-10 rounded-lg border border-slate-700 px-3 text-sm text-slate-300 transition hover:border-slate-500 hover:text-white"
+              className="h-10 rounded-lg border border-hairline-strong px-3 text-sm text-ink-muted transition hover:border-hairline-strong hover:text-ink"
             >
               本月
             </button>
@@ -106,12 +106,12 @@ export default function MonthCalendar({
 
       <div className="grid grid-cols-7 gap-1.5">
         {["一", "二", "三", "四", "五", "六", "日"].map((w) => (
-          <div key={w} className="pb-1 text-center text-sm font-bold text-slate-500">
+          <div key={w} className="pb-1 text-center text-sm font-bold text-ink-tertiary">
             週{w}
           </div>
         ))}
         {grid.map((cell, i) => {
-          if (!cell.date) return <div key={i} className="min-h-20 rounded-lg bg-slate-900/20" />;
+          if (!cell.date) return <div key={i} className="min-h-20 rounded-lg bg-surface-1/40" />;
           const items = byDate.get(cell.date) ?? [];
           const isToday = cell.date === today;
           const dow = i % 7;
@@ -121,36 +121,36 @@ export default function MonthCalendar({
               key={i}
               className={`min-h-20 rounded-lg border p-1.5 ${
                 isToday
-                  ? "border-cyan-400/70 bg-cyan-500/10"
+                  ? "border-primary bg-primary/10"
                   : weekend
-                    ? "border-slate-800/70 bg-slate-900/40"
-                    : "border-slate-800 bg-slate-900/20"
+                    ? "border-hairline bg-surface-1"
+                    : "border-hairline bg-surface-1/40"
               }`}
             >
               <div
                 className={`mb-1 text-sm font-bold ${
-                  isToday ? "text-cyan-300" : weekend ? "text-slate-500" : "text-slate-300"
+                  isToday ? "text-primary-hover" : weekend ? "text-ink-tertiary" : "text-ink-muted"
                 }`}
               >
                 {cell.day}
               </div>
               <div className="space-y-0.5">
                 {items.slice(0, 2).map((it, k) => (
-                  <div key={k} className="flex items-center gap-1 text-xs leading-tight text-slate-200">
+                  <div key={k} className="flex items-center gap-1 text-xs leading-tight text-ink">
                     <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${it.dot}`} />
                     <span className="truncate">{it.text}</span>
                   </div>
                 ))}
                 {items.length > 2 && (
-                  <div className="text-xs text-slate-500">+{items.length - 2} 更多</div>
+                  <div className="text-xs text-ink-tertiary">+{items.length - 2} 更多</div>
                 )}
               </div>
             </div>
           );
         })}
       </div>
-      <p className="mt-2 text-xs text-slate-500">
-        <span className="mr-3"><span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-cyan-400 align-middle" />例會</span>
+      <p className="mt-2 text-xs text-ink-tertiary">
+        <span className="mr-3"><span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-primary-hover align-middle" />例會</span>
         <span className="mr-3"><span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-sky-400 align-middle" />水測</span>
         <span className="mr-3"><span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-rose-400 align-middle" />比賽</span>
         <span><span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-amber-400 align-middle" />任務截止</span>

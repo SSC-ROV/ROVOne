@@ -46,7 +46,7 @@ export default function DashboardPage() {
     );
   }
   if (!cycles || !me || !settings) {
-    return <p className="py-20 text-center text-sm text-slate-500">{t("載入中…")}</p>;
+    return <p className="py-20 text-center text-sm text-ink-tertiary">{t("載入中…")}</p>;
   }
 
   const today = todayStr();
@@ -78,37 +78,37 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-2xl border border-cyan-500/25 bg-gradient-to-br from-cyan-500/15 to-blue-600/5 p-5 md:col-span-1">
+        <div className="rounded-2xl border border-hairline bg-surface-1 p-5 md:col-span-1">
           {countdown ? (
             <>
-              <p className="text-sm text-cyan-300/90">{countdown.label}</p>
+              <p className="text-sm text-primary-hover/90">{countdown.label}</p>
               <p className="mt-1 text-5xl font-black tabular-nums">
                 {countdown.days}
-                <span className="ml-1 text-base font-medium text-slate-400">{t("天")}</span>
+                <span className="ml-1 text-base font-medium text-ink-subtle">{t("天")}</span>
               </p>
-              <p className="mt-2 text-sm text-slate-400">
+              <p className="mt-2 text-sm text-ink-subtle">
                 {fmtMD(settings.competition_date!)}（{weekdayCn(settings.competition_date!)}）
               </p>
             </>
           ) : (
             <>
-              <p className="text-sm text-slate-400">{t("尚未設定比賽日期")}</p>
+              <p className="text-sm text-ink-subtle">{t("尚未設定比賽日期")}</p>
               {isStaff(me.role) ? (
                 <Link
                   href="/admin"
-                  className="mt-2 inline-block text-sm text-cyan-300 hover:underline"
+                  className="mt-2 inline-block text-sm text-primary-hover hover:underline"
                 >
                   {t("前往「管理」設定 →")}
                 </Link>
               ) : (
-                <p className="mt-2 text-sm text-slate-500">{t("請隊長或老師於「管理」頁設定")}</p>
+                <p className="mt-2 text-sm text-ink-tertiary">{t("請隊長或老師於「管理」頁設定")}</p>
               )}
             </>
           )}
         </div>
         <div className="grid grid-cols-3 gap-4 md:col-span-2">
-          <StatCard label={t("進行中週期")} value={myActive.length} accent="text-cyan-300" />
-          <StatCard label={t("遲交")} value={myLate.length} accent={myLate.length ? "text-orange-300" : "text-slate-400"} />
+          <StatCard label={t("進行中週期")} value={myActive.length} accent="text-primary-hover" />
+          <StatCard label={t("遲交")} value={myLate.length} accent={myLate.length ? "text-orange-300" : "text-ink-subtle"} />
           <StatCard label={t("已核准待開始")} value={myApproved.length} accent="text-emerald-300" />
         </div>
       </div>
@@ -120,12 +120,12 @@ export default function DashboardPage() {
           <h2 className="font-bold">
             {isTeacher ? t("全隊週期進度") : t("我的開發週期進度")}
           </h2>
-          <Link href="/cycles" className="text-sm text-cyan-300 hover:underline">
+          <Link href="/cycles" className="text-sm text-primary-hover hover:underline">
             {t("開發週期")} →
           </Link>
         </div>
         {mine.length === 0 ? (
-          <p className="rounded-2xl border border-slate-800 bg-slate-900/40 py-10 text-center text-sm text-slate-500">
+          <p className="rounded-2xl border border-hairline bg-surface-1 py-10 text-center text-sm text-ink-tertiary">
             {t("目前沒有參與中的週期，到「開發週期」提案一個吧")}
           </p>
         ) : (
@@ -140,7 +140,7 @@ export default function DashboardPage() {
                   <Link
                     key={c.id}
                     href="/cycles"
-                    className="block rounded-2xl border border-slate-800 bg-slate-900/60 p-4 transition hover:border-slate-600"
+                    className="block rounded-2xl border border-hairline bg-surface-1 p-4 transition hover:border-hairline-strong"
                   >
                     <div className="flex flex-wrap items-center gap-2">
                       <span
@@ -150,25 +150,25 @@ export default function DashboardPage() {
                       </span>
                       <span className="font-bold">{c.title}</span>
                       {isTeacher && c.proposer_name && (
-                        <span className={`${CHIP} border-slate-700 text-slate-300`}>
+                        <span className={`${CHIP} border-hairline-strong text-ink-muted`}>
                           {c.proposer_name}
                         </span>
                       )}
-                      <span className="ml-auto text-xs tabular-nums text-slate-400">
+                      <span className="ml-auto text-xs tabular-nums text-ink-subtle">
                         {fmtMD(c.start_date)} ~ {fmtMD(c.end_date)}
                         {c.status === "active" && (
                           <span
-                            className={`ml-2 ${left < 0 ? "text-rose-400" : left <= 3 ? "text-amber-300" : "text-slate-500"}`}
+                            className={`ml-2 ${left < 0 ? "text-rose-400" : left <= 3 ? "text-amber-300" : "text-ink-tertiary"}`}
                           >
                             {left < 0 ? `${t("已超過結束日")} ${-left} ${t("天")}` : `${t("剩")} ${left} ${t("天")}`}
                           </span>
                         )}
                       </span>
                     </div>
-                    <div className="mt-2 flex items-center gap-3 text-xs text-slate-400">
-                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-800">
+                    <div className="mt-2 flex items-center gap-3 text-xs text-ink-subtle">
+                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-2">
                         <div
-                          className={`h-full rounded-full ${c.task_total > 0 ? "bg-cyan-500" : ""}`}
+                          className={`h-full rounded-full ${c.task_total > 0 ? "bg-primary" : ""}`}
                           style={{ width: `${pct}%` }}
                         />
                       </div>
@@ -183,23 +183,23 @@ export default function DashboardPage() {
         )}
       </section>
 
-      <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+      <section className="rounded-2xl border border-hairline bg-surface-1 p-5">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="font-bold">{t("近期活動")}</h2>
-          <Link href="/calendar" className="text-sm text-cyan-300 hover:underline">
+          <Link href="/calendar" className="text-sm text-primary-hover hover:underline">
             {t("日曆 →")}
           </Link>
         </div>
         {upcoming.length === 0 ? (
-          <p className="py-4 text-center text-sm text-slate-500">{t("沒有排定的活動")}</p>
+          <p className="py-4 text-center text-sm text-ink-tertiary">{t("沒有排定的活動")}</p>
         ) : (
           <ul className="space-y-2">
             {upcoming.map((e) => (
               <li
                 key={e.id}
-                className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm"
+                className="flex items-center gap-3 rounded-xl border border-hairline bg-surface-1 px-3 py-2.5 text-sm"
               >
-                <span className="w-20 shrink-0 text-slate-400">
+                <span className="w-20 shrink-0 text-ink-subtle">
                   {fmtMD(e.date)}
                   {e.time && <span className="ml-1">{e.time}</span>}
                 </span>
@@ -215,9 +215,9 @@ export default function DashboardPage() {
 
 function StatCard({ label, value, accent }: { label: string; value: number; accent: string }) {
   return (
-    <div className="flex flex-col justify-center rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-center">
+    <div className="flex flex-col justify-center rounded-2xl border border-hairline bg-surface-1 p-4 text-center">
       <p className={`text-3xl font-black tabular-nums ${accent}`}>{value}</p>
-      <p className="mt-1 text-xs text-slate-400">{label}</p>
+      <p className="mt-1 text-xs text-ink-subtle">{label}</p>
     </div>
   );
 }

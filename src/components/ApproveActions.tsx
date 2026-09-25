@@ -34,7 +34,7 @@ export default function ApproveActions({ token }: { token: string }) {
   return (
     <div className="space-y-3">
       <textarea
-        className="min-h-16 w-full resize-y rounded-lg border border-slate-700 bg-slate-800/80 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-500 focus:outline-none"
+        className="min-h-16 w-full resize-y rounded-lg border border-hairline-strong bg-surface-1 px-3 py-2 text-sm text-ink placeholder:text-ink-tertiary focus:border-primary focus:outline-none"
         placeholder={t("給學生的備註（選填，例如：記得附發票）")}
         value={note}
         onChange={(e) => setNote(e.target.value)}

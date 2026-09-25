@@ -9,10 +9,10 @@ import MonthCalendar from "./MonthCalendar";
 export const dynamic = "force-dynamic";
 
 const TYPE_DOT: Record<string, string> = {
-  meeting: "bg-cyan-400",
+  meeting: "bg-primary-hover",
   watertest: "bg-sky-400",
   competition: "bg-rose-400",
-  other: "bg-slate-400",
+  other: "bg-ink-subtle",
 };
 
 /** 香港時區今天（YYYY-MM-DD），與全站日期口徑一致 */
@@ -145,18 +145,18 @@ export default async function DisplayPage({
     return (
       <div
         key={c.id}
-        className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5"
+        className="rounded-2xl border border-hairline bg-surface-1 p-5"
       >
         <div className="flex items-start justify-between gap-4">
-          <h3 className="text-3xl font-bold text-white">{c.title}</h3>
+          <h3 className="text-3xl font-bold text-ink">{c.title}</h3>
           <span className={`shrink-0 rounded-full px-4 py-1.5 text-base font-semibold ${chip}`}>
             {chipLabel}
           </span>
         </div>
-        <p className="mt-2 text-base text-slate-400">
+        <p className="mt-2 text-base text-ink-subtle">
           {c.start_date} ~ {c.end_date}
           {c.status !== "approved" && (
-            <span className="ml-3 text-lg text-slate-200">
+            <span className="ml-3 text-lg text-ink">
               {c.status === "late" ? "已超時" : `剩餘 ${left} 日`}
             </span>
           )}
@@ -164,13 +164,13 @@ export default async function DisplayPage({
             <span className="ml-3 text-lg text-sky-300">{daysBetween(today, c.start_date)} 日後開始</span>
           )}
         </p>
-        <div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-800">
+        <div className="mt-3 h-3 overflow-hidden rounded-full bg-surface-2">
           <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-base text-slate-400">
+        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-base text-ink-subtle">
           <span>
             任務進度{" "}
-            <span className="text-lg font-semibold text-slate-200">
+            <span className="text-lg font-semibold text-ink">
               {task ? `${task.done}/${task.total}` : "0/0"}
             </span>
           </span>
@@ -183,15 +183,15 @@ export default async function DisplayPage({
   };
 
   return (
-    <main className="min-h-screen bg-[#020617] px-8 py-6 text-slate-100">
+    <main className="min-h-screen bg-[#020617] px-8 py-6 text-ink">
       <AutoRefresh seconds={60} />
       {/* 頂部：隊名＋比賽倒數｜大時鐘 */}
       <header className="flex items-end justify-between gap-6">
         <div>
-          <h1 className="text-5xl font-black tracking-tight text-white">
+          <h1 className="text-5xl font-black tracking-tight text-ink">
             {teamName || "ROV 隊"}
           </h1>
-          <p className="mt-1 text-base text-slate-500">團隊看板 · 每分鐘自動更新</p>
+          <p className="mt-1 text-base text-ink-tertiary">團隊看板 · 每分鐘自動更新</p>
           {compDays !== null && (
             <p className="mt-2 inline-block rounded-full bg-rose-500/15 px-5 py-1.5 text-xl font-bold text-rose-300">
               距比賽 {compDays} 日
@@ -214,11 +214,11 @@ export default async function DisplayPage({
             </div>
           </>
         )}
-        <h2 className="text-2xl font-bold text-slate-300">
+        <h2 className="text-2xl font-bold text-ink-muted">
           進行中（{active.length}）
         </h2>
         {active.length === 0 && late.length === 0 ? (
-          <p className="mt-3 rounded-2xl border border-slate-800 bg-slate-900/40 p-10 text-center text-xl text-slate-500">
+          <p className="mt-3 rounded-2xl border border-hairline bg-surface-1 p-10 text-center text-xl text-ink-tertiary">
             目前沒有進行中的週期
           </p>
         ) : (
@@ -228,7 +228,7 @@ export default async function DisplayPage({
         )}
         {upcoming.length > 0 && (
           <>
-            <h2 className="mt-5 text-2xl font-bold text-slate-400">
+            <h2 className="mt-5 text-2xl font-bold text-ink-subtle">
               即將開始（{upcoming.length}）
             </h2>
             <div className="mt-3 grid grid-cols-1 gap-4 2xl:grid-cols-2">
@@ -240,22 +240,22 @@ export default async function DisplayPage({
 
       {/* 未來兩週重點（大字清單） */}
       {agenda.size > 0 && (
-        <section className="mt-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-          <h2 className="text-2xl font-bold text-slate-300">未來兩週重點</h2>
+        <section className="mt-6 rounded-2xl border border-hairline bg-surface-1 p-5">
+          <h2 className="text-2xl font-bold text-ink-muted">未來兩週重點</h2>
           <div className="mt-3 flex flex-wrap gap-x-8 gap-y-2">
             {[...agenda.entries()].map(([date, items]) => (
               <div
                 key={date}
                 className={`flex items-baseline gap-2 ${
-                  date === today ? "text-cyan-300" : "text-slate-300"
+                  date === today ? "text-primary-hover" : "text-ink-muted"
                 }`}
               >
                 <span className="text-xl font-bold">
                   {Number(date.slice(5, 7))}/{Number(date.slice(8, 10))}
                 </span>
-                <span className="text-sm text-slate-500">{weekdayZh(date)}</span>
+                <span className="text-sm text-ink-tertiary">{weekdayZh(date)}</span>
                 {items.map((e) => (
-                  <span key={e.id} className="flex items-center gap-1.5 text-lg text-white">
+                  <span key={e.id} className="flex items-center gap-1.5 text-lg text-ink">
                     <span className={`h-2 w-2 rounded-full ${TYPE_DOT[e.type] ?? TYPE_DOT.other}`} />
                     {e.title}
                   </span>

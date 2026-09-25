@@ -51,7 +51,7 @@ export default function DiveLogsPage() {
     );
   }
   if (!logs || !me) {
-    return <p className="py-20 text-center text-sm text-slate-500">{t("載入中…")}</p>;
+    return <p className="py-20 text-center text-sm text-ink-tertiary">{t("載入中…")}</p>;
   }
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
@@ -126,14 +126,14 @@ export default function DiveLogsPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-lg font-bold">{t("水測日誌")}</h1>
-        <span className="text-sm text-slate-500">{t("每次下水的問題與修正都留下紀錄，才不會踩同樣的坑")}</span>
+        <span className="text-sm text-ink-tertiary">{t("每次下水的問題與修正都留下紀錄，才不會踩同樣的坑")}</span>
         <button className={`${BTN} ml-auto`} onClick={() => setShowForm(!showForm)}>
           {t("＋ 新增日誌")}
         </button>
       </div>
 
       {showForm && (
-        <form onSubmit={submit} className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+        <form onSubmit={submit} className="space-y-3 rounded-2xl border border-hairline bg-surface-1 p-5">
           <div className="grid gap-3 sm:grid-cols-3">
             <input className={INPUT_CLS} type="date" value={form.date} onChange={set("date")} />
             <input className={INPUT_CLS} placeholder={t("標題，例如：水測 #3 *")} value={form.title} onChange={set("title")} />
@@ -153,34 +153,34 @@ export default function DiveLogsPage() {
 
       <div className="space-y-3">
         {logs.length === 0 && (
-          <p className="rounded-2xl border border-slate-800 bg-slate-900/40 py-12 text-center text-sm text-slate-500">
+          <p className="rounded-2xl border border-hairline bg-surface-1 py-12 text-center text-sm text-ink-tertiary">
             {t("還沒有水測紀錄")}
           </p>
         )}
         {logs.map((log) => (
-          <article key={log.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+          <article key={log.id} className="rounded-2xl border border-hairline bg-surface-1 p-4">
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-full border border-sky-500/40 bg-sky-500/10 px-2.5 py-0.5 text-xs text-sky-300">
                 {fmtMD(log.date)}（{weekdayCn(log.date)}）
               </span>
               <span className="font-bold">{log.title}</span>
-              {log.participants && <span className="text-sm text-slate-400">{log.participants}</span>}
-              <span className="ml-auto text-xs text-slate-500">{t("記錄")}：{log.created_by_name ?? "—"}</span>
+              {log.participants && <span className="text-sm text-ink-subtle">{log.participants}</span>}
+              <span className="ml-auto text-xs text-ink-tertiary">{t("記錄")}：{log.created_by_name ?? "—"}</span>
             </div>
             <dl className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
               <Section title={t("測試內容")} text={log.tested} />
               <Section title={t("發現問題")} text={log.issues} tone="text-rose-300" />
               <Section title={t("當場修正")} text={log.fixes} tone="text-emerald-300" />
-              <Section title={t("下次驗證")} text={log.next_steps} tone="text-cyan-300" />
+              <Section title={t("下次驗證")} text={log.next_steps} tone="text-primary-hover" />
             </dl>
             <div className="mt-2 flex gap-3 text-xs">
               {(log.next_steps || log.issues) && (
-                <button className="text-cyan-300 hover:underline" onClick={() => toTask(log)}>
+                <button className="text-primary-hover hover:underline" onClick={() => toTask(log)}>
                   {t("轉成追蹤任務")}
                 </button>
               )}
               {isStaff(me.role) && (
-                <button className="ml-auto text-slate-500 transition hover:text-rose-400" onClick={() => remove(log)}>
+                <button className="ml-auto text-ink-tertiary transition hover:text-rose-400" onClick={() => remove(log)}>
                   {t("刪除")}
                 </button>
               )}
@@ -195,9 +195,9 @@ export default function DiveLogsPage() {
 function Section({ title, text, tone }: { title: string; text: string; tone?: string }) {
   if (!text) return null;
   return (
-    <div className="rounded-xl bg-slate-800/50 px-3 py-2">
-      <dt className="text-xs text-slate-500">{title}</dt>
-      <dd className={`whitespace-pre-wrap ${tone ?? "text-slate-300"}`}>{text}</dd>
+    <div className="rounded-xl bg-surface-2/50 px-3 py-2">
+      <dt className="text-xs text-ink-tertiary">{title}</dt>
+      <dd className={`whitespace-pre-wrap ${tone ?? "text-ink-muted"}`}>{text}</dd>
     </div>
   );
 }

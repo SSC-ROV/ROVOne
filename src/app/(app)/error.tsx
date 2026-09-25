@@ -17,27 +17,27 @@ export default function AppError({
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-6 text-center">
       <p className="text-4xl">🛠️</p>
-      <h1 className="text-lg font-bold text-slate-100">
+      <h1 className="text-lg font-bold text-ink">
         頁面出錯了 / Something went wrong
       </h1>
-      <p className="max-w-md text-sm text-slate-400">
+      <p className="max-w-md text-sm text-ink-subtle">
         載入這個頁面時發生錯誤，請重試；若持續失敗請告訴隊長或老師。
         <br />
         An error occurred while loading this page. Please try again.
       </p>
       {error.digest && (
-        <p className="text-xs text-slate-600">錯誤代碼：{error.digest}</p>
+        <p className="text-xs text-ink-tertiary">錯誤代碼：{error.digest}</p>
       )}
       <div className="flex gap-3">
         <button
           onClick={reset}
-          className="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
+          className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary-hover"
         >
           重試 / Retry
         </button>
         <button
           onClick={() => (window.location.href = "/")}
-          className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 transition hover:border-slate-500"
+          className="rounded-lg border border-hairline-strong px-4 py-2 text-sm text-ink-muted transition hover:border-hairline-strong"
         >
           回首頁 / Home
         </button>

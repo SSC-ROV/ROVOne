@@ -133,17 +133,17 @@ export const EQUIPMENT_CATEGORIES = [
 ];
 
 export const INPUT_CLS =
-  "w-full rounded-lg border border-slate-700 bg-slate-800/80 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-500 focus:outline-none";
+  "w-full rounded-lg border border-hairline bg-surface-1 px-3 py-2 text-sm text-ink placeholder:text-ink-tertiary transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50";
 
 /** 不強制滿寬的 select 樣式（工具列用） */
 export const SELECT_CLS =
-  "rounded-lg border border-slate-700 bg-slate-800/80 px-3 py-2 text-sm text-slate-100 focus:border-cyan-500 focus:outline-none";
+  "rounded-lg border border-hairline bg-surface-1 px-3 py-2 text-sm text-ink transition focus:border-primary focus:outline-none";
 
 export const BTN =
-  "rounded-lg bg-cyan-500 px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50";
+  "rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-primary-hover active:bg-primary-focus disabled:cursor-not-allowed disabled:opacity-50";
 
 export const BTN_GHOST =
-  "rounded-lg border border-slate-700 px-3 py-1.5 text-sm text-slate-300 transition hover:border-slate-500 hover:text-white";
+  "rounded-lg border border-hairline bg-surface-1 px-3 py-1.5 text-sm text-ink transition hover:border-hairline-strong hover:bg-surface-2";
 
 export const CHIP =
   "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs";

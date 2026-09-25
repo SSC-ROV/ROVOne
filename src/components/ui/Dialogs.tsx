@@ -90,7 +90,7 @@ export default function DialogProvider({
         <Modal onClose={() => closeConfirm(false)}>
           <h3 className="text-lg font-bold">{confirmState.title}</h3>
           {confirmState.message && (
-            <p className="mt-2 whitespace-pre-wrap text-sm text-slate-300">
+            <p className="mt-2 whitespace-pre-wrap text-sm text-ink-muted">
               {confirmState.message}
             </p>
           )}
@@ -126,7 +126,7 @@ export default function DialogProvider({
                 ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-200"
                 : t.kind === "err"
                   ? "border-rose-500/30 bg-rose-500/15 text-rose-200"
-                  : "border-slate-600/60 bg-slate-800/90 text-slate-200"
+                  : "border-hairline bg-surface-2/90 text-ink"
             }`}
           >
             {t.msg}
@@ -157,7 +157,7 @@ function Modal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl"
+        className="w-full max-w-sm rounded-2xl border border-hairline-strong bg-surface-1 p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {children}
@@ -178,7 +178,7 @@ function PromptModal({
   return (
     <Modal onClose={() => onClose(null)}>
       <h3 className="text-lg font-bold">{opts.title}</h3>
-      {opts.label && <p className="mt-2 text-sm text-slate-400">{opts.label}</p>}
+      {opts.label && <p className="mt-2 text-sm text-ink-subtle">{opts.label}</p>}
       <input
         className={`${INPUT_CLS} mt-3`}
         type={opts.type ?? "text"}

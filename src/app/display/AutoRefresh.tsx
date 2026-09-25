@@ -32,7 +32,7 @@ export function FullscreenButton() {
       }}
       title="全屏"
       aria-label="全屏"
-      className="h-10 w-10 rounded-lg border border-slate-700 text-lg text-slate-400 transition hover:border-slate-500 hover:text-white"
+      className="h-10 w-10 rounded-lg border border-hairline-strong text-lg text-ink-subtle transition hover:border-hairline-strong hover:text-ink"
     >
       ⛶
     </button>

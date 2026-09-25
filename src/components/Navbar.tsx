@@ -94,8 +94,8 @@ function RailButton({
       aria-label={label}
       className={`flex h-11 w-11 items-center justify-center rounded-xl transition ${
         active
-          ? "bg-slate-800 text-cyan-300"
-          : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
+          ? "bg-surface-2 text-primary-hover"
+          : "text-ink-subtle hover:bg-surface-2 hover:text-ink"
       }`}
     >
       {children}
@@ -140,7 +140,7 @@ export default function Navbar({
           <Link
             href="/"
             title={teamName}
-            className="mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-[11px] font-black text-slate-950"
+            className="mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-[11px] font-black text-white"
           >
             ROV
           </Link>
@@ -158,7 +158,7 @@ export default function Navbar({
             onClick={toggle}
             title={lang === "zh" ? "Switch to English" : t("切換至中文")}
             aria-label={lang === "zh" ? "Switch to English" : t("切換至中文")}
-            className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-800/60 hover:text-white"
+            className="flex h-11 w-11 items-center justify-center rounded-xl text-ink-subtle transition hover:bg-surface-2 hover:text-ink"
           >
             <span className="w-[22px] text-center text-[11px] font-bold">
               {lang === "zh" ? "EN" : "中"}
@@ -169,7 +169,7 @@ export default function Navbar({
             disabled={busy}
             title={t("登出")}
             aria-label={t("登出")}
-            className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-800/60 hover:text-rose-300"
+            className="flex h-11 w-11 items-center justify-center rounded-xl text-ink-subtle transition hover:bg-surface-2 hover:text-rose-300"
           >
             <IconLogout className="h-[22px] w-[22px]" />
           </button>
@@ -177,10 +177,10 @@ export default function Navbar({
       </aside>
 
       {/* ── 手機／桌面：原本的頂欄 ── */}
-      <header className="topbar sticky top-0 z-40 border-b border-slate-800 bg-slate-950/85 backdrop-blur">
+      <header className="topbar sticky top-0 z-40 border-b border-hairline bg-canvas/85 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4">
           <Link href="/" className="flex shrink-0 items-center gap-2 font-bold">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 text-[10px] font-black text-slate-950">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-[10px] font-black text-white">
               ROV
             </span>
             <span className="hidden max-w-40 truncate sm:inline">{teamName}</span>
@@ -192,8 +192,8 @@ export default function Navbar({
                 href={l.href}
                 className={`shrink-0 rounded-lg px-3 py-1.5 text-sm transition ${
                   pathname === l.href
-                    ? "bg-slate-800 text-white"
-                    : "text-slate-400 hover:text-white"
+                    ? "bg-surface-2 text-ink"
+                    : "text-ink-subtle hover:text-ink"
                 }`}
               >
                 {l.label}
@@ -201,12 +201,12 @@ export default function Navbar({
             ))}
           </nav>
           <div className="flex shrink-0 items-center gap-3 text-sm">
-            <span className="hidden text-slate-400 sm:inline">
+            <span className="hidden text-ink-subtle sm:inline">
               {user.display_name}
             </span>
             <button
               onClick={toggle}
-              className="rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-300 transition hover:border-slate-500 hover:text-white"
+              className="rounded-lg border border-hairline-strong px-2 py-1 text-xs text-ink-muted transition hover:border-hairline-strong hover:text-ink"
               title={lang === "zh" ? "Switch to English" : "切換至中文"}
             >
               {lang === "zh" ? "EN" : "中"}
@@ -214,7 +214,7 @@ export default function Navbar({
             <button
               onClick={logout}
               disabled={busy}
-              className="text-slate-400 transition hover:text-rose-300"
+              className="text-ink-subtle transition hover:text-rose-300"
             >
               {t("登出")}
             </button>

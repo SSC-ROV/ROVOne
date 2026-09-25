@@ -154,7 +154,7 @@ export default function TaskModal({
       onClick={onClose}
     >
       <div
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl"
+        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-hairline-strong bg-surface-1 p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
@@ -163,19 +163,19 @@ export default function TaskModal({
           </h2>
           <button
             onClick={onClose}
-            className="rounded-lg px-2 py-1 text-slate-400 transition hover:bg-slate-800 hover:text-white"
+            className="rounded-lg px-2 py-1 text-ink-subtle transition hover:bg-surface-2 hover:text-ink"
           >
             ✕
           </button>
         </div>
 
-        <p className="mb-3 text-xs text-slate-500">
+        <p className="mb-3 text-xs text-ink-tertiary">
           {t("所屬開發週期")}：{cycleTitle}
         </p>
 
         <div className="space-y-3">
           <div>
-            <label className="mb-1 block text-sm text-slate-400">{t("標題")}</label>
+            <label className="mb-1 block text-sm text-ink-subtle">{t("標題")}</label>
             <input
               className={INPUT_CLS}
               value={title}
@@ -185,7 +185,7 @@ export default function TaskModal({
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm text-slate-400">{t("描述")}</label>
+            <label className="mb-1 block text-sm text-ink-subtle">{t("描述")}</label>
             <textarea
               className={`${INPUT_CLS} min-h-20 resize-y`}
               value={description}
@@ -196,7 +196,7 @@ export default function TaskModal({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-sm text-slate-400">{t("組別")}</label>
+              <label className="mb-1 block text-sm text-ink-subtle">{t("組別")}</label>
               <select
                 className={INPUT_CLS}
                 value={subteam}
@@ -211,7 +211,7 @@ export default function TaskModal({
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-sm text-slate-400">{t("負責人")}</label>
+              <label className="mb-1 block text-sm text-ink-subtle">{t("負責人")}</label>
               <select
                 className={INPUT_CLS}
                 value={assigneeId}
@@ -227,7 +227,7 @@ export default function TaskModal({
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-sm text-slate-400">{t("優先級")}</label>
+              <label className="mb-1 block text-sm text-ink-subtle">{t("優先級")}</label>
               <select
                 className={INPUT_CLS}
                 value={priority}
@@ -242,7 +242,7 @@ export default function TaskModal({
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-sm text-slate-400">{t("狀態")}</label>
+              <label className="mb-1 block text-sm text-ink-subtle">{t("狀態")}</label>
               <select
                 className={INPUT_CLS}
                 value={status}
@@ -257,7 +257,7 @@ export default function TaskModal({
               </select>
             </div>
             <div className="col-span-2">
-              <label className="mb-1 block text-sm text-slate-400">{t("截止日期")}</label>
+              <label className="mb-1 block text-sm text-ink-subtle">{t("截止日期")}</label>
               <input
                 type="date"
                 className={INPUT_CLS}
@@ -270,7 +270,7 @@ export default function TaskModal({
 
           {mode === "edit" && (
             <div>
-              <label className="mb-1 block text-sm text-slate-400">
+              <label className="mb-1 block text-sm text-ink-subtle">
                 {t("子任務")} ({items.filter((i) => i.done).length}/{items.length})
               </label>
               <ul className="mb-2 space-y-1.5">
@@ -278,18 +278,18 @@ export default function TaskModal({
                   <li key={item.id} className="flex items-center gap-2 text-sm">
                     <input
                       type="checkbox"
-                      className="h-4 w-4 accent-cyan-500"
+                      className="h-4 w-4 accent-primary"
                       checked={!!item.done}
                       onChange={() => toggleItem(item)}
                       disabled={!canEdit}
                     />
-                    <span className={`flex-1 ${item.done ? "text-slate-500 line-through" : ""}`}>
+                    <span className={`flex-1 ${item.done ? "text-ink-tertiary line-through" : ""}`}>
                       {item.text}
                     </span>
                     {canEdit && (
                       <button
                         onClick={() => deleteItem(item)}
-                        className="text-slate-500 transition hover:text-rose-400"
+                        className="text-ink-tertiary transition hover:text-rose-400"
                       >
                         ✕
                       </button>
@@ -332,14 +332,14 @@ export default function TaskModal({
                 <button
                   onClick={remove}
                   disabled={busy}
-                  className="ml-auto text-sm text-slate-500 transition hover:text-rose-400"
+                  className="ml-auto text-sm text-ink-tertiary transition hover:text-rose-400"
                 >
                   {t("刪除任務")}
                 </button>
               )}
             </div>
           ) : (
-            <p className="pt-2 text-xs text-slate-500">
+            <p className="pt-2 text-xs text-ink-tertiary">
               {t("只有隊長、負責人或建立者可以修改這個任務。")}
             </p>
           )}

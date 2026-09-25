@@ -30,10 +30,10 @@ export default function Clock() {
 
   return (
     <div className="text-right leading-none">
-      <div className="font-mono text-6xl font-black tracking-tight text-white tabular-nums">
+      <div className="font-mono text-6xl font-black tracking-tight text-ink tabular-nums">
         {time}
       </div>
-      <div className="mt-1 text-lg text-slate-400">{date}</div>
+      <div className="mt-1 text-lg text-ink-subtle">{date}</div>
     </div>
   );
 }

@@ -46,7 +46,7 @@ export default function EquipmentPage() {
     );
   }
   if (!equipment || !me) {
-    return <p className="py-20 text-center text-sm text-slate-500">{t("載入中…")}</p>;
+    return <p className="py-20 text-center text-sm text-ink-tertiary">{t("載入中…")}</p>;
   }
   const meId = me.id;
   const meName = me.display_name;
@@ -133,15 +133,15 @@ export default function EquipmentPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-lg font-bold">{t("設備借用")}</h1>
-        <span className="text-sm text-slate-500">
+        <span className="text-sm text-ink-tertiary">
           {t("目前借出")} {borrowed.length} {t("項；借用請登記，歸還請按「歸還」")}
         </span>
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900/60">
+      <div className="overflow-x-auto rounded-2xl border border-hairline bg-surface-1">
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-left text-xs text-slate-500">
+            <tr className="text-left text-xs text-ink-tertiary">
               <th className="px-4 py-3 font-medium">{t("設備")}</th>
               <th className="px-4 py-3 font-medium">{t("分類")}</th>
               <th className="px-4 py-3 font-medium">{t("狀態")}</th>
@@ -156,25 +156,25 @@ export default function EquipmentPage() {
               const overdue =
                 e.status === "borrowed" && e.due_return && e.due_return < todayStr();
               return (
-                <tr key={e.id} className="border-t border-slate-800/60">
+                <tr key={e.id} className="border-t border-hairline/60">
                   <td className="px-4 py-3">
                     {e.name}
-                    {e.note && <p className="text-xs text-slate-500">{e.note}</p>}
+                    {e.note && <p className="text-xs text-ink-tertiary">{e.note}</p>}
                   </td>
-                  <td className="px-4 py-3 text-slate-400">{t(e.category)}</td>
+                  <td className="px-4 py-3 text-ink-subtle">{t(e.category)}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${st.chip}`}>
                       {t(st.label)}
                     </span>
                   </td>
-                  <td className="px-4 py-3">{e.borrower_name ?? <span className="text-slate-600">—</span>}</td>
-                  <td className={`px-4 py-3 tabular-nums ${overdue ? "text-rose-400" : "text-slate-400"}`}>
+                  <td className="px-4 py-3">{e.borrower_name ?? <span className="text-ink-tertiary">—</span>}</td>
+                  <td className={`px-4 py-3 tabular-nums ${overdue ? "text-rose-400" : "text-ink-subtle"}`}>
                     {e.due_return ? (overdue ? t("逾期 ") : "") + fmtMD(e.due_return) : "—"}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-3 text-xs">
                       {e.status === "available" && (
-                        <button className="text-cyan-300 hover:underline" onClick={() => act(e, "borrow")}>
+                        <button className="text-primary-hover hover:underline" onClick={() => act(e, "borrow")}>
                           {t("借用")}
                         </button>
                       )}
@@ -184,12 +184,12 @@ export default function EquipmentPage() {
                         </button>
                       )}
                       {isStaff(me.role) && e.status !== "borrowed" && (
-                        <button className="text-slate-400 hover:underline" onClick={() => act(e, "maintenance")}>
+                        <button className="text-ink-subtle hover:underline" onClick={() => act(e, "maintenance")}>
                           {e.status === "maintenance" ? t("修好了") : t("送修")}
                         </button>
                       )}
                       {isStaff(me.role) && (
-                        <button className="text-slate-500 hover:text-rose-400" onClick={() => remove(e)}>
+                        <button className="text-ink-tertiary hover:text-rose-400" onClick={() => remove(e)}>
                           {t("刪除")}
                         </button>
                       )}
@@ -200,7 +200,7 @@ export default function EquipmentPage() {
             })}
             {equipment.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-12 text-center text-slate-500">
+                <td colSpan={6} className="px-4 py-12 text-center text-ink-tertiary">
                   {t("還沒有登記設備")}
                 </td>
               </tr>
@@ -210,7 +210,7 @@ export default function EquipmentPage() {
       </div>
 
       {isStaff(me.role) && (
-        <form onSubmit={addEquipment} className="grid gap-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-5 sm:grid-cols-[1fr_10rem_1fr_auto]">
+        <form onSubmit={addEquipment} className="grid gap-3 rounded-2xl border border-hairline bg-surface-1 p-5 sm:grid-cols-[1fr_10rem_1fr_auto]">
           <input className={INPUT_CLS} placeholder={t("設備名稱，例如：T200 備用推進器")} value={name} onChange={(e) => setName(e.target.value)} />
           <select className={INPUT_CLS} value={category} onChange={(e) => setCategory(e.target.value)}>
             {EQUIPMENT_CATEGORIES.map((c) => (

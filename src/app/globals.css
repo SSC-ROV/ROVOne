@@ -1,14 +1,33 @@
 @import "tailwindcss";
 
+/* ── Linear 設計系統色板（DESIGN.md） ── */
+@theme {
+  --color-canvas: #010102;
+  --color-surface-1: #0f1011;
+  --color-surface-2: #141516;
+  --color-surface-3: #18191a;
+  --color-surface-4: #191a1b;
+  --color-hairline: #23252a;
+  --color-hairline-strong: #34343a;
+  --color-ink: #f7f8f8;
+  --color-ink-muted: #d0d6e0;
+  --color-ink-subtle: #8a8f98;
+  --color-ink-tertiary: #62666d;
+  --color-primary: #5e6ad2;
+  --color-primary-hover: #828fff;
+  --color-primary-focus: #5e69d1;
+}
+
 html {
   color-scheme: dark;
   -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background: #020617;
-  color: #f1f5f9;
+  background: var(--color-canvas);
+  color: var(--color-ink);
   font-family:
+    Inter,
     ui-sans-serif,
     system-ui,
     -apple-system,
@@ -20,12 +39,19 @@ body {
     sans-serif;
 }
 
+/* 標題負字距（Linear display 追蹤） */
+h1,
+h2,
+h3 {
+  letter-spacing: -0.02em;
+}
+
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
+  background: var(--color-hairline);
   border-radius: 8px;
 }
 ::-webkit-scrollbar-track {
@@ -34,7 +60,6 @@ body {
 
 /* ── 觸控／iPad 適配 ─────────────────────────────── */
 
-/* 去除觸控高亮；可點擊元素消除雙擊縮放延遲 */
 * {
   -webkit-tap-highlight-color: transparent;
 }
@@ -47,7 +72,6 @@ summary {
   touch-action: manipulation;
 }
 
-/* 觸控裝置：表單控制項不小於 44pt 可點面積；輸入框 16px 起（防 iOS 聚焦自動放大） */
 @media (pointer: coarse) {
   button,
   select {
@@ -73,17 +97,12 @@ summary {
 .rail {
   display: none;
 }
-.rail-spacer {
-  display: none;
-}
 
 @media (pointer: coarse) and (min-width: 1024px) {
-  /* 頂欄退場，改用固定左側欄 */
   .topbar {
     display: none !important;
   }
   body {
-    /* 側欄自行處理左側安全區；右側保留 */
     padding-left: 0;
     padding-right: env(safe-area-inset-right);
   }
@@ -97,21 +116,13 @@ summary {
     z-index: 40;
     width: 84px;
     padding: 12px 0 16px;
-    border-right: 1px solid rgb(30 41 59); /* slate-800 */
-    background: rgba(2, 6, 23, 0.92); /* slate-950/92 */
+    border-right: 1px solid var(--color-hairline);
+    background: rgba(1, 1, 2, 0.92);
     backdrop-filter: blur(8px);
   }
   .app-main {
     /* 內容避開左側欄：左移 84px 並等量縮窄，避免横向溢出 */
     width: calc(100% - 84px);
     margin-left: 84px;
-  }
-}
-
-
-/* 平板橫屏（≥1024px 寬的觸控裝置）：頂欄緊湊，一屏容納更多資訊 */
-@media (pointer: coarse) and (min-width: 1024px) {
-  table {
-    font-size: 0.9rem;
   }
 }

@@ -94,13 +94,13 @@ export default function AdminPage() {
     );
   }
   if (!me || !settings) {
-    return <p className="py-20 text-center text-sm text-slate-500">{t("載入中…")}</p>;
+    return <p className="py-20 text-center text-sm text-ink-tertiary">{t("載入中…")}</p>;
   }
   if (!isStaff(me.role)) {
     return (
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-10 text-center">
+      <div className="rounded-2xl border border-hairline bg-surface-1 p-10 text-center">
         <p className="text-lg font-bold">{t("此頁面僅限隊長與老師使用")}</p>
-        <p className="mt-2 text-sm text-slate-400">
+        <p className="mt-2 text-sm text-ink-subtle">
           {t("需要調整隊伍設定或成員時，請聯絡隊長。")}
         </p>
       </div>
@@ -310,11 +310,11 @@ export default function AdminPage() {
         </p>
       )}
 
-      <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+      <section className="rounded-2xl border border-hairline bg-surface-1 p-5">
         <h2 className="mb-3 font-bold">{t("隊伍設定")}</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <label className="mb-1 block text-sm text-slate-400">{t("隊伍名稱")}</label>
+            <label className="mb-1 block text-sm text-ink-subtle">{t("隊伍名稱")}</label>
             <input
               className={INPUT_CLS}
               value={teamName}
@@ -322,7 +322,7 @@ export default function AdminPage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm text-slate-400">
+            <label className="mb-1 block text-sm text-ink-subtle">
               {t("比賽日期（首頁倒數用）")}
             </label>
             <input
@@ -336,9 +336,9 @@ export default function AdminPage() {
         <button className={`${BTN} mt-3`} onClick={saveSettings}>{t("儲存設定")}</button>
       </section>
 
-      <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+      <section className="rounded-2xl border border-hairline bg-surface-1 p-5">
         <h2 className="mb-1 font-bold">{t("通知與整合")}</h2>
-        <p className="mb-3 text-xs text-slate-500">
+        <p className="mb-3 text-xs text-ink-tertiary">
           {t("設定 Discord Webhook 後，各類事件會自動推到對應的頻道")}（{t("Discord 頻道設定 → 整合 → Webhook → 建立並複製網址）")}）。
           
         </p>
@@ -363,30 +363,30 @@ export default function AdminPage() {
           <button className={BTN_GHOST} onClick={testNotify}>{t("發送測試通知（測試第一個頻道）")}</button>
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          <span className="text-sm text-slate-400">{t("日曆訂閱（iCal）")}：</span>
+          <span className="text-sm text-ink-subtle">{t("日曆訂閱（iCal）")}：</span>
           <button className={BTN_GHOST} onClick={copyIcalUrl}>{t("複製訂閱連結")}</button>
-          <span className="text-xs text-slate-500">
+          <span className="text-xs text-ink-tertiary">
             {t("隊員在手機日曆 App「訂閱日曆」貼上，例會、水測自動同步")}
           </span>
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="text-sm text-slate-400">{t("團隊看板（Raspberry Pi）")}：</span>
+          <span className="text-sm text-ink-subtle">{t("團隊看板（Raspberry Pi）")}：</span>
           <button className={BTN_GHOST} onClick={copyDisplayUrl}>{t("複製看板連結")}</button>
           <button className={BTN_GHOST} onClick={rotateDisplay}>{t("重新產生")}</button>
-          <span className="text-xs text-slate-500">
+          <span className="text-xs text-ink-tertiary">
             {t("全屏顯示進行中週期與近兩週日程，每分鐘自動更新，免登入")}
           </span>
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+      <section className="rounded-2xl border border-hairline bg-surface-1 p-5">
         <h2 className="mb-1 font-bold">{t("組別管理")}</h2>
-        <p className="mb-3 text-xs text-slate-500">{t("自訂全站使用的組別（任務、成員、活動都會跟著）；刪除組別時，原屬成員與任務會自動改到第一個剩餘組別")}</p>
+        <p className="mb-3 text-xs text-ink-tertiary">{t("自訂全站使用的組別（任務、成員、活動都會跟著）；刪除組別時，原屬成員與任務會自動改到第一個剩餘組別")}</p>
         <div className="space-y-2">
           {stList.map((row, i) => (
             <div key={row.key || "new" + i} className="flex flex-wrap items-center gap-2">
               <input
-                className="w-40 rounded-lg border border-slate-700 bg-slate-800/80 px-3 py-2 text-sm text-slate-100"
+                className="w-40 rounded-lg border border-hairline-strong bg-surface-1 px-3 py-2 text-sm text-ink"
                 placeholder={t("中文名稱")}
                 value={row.zh}
                 onChange={(e) => {
@@ -396,7 +396,7 @@ export default function AdminPage() {
                 }}
               />
               <input
-                className="w-40 rounded-lg border border-slate-700 bg-slate-800/80 px-3 py-2 text-sm text-slate-100"
+                className="w-40 rounded-lg border border-hairline-strong bg-surface-1 px-3 py-2 text-sm text-ink"
                 placeholder={t("英文名稱")}
                 value={row.en}
                 onChange={(e) => {
@@ -406,7 +406,7 @@ export default function AdminPage() {
                 }}
               />
               <button
-                className="text-sm text-slate-500 transition hover:text-rose-400"
+                className="text-sm text-ink-tertiary transition hover:text-rose-400"
                 onClick={() => setStList(stList.filter((_, j) => j !== i))}
                 disabled={stList.length <= 1}
               >
@@ -425,20 +425,20 @@ export default function AdminPage() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+      <section className="rounded-2xl border border-hairline bg-surface-1 p-5">
         <h2 className="mb-1 font-bold">{t("Google 登入")}</h2>
-        <p className="mb-3 text-xs text-slate-500">
+        <p className="mb-3 text-xs text-ink-tertiary">
           {t("設定後隊員可在登入頁用學校 Google 帳號登入（首次自動建立帳號）。")} {t("回呼網址（複製到 Google Cloud OAuth 設定）")}：
         </p>
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <code className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs text-cyan-300">
+          <code className="rounded-lg bg-surface-2 px-3 py-1.5 text-xs text-primary-hover">
             {typeof window !== "undefined" ? `${location.origin}/api/auth/google/callback` : "/api/auth/google/callback"}
           </code>
           <button className={BTN_GHOST} onClick={copyGoogleCallback}>{t("複製")}</button>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="sm:col-span-2">
-            <label className="mb-1 block text-sm text-slate-400">{t("Google 用戶端 ID（Client ID）")}</label>
+            <label className="mb-1 block text-sm text-ink-subtle">{t("Google 用戶端 ID（Client ID）")}</label>
             <input
               className={INPUT_CLS}
               placeholder="xxx.apps.googleusercontent.com"
@@ -447,7 +447,7 @@ export default function AdminPage() {
             />
           </div>
           <div className="sm:col-span-2">
-            <label className="mb-1 block text-sm text-slate-400">{t("Google 用戶端密鑰（Client Secret）")}</label>
+            <label className="mb-1 block text-sm text-ink-subtle">{t("Google 用戶端密鑰（Client Secret）")}</label>
             <input
               className={INPUT_CLS}
               type="password"
@@ -457,7 +457,7 @@ export default function AdminPage() {
             />
           </div>
           <div className="sm:col-span-2">
-            <label className="mb-1 block text-sm text-slate-400">
+            <label className="mb-1 block text-sm text-ink-subtle">
               {t("允許登入的網域（以逗號分隔，只限這些網域的 email）")}
             </label>
             <input
@@ -468,7 +468,7 @@ export default function AdminPage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm text-slate-400">
+            <label className="mb-1 block text-sm text-ink-subtle">
               {t("隊長 email（這些 Google 帳號登入＝隊長）")}
             </label>
             <input
@@ -479,7 +479,7 @@ export default function AdminPage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm text-slate-400">
+            <label className="mb-1 block text-sm text-ink-subtle">
               {t("老師 email（這些 Google 帳號登入＝老師）")}
             </label>
             <input
@@ -490,17 +490,17 @@ export default function AdminPage() {
             />
           </div>
         </div>
-        <p className="mt-2 text-xs text-slate-500">
+        <p className="mt-2 text-xs text-ink-tertiary">
           {t("組別一律為「全隊」，日後可在「帳號」由老師／隊長調整。密碼登入不受影響，仍可作為後備。")}
         </p>
       </section>
 
-      <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+      <section className="rounded-2xl border border-hairline bg-surface-1 p-5">
         <h2 className="mb-3 font-bold">{t("成員")}（{members.length}）</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-xs text-slate-500">
+              <tr className="text-left text-xs text-ink-tertiary">
                 <th className="px-2 py-2 font-medium">{t("名稱")}</th>
                 <th className="px-2 py-2 font-medium">{t("帳號")}</th>
                 <th className="px-2 py-2 font-medium">{t("組別")}</th>
@@ -510,12 +510,12 @@ export default function AdminPage() {
             </thead>
             <tbody>
               {members.map((m) => (
-                <tr key={m.id} className="border-t border-slate-800/60">
+                <tr key={m.id} className="border-t border-hairline/60">
                   <td className="px-2 py-2.5">{m.display_name}</td>
-                  <td className="px-2 py-2.5 text-slate-400">{m.username}</td>
+                  <td className="px-2 py-2.5 text-ink-subtle">{m.username}</td>
                   <td className="px-2 py-2.5">
                     <select
-                      className="rounded-lg border border-slate-700 bg-slate-800/80 px-2 py-1 text-sm text-slate-200"
+                      className="rounded-lg border border-hairline-strong bg-surface-1 px-2 py-1 text-sm text-ink"
                       value={m.subteam}
                       onChange={(e) => updateMember(m, { subteam: e.target.value })}
                     >
@@ -526,7 +526,7 @@ export default function AdminPage() {
                   </td>
                   <td className="px-2 py-2.5">
                     <select
-                      className="rounded-lg border border-slate-700 bg-slate-800/80 px-2 py-1 text-sm text-slate-200"
+                      className="rounded-lg border border-hairline-strong bg-surface-1 px-2 py-1 text-sm text-ink"
                       value={m.role}
                       onChange={(e) => updateMember(m, { role: e.target.value })}
                     >
@@ -539,7 +539,7 @@ export default function AdminPage() {
                     {resetId === m.id ? (
                       <span className="inline-flex gap-1">
                         <input
-                          className="w-28 rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-xs"
+                          className="w-28 rounded-lg border border-hairline-strong bg-surface-2 px-2 py-1 text-xs"
                           placeholder={t("新密碼")}
                           value={resetPw}
                           onChange={(e) => setResetPw(e.target.value)}
@@ -556,12 +556,12 @@ export default function AdminPage() {
                     ) : (
                       <span className="inline-flex gap-3">
                         <button
-                          className="text-slate-400 transition hover:text-cyan-300"
+                          className="text-ink-subtle transition hover:text-primary-hover"
                           onClick={() => setResetId(m.id)}
                         >{t("重設密碼")}</button>
                         {m.id !== me.id && (
                           <button
-                            className="text-slate-400 transition hover:text-rose-400"
+                            className="text-ink-subtle transition hover:text-rose-400"
                             onClick={() => removeMember(m)}
                           >{t("刪除")}</button>
                         )}
@@ -575,7 +575,7 @@ export default function AdminPage() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+      <section className="rounded-2xl border border-hairline bg-surface-1 p-5">
         <h2 className="mb-3 font-bold">{t("新增成員")}</h2>
         <div className="grid gap-3 sm:grid-cols-3">
           <input
@@ -640,9 +640,9 @@ function WebhookRow({
   const { t } = useI18n();
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="w-64 shrink-0 text-sm text-slate-400">{label}</span>
+      <span className="w-64 shrink-0 text-sm text-ink-subtle">{label}</span>
       <input
-        className="min-w-64 flex-1 rounded-lg border border-slate-700 bg-slate-800/80 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-500 focus:outline-none"
+        className="min-w-64 flex-1 rounded-lg border border-hairline-strong bg-surface-1 px-3 py-2 text-sm text-ink placeholder:text-ink-tertiary focus:border-primary focus:outline-none"
         placeholder={`https://…（${t("Teams 或 Power Automate 的 Webhook 網址")}）`}
         value={value}
         onChange={(e) => onChange(e.target.value)}

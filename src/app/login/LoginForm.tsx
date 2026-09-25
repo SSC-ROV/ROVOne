@@ -60,14 +60,14 @@ function LoginInner({ googleEnabled }: { googleEnabled: boolean }) {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-950 bg-[radial-gradient(ellipse_at_top,rgba(8,145,178,0.22),transparent_60%)] px-4">
+    <main className="flex min-h-screen items-center justify-center bg-canvas bg-[radial-gradient(ellipse_at_top,rgba(8,145,178,0.22),transparent_60%)] px-4">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center gap-3">
-          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 text-base font-black text-slate-950 shadow-lg shadow-cyan-500/20">
+          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-base font-black text-white shadow-lg shadow-primary/30">
             ROV
           </span>
           <h1 className="text-2xl font-bold">{t("ROV 隊伍任務平台")}</h1>
-          <p className="text-sm text-slate-400">{t("任務看板 · 時間規劃 · 任務日曆")}</p>
+          <p className="text-sm text-ink-subtle">{t("任務看板 · 時間規劃 · 任務日曆")}</p>
         </div>
 
         {error && (
@@ -82,26 +82,26 @@ function LoginInner({ googleEnabled }: { googleEnabled: boolean }) {
               <button
                 onClick={googleLogin}
                 disabled={googleBusy}
-                className="flex w-full items-center justify-center gap-3 rounded-2xl border border-slate-700 bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100 disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-3 rounded-2xl border border-hairline-strong bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100 disabled:opacity-50"
               >
                 <GoogleIcon />
                 {googleBusy ? t("前往 Google…") : t("使用 Google 帳號登入")}
               </button>
-              <div className="flex items-center gap-3 text-xs text-slate-600">
-                <div className="h-px flex-1 bg-slate-800" />
+              <div className="flex items-center gap-3 text-xs text-ink-tertiary">
+                <div className="h-px flex-1 bg-surface-2" />
                 {t("或使用帳號密碼")}
-                <div className="h-px flex-1 bg-slate-800" />
+                <div className="h-px flex-1 bg-surface-2" />
               </div>
             </>
           )}
           <form
             onSubmit={submit}
-            className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl"
+            className="space-y-4 rounded-2xl border border-hairline bg-surface-1/80 p-6 shadow-xl"
           >
             <div>
-              <label className="mb-1 block text-sm text-slate-400">{t("帳號")}</label>
+              <label className="mb-1 block text-sm text-ink-subtle">{t("帳號")}</label>
               <input
-                className="w-full rounded-lg border border-slate-700 bg-slate-800/80 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-500 focus:outline-none"
+                className="w-full rounded-lg border border-hairline-strong bg-surface-1 px-3 py-2 text-sm text-ink placeholder:text-ink-tertiary focus:border-primary focus:outline-none"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 autoComplete="username"
@@ -109,10 +109,10 @@ function LoginInner({ googleEnabled }: { googleEnabled: boolean }) {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm text-slate-400">{t("密碼")}</label>
+              <label className="mb-1 block text-sm text-ink-subtle">{t("密碼")}</label>
               <input
                 type="password"
-                className="w-full rounded-lg border border-slate-700 bg-slate-800/80 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-500 focus:outline-none"
+                className="w-full rounded-lg border border-hairline-strong bg-surface-1 px-3 py-2 text-sm text-ink placeholder:text-ink-tertiary focus:border-primary focus:outline-none"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="current-password"
@@ -121,13 +121,13 @@ function LoginInner({ googleEnabled }: { googleEnabled: boolean }) {
             <button
               type="submit"
               disabled={busy || !username || !password}
-              className="w-full rounded-lg bg-cyan-500 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
             >
               {busy ? t("登入中…") : t("登入")}
             </button>
           </form>
           {!googleEnabled && (
-            <p className="rounded-lg bg-slate-800/60 px-3 py-2 text-xs leading-5 text-slate-500">
+            <p className="rounded-lg bg-surface-2 px-3 py-2 text-xs leading-5 text-ink-tertiary">
               {t("帳號由隊長在「管理」頁開立；忘記密碼請找隊長重置。")}
             </p>
           )}

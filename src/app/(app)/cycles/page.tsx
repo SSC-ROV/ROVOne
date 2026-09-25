@@ -51,7 +51,7 @@ export default function CyclesPage() {
     );
   }
   if (!cycles || !me) {
-    return <p className="py-20 text-center text-sm text-slate-500">{t("載入中…")}</p>;
+    return <p className="py-20 text-center text-sm text-ink-tertiary">{t("載入中…")}</p>;
   }
 
   // today 必須在下方 filter 之前宣告（approvedNotStarted 會用到，否則暫時性死區 ReferenceError）
@@ -178,7 +178,7 @@ export default function CyclesPage() {
 
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-lg font-bold">{t("開發週期")}</h1>
-        <span className="text-sm text-slate-500">
+        <span className="text-sm text-ink-tertiary">
           {t("提案 → 隊長審批 → 老師審批 → 進行中；任務在週期卡片內直接新增")}
         </span>
         <button className={`${BTN} ml-auto`} onClick={() => setForm({ editing: null })}>
@@ -225,7 +225,7 @@ export default function CyclesPage() {
             {pending.map((c) => {
               const dec = canDecide(c);
               return (
-                <div key={c.id} className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+                <div key={c.id} className="rounded-xl border border-hairline bg-surface-1/70 p-4">
                   <CycleHead c={c} today={today} />
                   <div className="mt-2 flex flex-wrap gap-2">
                     {dec === "approve" && (
@@ -238,7 +238,7 @@ export default function CyclesPage() {
                         </button>
                       </>
                     )}
-                    {dec === "wait" && <p className="text-xs text-slate-500">{t("等待老師審批中")}</p>}
+                    {dec === "wait" && <p className="text-xs text-ink-tertiary">{t("等待老師審批中")}</p>}
                     <button className={`${BTN_GHOST} ml-auto`} onClick={() => setForm({ editing: c })}>
                       {t("編輯")}
                     </button>
@@ -253,12 +253,12 @@ export default function CyclesPage() {
       <section className="space-y-3">
         <h2 className="font-bold">{t("進行中")}（{active.length}）</h2>
         {active.length === 0 && (
-          <p className="rounded-2xl border border-slate-800 bg-slate-900/40 py-10 text-center text-sm text-slate-500">
+          <p className="rounded-2xl border border-hairline bg-surface-1 py-10 text-center text-sm text-ink-tertiary">
             {t("目前沒有進行中的週期")}
           </p>
         )}
         {active.map((c) => (
-          <div key={c.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+          <div key={c.id} className="rounded-2xl border border-hairline bg-surface-1 p-4">
             <CycleHead c={c} today={today} />
             <TaskProgress done={c.task_done} total={c.task_total} />
             <div className="mt-2 flex flex-wrap gap-2">
@@ -268,7 +268,7 @@ export default function CyclesPage() {
                 </button>
               )}
               {isStaff(me.role) && (
-                <button className={`${BTN_GHOST} text-slate-500`} onClick={() => removeCycle(c)}>
+                <button className={`${BTN_GHOST} text-ink-tertiary`} onClick={() => removeCycle(c)}>
                   {t("刪除")}
                 </button>
               )}
@@ -284,7 +284,7 @@ export default function CyclesPage() {
             <div key={c.id} className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4">
               <CycleHead c={c} today={today} />
               <TaskProgress done={c.task_done} total={c.task_total} />
-              <p className="mt-2 text-xs text-slate-500">
+              <p className="mt-2 text-xs text-ink-tertiary">
                 {t("開始日期")} {fmtMD(c.start_date)} {t("後自動進入進行中")}
               </p>
             </div>
@@ -323,7 +323,7 @@ export default function CyclesPage() {
                   </button>
                 )}
                 {isStaff(myRole) && (
-                  <button className={`${BTN_GHOST} text-slate-500`} onClick={() => removeCycle(c)}>
+                  <button className={`${BTN_GHOST} text-ink-tertiary`} onClick={() => removeCycle(c)}>
                     {t("刪除")}
                   </button>
                 )}
@@ -333,12 +333,12 @@ export default function CyclesPage() {
         </section>
       )}
 
-      <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+      <section className="rounded-2xl border border-hairline bg-surface-1 p-5">
         <h2 className="mb-3 font-bold">{t("成員週期統計")}</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-xs text-slate-500">
+                <tr className="text-left text-xs text-ink-tertiary">
                   <th className="px-2 py-2 font-medium">#</th>
                   <th className="px-2 py-2 font-medium">{t("成員")}</th>
                   <th className="px-2 py-2 font-medium">{t("進行中")}</th>
@@ -351,10 +351,10 @@ export default function CyclesPage() {
               </thead>
               <tbody>
                 {stats.map((s, i) => (
-                  <tr key={s.member.id} className="border-t border-slate-800/60">
-                    <td className="px-2 py-2.5 tabular-nums text-slate-500">{i + 1}</td>
+                  <tr key={s.member.id} className="border-t border-hairline/60">
+                    <td className="px-2 py-2.5 tabular-nums text-ink-tertiary">{i + 1}</td>
                     <td className="px-2 py-2.5">{s.member.display_name}</td>
-                    <td className="px-2 py-2.5 tabular-nums text-cyan-300">{s.active}</td>
+                    <td className="px-2 py-2.5 tabular-nums text-primary-hover">{s.active}</td>
                     <td className="px-2 py-2.5 tabular-nums text-emerald-300">{s.approved}</td>
                     <td className="px-2 py-2.5 tabular-nums text-orange-300">{s.late}</td>
                     <td className="px-2 py-2.5 tabular-nums text-amber-300">{s.pending}</td>
@@ -365,14 +365,14 @@ export default function CyclesPage() {
               </tbody>
             </table>
           </div>
-          <p className="mt-2 text-xs text-slate-500">{t("統計包含「提案」與「作為合作成員」的週期；已核准的週期在開始日自動轉為進行中。")}</p>
+          <p className="mt-2 text-xs text-ink-tertiary">{t("統計包含「提案」與「作為合作成員」的週期；已核准的週期在開始日自動轉為進行中。")}</p>
       </section>
 
       {history.length > 0 && (
         <section className="space-y-3">
-          <h2 className="font-bold text-slate-400">{t("歷史")}（{history.length}）</h2>
+          <h2 className="font-bold text-ink-subtle">{t("歷史")}（{history.length}）</h2>
           {history.map((c) => (
-            <div key={c.id} className="rounded-2xl border border-slate-800/70 bg-slate-900/40 p-4">
+            <div key={c.id} className="rounded-2xl border border-hairline bg-surface-1 p-4">
               <CycleHead c={c} today={today} />
               {c.status === "rejected" && c.proposer_id === me.id && (
                 <button className={`${BTN_GHOST} mt-2`} onClick={() => act(c, "resubmit")}>
@@ -380,7 +380,7 @@ export default function CyclesPage() {
                 </button>
               )}
               {(isStaff(me.role) || (c.proposer_id === meId && c.status === "rejected")) && (
-                <button className="ml-3 text-xs text-slate-500 hover:text-rose-400" onClick={() => removeCycle(c)}>
+                <button className="ml-3 text-xs text-ink-tertiary hover:text-rose-400" onClick={() => removeCycle(c)}>
                   {t("刪除")}
                 </button>
               )}
@@ -403,23 +403,23 @@ function CycleHead({ c, today }: { c: Cycle; today: string }) {
           {st.label}
         </span>
         <span className="font-bold">{c.title}</span>
-        <span className="ml-auto text-xs tabular-nums text-slate-400">
+        <span className="ml-auto text-xs tabular-nums text-ink-subtle">
           {fmtMD(c.start_date)} ~ {fmtMD(c.end_date)}
           {c.status === "active" && (
-            <span className={`ml-2 ${left < 0 ? "text-rose-400" : left <= 3 ? "text-amber-300" : "text-slate-500"}`}>
+            <span className={`ml-2 ${left < 0 ? "text-rose-400" : left <= 3 ? "text-amber-300" : "text-ink-tertiary"}`}>
               {left < 0 ? `${t("已超過結束日")} ${-left} ${t("天")}` : `${t("剩")} ${left} ${t("天")}`}
             </span>
           )}
         </span>
       </div>
-      {c.description && <p className="mt-1 text-sm text-slate-400">{c.description}</p>}
-      <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+      {c.description && <p className="mt-1 text-sm text-ink-subtle">{c.description}</p>}
+      <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-ink-tertiary">
         <span>{t("提案")}：{c.proposer_name ?? "—"}</span>
         {c.members.length > 0 && (
           <span className="flex flex-wrap items-center gap-1">
             · {t("合作")}：
             {c.members.map((m) => (
-              <span key={m.id} className={`${CHIP} border-slate-700 text-slate-300`}>
+              <span key={m.id} className={`${CHIP} border-hairline-strong text-ink-muted`}>
                 {m.display_name}
               </span>
             ))}
@@ -427,7 +427,7 @@ function CycleHead({ c, today }: { c: Cycle; today: string }) {
         )}
       </div>
       {(c.status === "rejected" || c.status === "completed") && c.decided_note && (
-        <p className="mt-1 text-xs text-slate-400">{t("審批備註")}：{c.decided_note}</p>
+        <p className="mt-1 text-xs text-ink-subtle">{t("審批備註")}：{c.decided_note}</p>
       )}
     </div>
   );
@@ -436,13 +436,13 @@ function CycleHead({ c, today }: { c: Cycle; today: string }) {
 function TaskProgress({ done, total }: { done: number; total: number }) {
   const { t } = useI18n();
   if (total === 0) {
-    return <p className="mt-2 text-xs text-slate-500">{t("尚未新增任務，用下方輸入快速加入")}</p>;
+    return <p className="mt-2 text-xs text-ink-tertiary">{t("尚未新增任務，用下方輸入快速加入")}</p>;
   }
   const pct = Math.round((done / total) * 100);
   return (
-    <div className="mt-2 flex items-center gap-3 text-xs text-slate-400">
-      <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-800">
-        <div className="h-full rounded-full bg-cyan-500" style={{ width: `${pct}%` }} />
+    <div className="mt-2 flex items-center gap-3 text-xs text-ink-subtle">
+      <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-2">
+        <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
       </div>
       <span className="tabular-nums">
         {t("任務")} {done}/{total}（{pct}%）
@@ -510,7 +510,7 @@ function CycleForm({
   }
 
   return (
-    <form onSubmit={submit} className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+    <form onSubmit={submit} className="space-y-3 rounded-2xl border border-hairline bg-surface-1 p-5">
       <h2 className="font-bold">{editing ? `${t("編輯週期")}：${editing.title}` : t("提案新開發週期")}</h2>
       <div className="grid gap-3 sm:grid-cols-[1fr_10rem_10rem]">
         <input className={INPUT_CLS} placeholder={t("週期名稱，例如：推進系統重構 *")} value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -524,9 +524,9 @@ function CycleForm({
         onChange={(e) => setDescription(e.target.value)}
       />
       <div>
-        <p className="mb-1 text-sm text-slate-400">{t("合作成員（可多選）")}</p>
+        <p className="mb-1 text-sm text-ink-subtle">{t("合作成員（可多選）")}</p>
         {members.length === 0 ? (
-          <p className="text-xs text-slate-500">{t("目前沒有其他成員可選")}</p>
+          <p className="text-xs text-ink-tertiary">{t("目前沒有其他成員可選")}</p>
         ) : (
           <div className="flex flex-wrap gap-2">
             {members.map((m) => {
@@ -538,8 +538,8 @@ function CycleForm({
                   onClick={() => setPicked(on ? picked.filter((x) => x !== m.id) : [...picked, m.id])}
                   className={`rounded-full border px-3 py-1 text-sm transition ${
                     on
-                      ? "border-cyan-500/60 bg-cyan-500/15 text-cyan-300"
-                      : "border-slate-700 text-slate-400 hover:border-slate-500"
+                      ? "border-primary/60 bg-primary/15 text-primary-hover"
+                      : "border-hairline-strong text-ink-subtle hover:border-hairline-strong"
                   }`}
                 >
                   {on ? "✓ " : "+ "}
@@ -611,7 +611,7 @@ function CycleTasks({
   return (
     <div className="mt-2">
       <button
-        className="text-xs text-slate-400 transition hover:text-white"
+        className="text-xs text-ink-subtle transition hover:text-ink"
         onClick={onToggleExpand}
       >
         {expanded ? "▾" : "▸"} {t("任務")}（{tasks.length}）
@@ -619,49 +619,49 @@ function CycleTasks({
       {expanded && (
         <div className="mt-2 space-y-1.5">
           {tasks.map((task) => (
-            <div key={task.id} className="flex items-center gap-2 rounded-lg bg-slate-800/50 px-2.5 py-2 text-sm">
+            <div key={task.id} className="flex items-center gap-2 rounded-lg bg-surface-2/50 px-2.5 py-2 text-sm">
               <input
                 type="checkbox"
-                className="h-4 w-4 accent-cyan-500"
+                className="h-4 w-4 accent-primary"
                 checked={task.status === "done"}
                 onChange={() => onToggleDone(task)}
                 title={t("任務")}
               />
               <button
-                className="flex-1 truncate text-left text-slate-200 hover:text-white"
+                className="flex-1 truncate text-left text-ink hover:text-ink"
                 onClick={() => onEdit(task)}
               >
-                <span className={task.status === "done" ? "text-slate-500 line-through" : ""}>{task.title}</span>
+                <span className={task.status === "done" ? "text-ink-tertiary line-through" : ""}>{task.title}</span>
               </button>
               {task.due_date && (
-                <span className="shrink-0 text-xs text-slate-500">{fmtMD(task.due_date)}</span>
+                <span className="shrink-0 text-xs text-ink-tertiary">{fmtMD(task.due_date)}</span>
               )}
               {task.assignee_name && (
-                <span className="shrink-0 text-xs text-slate-500">{task.assignee_name}</span>
+                <span className="shrink-0 text-xs text-ink-tertiary">{task.assignee_name}</span>
               )}
             </div>
           ))}
           {tasks.length === 0 && (
-            <p className="rounded-lg bg-slate-800/40 px-2.5 py-2 text-xs text-slate-500">
+            <p className="rounded-lg bg-surface-2/40 px-2.5 py-2 text-xs text-ink-tertiary">
               {t("尚未新增任務，用下方輸入快速加入")}
             </p>
           )}
           <div className="flex gap-2">
             <input
-              className="w-full rounded-lg border border-slate-700 bg-slate-800/80 px-3 py-1.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-500 focus:outline-none"
+              className="w-full rounded-lg border border-hairline-strong bg-surface-1 px-3 py-1.5 text-sm text-ink placeholder:text-ink-tertiary focus:border-primary focus:outline-none"
               placeholder={t("＋ 新任務")}
               value={quick}
               onChange={(e) => setQuick(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && quickAdd()}
             />
             <button
-              className="rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-slate-200 transition hover:bg-slate-700"
+              className="rounded-lg bg-surface-2 px-3 py-1.5 text-sm text-ink transition hover:bg-surface-3"
               onClick={quickAdd}
             >
               {t("加入")}
             </button>
           </div>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-ink-tertiary">
             {t("點任務名稱可編輯詳情（負責人、截止日、子任務）")}
           </p>
         </div>
