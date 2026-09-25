@@ -202,7 +202,7 @@ export default function CyclesPage() {
               ? (cycles.find((x) => x.id === modal.task.cycle_id)?.title ?? "")
               : (cycles.find((x) => x.id === modal.cycleId)?.title ?? "")
           }
-          members={members}
+          members={invitableMembers}
           subteams={subteams}
           me={me}
           onClose={() => setModal(null)}
