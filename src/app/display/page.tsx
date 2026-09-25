@@ -183,7 +183,7 @@ export default async function DisplayPage({
   };
 
   return (
-    <main className="min-h-screen bg-[#020617] px-8 py-6 text-ink">
+    <main className="min-h-screen bg-canvas px-8 py-6 text-ink">
       <AutoRefresh seconds={60} />
       {/* 頂部：隊名＋比賽倒數｜大時鐘 */}
       <header className="flex items-end justify-between gap-6">

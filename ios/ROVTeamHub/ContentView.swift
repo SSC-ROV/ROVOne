@@ -61,7 +61,7 @@ struct AppWebView: UIViewRepresentable {
         web.navigationDelegate = context.coordinator
         web.allowsBackForwardNavigationGestures = true
         web.isOpaque = false
-        web.backgroundColor = UIColor(red: 0.008, green: 0.024, blue: 0.09, alpha: 1) // #020617
+        web.backgroundColor = UIColor(red: red: 0.004, green: 0.004, blue: 0.008, alpha: 1) // #010102
         web.scrollView.backgroundColor = web.backgroundColor
         PushBridge.shared.webView = web
 
@@ -150,7 +150,7 @@ struct ContentView: View {
     var body: some View {
         ZStack(alignment: .top) {
             // 底色與網站 slate-950 一致，載入時不閃白
-            Color(red: 0.008, green: 0.024, blue: 0.09).ignoresSafeArea()
+            Color(red: red: 0.004, green: 0.004, blue: 0.008).ignoresSafeArea()
             AppWebView(model: model)
             if model.progress < 1 {
                 ProgressView(value: model.progress)
