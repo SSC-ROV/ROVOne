@@ -60,10 +60,10 @@ function LoginInner({ googleEnabled }: { googleEnabled: boolean }) {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-canvas bg-[radial-gradient(ellipse_at_top,rgba(8,145,178,0.22),transparent_60%)] px-4">
+    <main className="flex min-h-screen items-center justify-center bg-canvas px-4">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center gap-3">
-          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-base font-black text-white shadow-lg shadow-primary/30">
+          <span className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary text-base font-black text-white shadow-sm">
             ROV
           </span>
           <h1 className="text-2xl font-bold">{t("ROV 隊伍任務平台")}</h1>
@@ -71,7 +71,7 @@ function LoginInner({ googleEnabled }: { googleEnabled: boolean }) {
         </div>
 
         {error && (
-          <p className="mb-4 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm leading-6 text-rose-300">
+          <p className="mb-4 rounded-xl border border-rose-200 bg-red-50 px-4 py-3 text-sm leading-6 text-[#eb5757]">
             {t(error)}
           </p>
         )}
@@ -82,7 +82,7 @@ function LoginInner({ googleEnabled }: { googleEnabled: boolean }) {
               <button
                 onClick={googleLogin}
                 disabled={googleBusy}
-                className="flex w-full items-center justify-center gap-3 rounded-2xl border border-hairline-strong bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100 disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-3 rounded-xl border border-hairline-strong bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100 disabled:opacity-50"
               >
                 <GoogleIcon />
                 {googleBusy ? t("前往 Google…") : t("使用 Google 帳號登入")}
@@ -96,7 +96,7 @@ function LoginInner({ googleEnabled }: { googleEnabled: boolean }) {
           )}
           <form
             onSubmit={submit}
-            className="space-y-4 rounded-2xl border border-hairline bg-surface-1/80 p-6 shadow-xl"
+            className="space-y-4 rounded-xl border border-hairline bg-surface-1/80 p-6 shadow-xl"
           >
             <div>
               <label className="mb-1 block text-sm text-ink-subtle">{t("帳號")}</label>

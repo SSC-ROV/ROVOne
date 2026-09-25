@@ -47,7 +47,7 @@ export default function CyclesPage() {
 
   if (error) {
     return (
-      <p className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-300">{error}</p>
+      <p className="rounded-xl border border-rose-500/30 bg-red-50 p-4 text-sm text-[#eb5757]">{error}</p>
     );
   }
   if (!cycles || !me) {
@@ -224,8 +224,8 @@ export default function CyclesPage() {
       )}
 
       {isStaff(myRole) && pending.length > 0 && (
-        <section className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-5">
-          <h2 className="mb-3 font-bold text-amber-300">{t("待審批")}（{pending.length}）</h2>
+        <section className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-5">
+          <h2 className="mb-3 font-bold text-amber-600">{t("待審批")}（{pending.length}）</h2>
           <div className="space-y-3">
             {pending.map((c) => {
               const dec = canDecide(c);
@@ -238,7 +238,7 @@ export default function CyclesPage() {
                         <button className={BTN} onClick={() => act(c, "approve")}>
                           {c.status === "pending_teacher" ? t("✓ 批准（標記已核准）") : t("✓ 批准，送老師審批")}
                         </button>
-                        <button className={`${BTN_GHOST} text-rose-300`} onClick={() => act(c, "reject")}>
+                        <button className={`${BTN_GHOST} text-[#eb5757]`} onClick={() => act(c, "reject")}>
                           {t("✕ 駁回")}
                         </button>
                       </>
@@ -258,12 +258,12 @@ export default function CyclesPage() {
       <section className="space-y-3">
         <h2 className="font-bold">{t("進行中")}（{active.length}）</h2>
         {active.length === 0 && (
-          <p className="rounded-2xl border border-hairline bg-surface-1 py-10 text-center text-sm text-ink-tertiary">
+          <p className="rounded-xl border border-hairline bg-surface-1 py-10 text-center text-sm text-ink-tertiary">
             {t("目前沒有進行中的週期")}
           </p>
         )}
         {active.map((c) => (
-          <div key={c.id} className="rounded-2xl border border-hairline bg-surface-1 p-4">
+          <div key={c.id} className="rounded-xl border border-hairline bg-surface-1 p-4">
             <CycleHead c={c} today={today} />
             <TaskProgress done={c.task_done} total={c.task_total} />
             <div className="mt-2 flex flex-wrap gap-2">
@@ -284,9 +284,9 @@ export default function CyclesPage() {
 
       {approvedNotStarted.length > 0 && (
         <section className="space-y-3">
-          <h2 className="font-bold text-emerald-300">{t("已核准")}（{approvedNotStarted.length}）</h2>
+          <h2 className="font-bold text-emerald-600">{t("已核准")}（{approvedNotStarted.length}）</h2>
           {approvedNotStarted.map((c) => (
-            <div key={c.id} className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4">
+            <div key={c.id} className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4">
               <CycleHead c={c} today={today} />
               <TaskProgress done={c.task_done} total={c.task_total} />
               <p className="mt-2 text-xs text-ink-tertiary">
@@ -299,9 +299,9 @@ export default function CyclesPage() {
 
       {late.length > 0 && (
         <section className="space-y-3">
-          <h2 className="font-bold text-orange-300">{t("遲交")}（{late.length}）</h2>
+          <h2 className="font-bold text-orange-600">{t("遲交")}（{late.length}）</h2>
           {late.map((c) => (
-            <div key={c.id} className="rounded-2xl border border-orange-400/30 bg-orange-400/5 p-4">
+            <div key={c.id} className="rounded-xl border border-orange-400/30 bg-orange-400/5 p-4">
               <CycleHead c={c} today={today} />
               <TaskProgress done={c.task_done} total={c.task_total} />
               <CycleTasks
@@ -338,7 +338,7 @@ export default function CyclesPage() {
         </section>
       )}
 
-      <section className="rounded-2xl border border-hairline bg-surface-1 p-5">
+      <section className="rounded-xl border border-hairline bg-surface-1 p-5">
         <h2 className="mb-3 font-bold">{t("成員週期統計")}</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -359,11 +359,11 @@ export default function CyclesPage() {
                   <tr key={s.member.id} className="border-t border-hairline/60">
                     <td className="px-2 py-2.5 tabular-nums text-ink-tertiary">{i + 1}</td>
                     <td className="px-2 py-2.5">{s.member.display_name}</td>
-                    <td className="px-2 py-2.5 tabular-nums text-primary-hover">{s.active}</td>
-                    <td className="px-2 py-2.5 tabular-nums text-emerald-300">{s.approved}</td>
-                    <td className="px-2 py-2.5 tabular-nums text-orange-300">{s.late}</td>
-                    <td className="px-2 py-2.5 tabular-nums text-amber-300">{s.pending}</td>
-                    <td className="px-2 py-2.5 tabular-nums text-emerald-300">{s.completed}</td>
+                    <td className="px-2 py-2.5 tabular-nums text-[#2383a5]">{s.active}</td>
+                    <td className="px-2 py-2.5 tabular-nums text-emerald-600">{s.approved}</td>
+                    <td className="px-2 py-2.5 tabular-nums text-orange-600">{s.late}</td>
+                    <td className="px-2 py-2.5 tabular-nums text-amber-600">{s.pending}</td>
+                    <td className="px-2 py-2.5 tabular-nums text-emerald-600">{s.completed}</td>
                     <td className="px-2 py-2.5 tabular-nums font-bold">{s.total}</td>
                   </tr>
                 ))}
@@ -377,7 +377,7 @@ export default function CyclesPage() {
         <section className="space-y-3">
           <h2 className="font-bold text-ink-subtle">{t("歷史")}（{history.length}）</h2>
           {history.map((c) => (
-            <div key={c.id} className="rounded-2xl border border-hairline bg-surface-1 p-4">
+            <div key={c.id} className="rounded-xl border border-hairline bg-surface-1 p-4">
               <CycleHead c={c} today={today} />
               {c.status === "rejected" && c.proposer_id === me.id && (
                 <button className={`${BTN_GHOST} mt-2`} onClick={() => act(c, "resubmit")}>
@@ -404,14 +404,14 @@ function CycleHead({ c, today }: { c: Cycle; today: string }) {
   return (
     <div>
       <div className="flex flex-wrap items-center gap-2">
-        <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${st.chip}`}>
+        <span className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-medium ${st.chip}`}>
           {st.label}
         </span>
         <span className="font-bold">{c.title}</span>
         <span className="ml-auto text-xs tabular-nums text-ink-subtle">
           {fmtMD(c.start_date)} ~ {fmtMD(c.end_date)}
           {c.status === "active" && (
-            <span className={`ml-2 ${left < 0 ? "text-rose-400" : left <= 3 ? "text-amber-300" : "text-ink-tertiary"}`}>
+            <span className={`ml-2 ${left < 0 ? "text-rose-400" : left <= 3 ? "text-amber-600" : "text-ink-tertiary"}`}>
               {left < 0 ? `${t("已超過結束日")} ${-left} ${t("天")}` : `${t("剩")} ${left} ${t("天")}`}
             </span>
           )}
@@ -515,7 +515,7 @@ function CycleForm({
   }
 
   return (
-    <form onSubmit={submit} className="space-y-3 rounded-2xl border border-hairline bg-surface-1 p-5">
+    <form onSubmit={submit} className="space-y-3 rounded-xl border border-hairline bg-surface-1 p-5">
       <h2 className="font-bold">{editing ? `${t("編輯週期")}：${editing.title}` : t("提案新開發週期")}</h2>
       <div className="grid gap-3 sm:grid-cols-[1fr_10rem_10rem]">
         <input className={INPUT_CLS} placeholder={t("週期名稱，例如：推進系統重構 *")} value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -541,9 +541,9 @@ function CycleForm({
                   type="button"
                   key={m.id}
                   onClick={() => setPicked(on ? picked.filter((x) => x !== m.id) : [...picked, m.id])}
-                  className={`rounded-full border px-3 py-1 text-sm transition ${
+                  className={`rounded-md border px-3 py-1 text-sm transition ${
                     on
-                      ? "border-primary/60 bg-primary/15 text-primary-hover"
+                      ? "border-primary/60 bg-primary/15 text-[#2383a5]"
                       : "border-hairline-strong text-ink-subtle hover:border-hairline-strong"
                   }`}
                 >
@@ -556,7 +556,7 @@ function CycleForm({
         )}
       </div>
       {err && (
-        <p className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-300">{err}</p>
+        <p className="rounded-lg border border-rose-500/30 bg-red-50 px-3 py-2 text-sm text-[#eb5757]">{err}</p>
       )}
       <div className="flex gap-2">
         <button className={BTN} disabled={busy}>

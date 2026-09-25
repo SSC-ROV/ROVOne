@@ -74,7 +74,7 @@ export default function CalendarPage() {
 
   if (error) {
     return (
-      <p className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-300">
+      <p className="rounded-xl border border-rose-500/30 bg-red-50 p-4 text-sm text-[#eb5757]">
         {error}
       </p>
     );
@@ -184,7 +184,7 @@ export default function CalendarPage() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1fr_20rem]">
-        <div className="overflow-hidden rounded-2xl border border-hairline bg-surface-1">
+        <div className="overflow-hidden rounded-xl border border-hairline bg-surface-1">
           <div className="grid grid-cols-7 border-b border-hairline text-center text-xs text-ink-tertiary">
             {WEEKDAYS.map((w, i) => (
               <div key={w} className="py-2">
@@ -232,7 +232,7 @@ export default function CalendarPage() {
                         className={`truncate rounded px-1 py-0.5 text-[11px] ${
                           t.status === "done"
                             ? "bg-surface-2 text-ink-subtle line-through"
-                            : "bg-amber-500/15 text-amber-300"
+                            : "bg-yellow-50 text-amber-700"
                         }`}
                         title={t.title}
                       >
@@ -252,7 +252,7 @@ export default function CalendarPage() {
         </div>
 
         <aside className="space-y-4">
-          <section className="rounded-2xl border border-hairline bg-surface-1 p-4">
+          <section className="rounded-xl border border-hairline bg-surface-1 p-4">
             <h2 className="font-bold">
               {fmtMD(sel)}（{weekdayCn(sel)}）
             </h2>
@@ -322,7 +322,7 @@ export default function CalendarPage() {
           </section>
 
           {isStaff(me.role) ? (
-            <section className="rounded-2xl border border-hairline bg-surface-1 p-4">
+            <section className="rounded-xl border border-hairline bg-surface-1 p-4">
               <h2 className="mb-2 font-bold">{t("新增活動")} · {fmtMD(sel)}</h2>
               <div className="space-y-2">
                 <input
@@ -374,7 +374,7 @@ export default function CalendarPage() {
               </div>
             </section>
           ) : (
-            <p className="rounded-2xl border border-hairline bg-surface-1 p-4 text-xs text-ink-tertiary">{t("活動由隊長安排；如需調整請跟隊長說。")}</p>
+            <p className="rounded-xl border border-hairline bg-surface-1 p-4 text-xs text-ink-tertiary">{t("活動由隊長安排；如需調整請跟隊長說。")}</p>
           )}
         </aside>
       </div>

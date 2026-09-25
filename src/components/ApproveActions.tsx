@@ -40,20 +40,20 @@ export default function ApproveActions({ token }: { token: string }) {
         onChange={(e) => setNote(e.target.value)}
       />
       {error && (
-        <p className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-300">{error}</p>
+        <p className="rounded-lg border border-rose-500/30 bg-red-50 px-3 py-2 text-sm text-[#eb5757]">{error}</p>
       )}
       <div className="grid grid-cols-2 gap-3">
         <button
           onClick={() => decide("approved")}
           disabled={busy !== null}
-          className="rounded-lg bg-emerald-500 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:opacity-50"
+          className="rounded-lg bg-[#0f7b6c] py-2.5 text-sm font-semibold text-white transition-colors duration-150 hover:bg-[#0c685b] disabled:opacity-50"
         >
           {busy === "approved" ? t("送出中…") : t("✓ 核准")}
         </button>
         <button
           onClick={() => decide("rejected")}
           disabled={busy !== null}
-          className="rounded-lg border border-rose-500/50 py-2.5 text-sm font-semibold text-rose-300 transition hover:bg-rose-500/10 disabled:opacity-50"
+          className="rounded-lg border border-rose-500/50 py-2.5 text-sm font-semibold text-[#eb5757] transition hover:bg-red-50 disabled:opacity-50"
         >
           {busy === "rejected" ? t("送出中…") : t("✕ 駁回")}
         </button>

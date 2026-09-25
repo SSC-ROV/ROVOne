@@ -47,7 +47,7 @@ export default function DiveLogsPage() {
 
   if (error) {
     return (
-      <p className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-300">{error}</p>
+      <p className="rounded-xl border border-rose-500/30 bg-red-50 p-4 text-sm text-[#eb5757]">{error}</p>
     );
   }
   if (!logs || !me) {
@@ -133,7 +133,7 @@ export default function DiveLogsPage() {
       </div>
 
       {showForm && (
-        <form onSubmit={submit} className="space-y-3 rounded-2xl border border-hairline bg-surface-1 p-5">
+        <form onSubmit={submit} className="space-y-3 rounded-xl border border-hairline bg-surface-1 p-5">
           <div className="grid gap-3 sm:grid-cols-3">
             <input className={INPUT_CLS} type="date" value={form.date} onChange={set("date")} />
             <input className={INPUT_CLS} placeholder={t("標題，例如：水測 #3 *")} value={form.title} onChange={set("title")} />
@@ -153,14 +153,14 @@ export default function DiveLogsPage() {
 
       <div className="space-y-3">
         {logs.length === 0 && (
-          <p className="rounded-2xl border border-hairline bg-surface-1 py-12 text-center text-sm text-ink-tertiary">
+          <p className="rounded-xl border border-hairline bg-surface-1 py-12 text-center text-sm text-ink-tertiary">
             {t("還沒有水測紀錄")}
           </p>
         )}
         {logs.map((log) => (
-          <article key={log.id} className="rounded-2xl border border-hairline bg-surface-1 p-4">
+          <article key={log.id} className="rounded-xl border border-hairline bg-surface-1 p-4">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full border border-sky-500/40 bg-sky-500/10 px-2.5 py-0.5 text-xs text-sky-300">
+              <span className="rounded-full border border-sky-500/40 bg-sky-500/10 px-2.5 py-0.5 text-xs text-sky-600">
                 {fmtMD(log.date)}（{weekdayCn(log.date)}）
               </span>
               <span className="font-bold">{log.title}</span>
@@ -169,13 +169,13 @@ export default function DiveLogsPage() {
             </div>
             <dl className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
               <Section title={t("測試內容")} text={log.tested} />
-              <Section title={t("發現問題")} text={log.issues} tone="text-rose-300" />
-              <Section title={t("當場修正")} text={log.fixes} tone="text-emerald-300" />
-              <Section title={t("下次驗證")} text={log.next_steps} tone="text-primary-hover" />
+              <Section title={t("發現問題")} text={log.issues} tone="text-[#eb5757]" />
+              <Section title={t("當場修正")} text={log.fixes} tone="text-emerald-600" />
+              <Section title={t("下次驗證")} text={log.next_steps} tone="text-[#2383a5]" />
             </dl>
             <div className="mt-2 flex gap-3 text-xs">
               {(log.next_steps || log.issues) && (
-                <button className="text-primary-hover hover:underline" onClick={() => toTask(log)}>
+                <button className="text-[#2383a5] hover:underline" onClick={() => toTask(log)}>
                   {t("轉成追蹤任務")}
                 </button>
               )}

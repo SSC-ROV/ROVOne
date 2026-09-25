@@ -26,7 +26,7 @@ export default function AccountPage() {
 
   if (error) {
     return (
-      <p className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-300">
+      <p className="rounded-xl border border-rose-500/30 bg-red-50 p-4 text-sm text-[#eb5757]">
         {error}
       </p>
     );
@@ -65,11 +65,11 @@ export default function AccountPage() {
     <div className="mx-auto max-w-md space-y-6">
       <h1 className="text-lg font-bold">{t("帳號")}</h1>
       {forceChange && (
-        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
+        <div className="rounded-xl border border-amber-200 bg-amber-500/10 px-4 py-3 text-sm text-amber-600">
           {t("請先設定新密碼再開始使用（首次登入或密碼已被重設）")}
         </div>
       )}
-      <section className="rounded-2xl border border-hairline bg-surface-1 p-5 text-sm">
+      <section className="rounded-xl border border-hairline bg-surface-1 p-5 text-sm">
         <dl className="space-y-2">
           <div className="flex justify-between">
             <dt className="text-ink-subtle">{t("顯示名稱")}</dt>
@@ -94,14 +94,14 @@ export default function AccountPage() {
       </section>
 
       {me.login_method === "google" ? (
-        <section className="rounded-2xl border border-hairline bg-surface-1 p-5 text-sm">
+        <section className="rounded-xl border border-hairline bg-surface-1 p-5 text-sm">
           <h2 className="mb-2 font-bold">{t("登入方式")}</h2>
           <p className="text-ink-muted">
             {t("此帳號使用學校 Google 帳號登入，無需設定密碼。")}
           </p>
         </section>
       ) : (
-      <section className="rounded-2xl border border-hairline bg-surface-1 p-5">
+      <section className="rounded-xl border border-hairline bg-surface-1 p-5">
         <h2 className="mb-3 font-bold">{t("修改密碼")}</h2>
         <form onSubmit={changePassword} className="space-y-3">
           <input
@@ -129,12 +129,12 @@ export default function AccountPage() {
             autoComplete="new-password"
           />
           {error && (
-            <p className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-300">
+            <p className="rounded-lg border border-rose-500/30 bg-red-50 px-3 py-2 text-sm text-[#eb5757]">
               {error}
             </p>
           )}
           {msg && (
-            <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">
+            <p className="rounded-lg border border-emerald-500/30 bg-green-50 px-3 py-2 text-sm text-emerald-600">
               {msg}
             </p>
           )}

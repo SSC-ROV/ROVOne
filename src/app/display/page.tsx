@@ -135,21 +135,21 @@ export default async function DisplayPage({
       c.status === "late" ? "bg-rose-400" : c.status === "active" ? "bg-emerald-400" : "bg-sky-400";
     const chip =
       c.status === "late"
-        ? "bg-rose-500/15 text-rose-300"
+        ? "bg-red-50 text-[#eb5757]"
         : c.status === "active"
-          ? "bg-emerald-500/15 text-emerald-300"
-          : "bg-sky-500/15 text-sky-300";
+          ? "bg-green-50 text-[#0f7b6c]"
+          : "bg-sky-50 text-sky-700";
     const chipLabel =
       c.status === "late" ? "遲交" : c.status === "active" ? "進行中" : "即將開始";
     const left = daysBetween(today, c.end_date);
     return (
       <div
         key={c.id}
-        className="rounded-2xl border border-hairline bg-surface-1 p-5"
+        className="rounded-xl border border-hairline bg-surface-1 p-5"
       >
         <div className="flex items-start justify-between gap-4">
           <h3 className="text-3xl font-bold text-ink">{c.title}</h3>
-          <span className={`shrink-0 rounded-full px-4 py-1.5 text-base font-semibold ${chip}`}>
+          <span className={`shrink-0 rounded-md px-4 py-1.5 text-base font-semibold ${chip}`}>
             {chipLabel}
           </span>
         </div>
@@ -161,7 +161,7 @@ export default async function DisplayPage({
             </span>
           )}
           {c.status === "approved" && (
-            <span className="ml-3 text-lg text-sky-300">{daysBetween(today, c.start_date)} 日後開始</span>
+            <span className="ml-3 text-lg text-sky-600">{daysBetween(today, c.start_date)} 日後開始</span>
           )}
         </p>
         <div className="mt-3 h-3 overflow-hidden rounded-full bg-surface-2">
@@ -193,7 +193,7 @@ export default async function DisplayPage({
           </h1>
           <p className="mt-1 text-base text-ink-tertiary">團隊看板 · 每分鐘自動更新</p>
           {compDays !== null && (
-            <p className="mt-2 inline-block rounded-full bg-rose-500/15 px-5 py-1.5 text-xl font-bold text-rose-300">
+            <p className="mt-2 inline-block rounded-full bg-rose-500/15 px-5 py-1.5 text-xl font-bold text-[#eb5757]">
               距比賽 {compDays} 日
             </p>
           )}
@@ -208,7 +208,7 @@ export default async function DisplayPage({
       <section className="mt-6">
         {late.length > 0 && (
           <>
-            <h2 className="text-2xl font-bold text-rose-300">⚠ 遲交（{late.length}）</h2>
+            <h2 className="text-2xl font-bold text-[#eb5757]">⚠ 遲交（{late.length}）</h2>
             <div className="mt-3 grid grid-cols-1 gap-4 2xl:grid-cols-2">
               {late.map(cycleCard)}
             </div>
@@ -218,7 +218,7 @@ export default async function DisplayPage({
           進行中（{active.length}）
         </h2>
         {active.length === 0 && late.length === 0 ? (
-          <p className="mt-3 rounded-2xl border border-hairline bg-surface-1 p-10 text-center text-xl text-ink-tertiary">
+          <p className="mt-3 rounded-xl border border-hairline bg-surface-1 p-10 text-center text-xl text-ink-tertiary">
             目前沒有進行中的週期
           </p>
         ) : (
@@ -240,14 +240,14 @@ export default async function DisplayPage({
 
       {/* 未來兩週重點（大字清單） */}
       {agenda.size > 0 && (
-        <section className="mt-6 rounded-2xl border border-hairline bg-surface-1 p-5">
+        <section className="mt-6 rounded-xl border border-hairline bg-surface-1 p-5">
           <h2 className="text-2xl font-bold text-ink-muted">未來兩週重點</h2>
           <div className="mt-3 flex flex-wrap gap-x-8 gap-y-2">
             {[...agenda.entries()].map(([date, items]) => (
               <div
                 key={date}
                 className={`flex items-baseline gap-2 ${
-                  date === today ? "text-primary-hover" : "text-ink-muted"
+                  date === today ? "text-[#2383a5]" : "text-ink-muted"
                 }`}
               >
                 <span className="text-xl font-bold">

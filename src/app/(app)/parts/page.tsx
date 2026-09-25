@@ -48,7 +48,7 @@ export default function PartsPage() {
 
   if (error) {
     return (
-      <p className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-300">{error}</p>
+      <p className="rounded-xl border border-rose-500/30 bg-red-50 p-4 text-sm text-[#eb5757]">{error}</p>
     );
   }
   if (!parts || !me) {
@@ -209,14 +209,14 @@ export default function PartsPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-4">
-        <StatCard label={t("待老師審批")} value={String(pendingCount)} accent="text-amber-300" />
-        <StatCard label={t("核准後採買中")} value={String(buying.length)} accent="text-primary-hover" />
-        <StatCard label={t("已到貨")} value={String(arrived.length)} accent="text-emerald-300" />
+        <StatCard label={t("待老師審批")} value={String(pendingCount)} accent="text-amber-600" />
+        <StatCard label={t("核准後採買中")} value={String(buying.length)} accent="text-[#2383a5]" />
+        <StatCard label={t("已到貨")} value={String(arrived.length)} accent="text-emerald-600" />
         <StatCard label={t("花費 / 預估")} value={`$${Math.round(totalSpent).toLocaleString()} / $${Math.round(totalEst).toLocaleString()}`} accent="text-ink" />
       </div>
 
       {showForm && (
-        <form onSubmit={submit} className="space-y-3 rounded-2xl border border-hairline bg-surface-1 p-5">
+        <form onSubmit={submit} className="space-y-3 rounded-xl border border-hairline bg-surface-1 p-5">
           <h2 className="font-bold">{t("新增零件需求（送出後自動產生「老師審批連結」）")}</h2>
           <div className="grid gap-3 sm:grid-cols-3">
             <input className={INPUT_CLS} placeholder={t("零件名稱 *")} value={name} onChange={(e) => setName(e.target.value)} />
@@ -240,7 +240,7 @@ export default function PartsPage() {
 
       <div className="space-y-3">
         {filtered.length === 0 && (
-          <p className="rounded-2xl border border-hairline bg-surface-1 py-12 text-center text-sm text-ink-tertiary">
+          <p className="rounded-xl border border-hairline bg-surface-1 py-12 text-center text-sm text-ink-tertiary">
             {t("沒有符合的零件申請")}
           </p>
         )}
@@ -248,9 +248,9 @@ export default function PartsPage() {
           const st = partStatus(p.status);
           const canDelete = isStaff(me.role) || (p.requested_by === me.id && p.status === "pending");
           return (
-            <div key={p.id} className="rounded-2xl border border-hairline bg-surface-1 p-4">
+            <div key={p.id} className="rounded-xl border border-hairline bg-surface-1 p-4">
               <div className="flex flex-wrap items-center gap-2">
-                <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${st.chip}`}>
+                <span className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-medium ${st.chip}`}>
                   {st.label}
                 </span>
                 <span className="font-bold">{p.name}</span>
@@ -258,7 +258,7 @@ export default function PartsPage() {
                 <span className={`${CHIP} ${SUBTEAM_CLS[p.subteam] ?? ""}`}>{subteamLabel(p.subteam)}</span>
                 <span className="ml-auto text-sm tabular-nums">
                   {p.actual_price != null ? (
-                    <span className="text-emerald-300">{t("實際")} ${p.actual_price.toLocaleString()}</span>
+                    <span className="text-emerald-600">{t("實際")} ${p.actual_price.toLocaleString()}</span>
                   ) : (
                     <span className="text-ink-muted">{t("預估")} ${(p.est_price * p.qty).toLocaleString()}</span>
                   )}
@@ -267,7 +267,7 @@ export default function PartsPage() {
               {p.spec && <p className="mt-1 text-sm text-ink-subtle">{t("規格")}：{p.spec}</p>}
               {p.purpose && <p className="mt-1 text-sm text-ink-subtle">{t("用途")}：{p.purpose}</p>}
               {p.link && (
-                <a href={p.link} target="_blank" rel="noreferrer" className="mt-1 inline-block text-sm text-primary-hover hover:underline">
+                <a href={p.link} target="_blank" rel="noreferrer" className="mt-1 inline-block text-sm text-[#2383a5] hover:underline">
                   {t("購買連結")} ↗
                 </a>
               )}
@@ -293,7 +293,7 @@ export default function PartsPage() {
                       ✕ {t("駁回")}
                     </button>
                     {p.approve_token && (
-                      <button className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-sm text-amber-300 transition hover:bg-amber-500/20" onClick={() => copyApproveLink(p)}>
+                      <button className="rounded-lg border border-amber-200 bg-amber-500/10 px-3 py-1.5 text-sm text-amber-600 transition hover:bg-amber-500/20" onClick={() => copyApproveLink(p)}>
                         {t("複製老師審批連結")}
                       </button>
                     )}
@@ -327,7 +327,7 @@ export default function PartsPage() {
 
 function StatCard({ label, value, accent }: { label: string; value: string; accent: string }) {
   return (
-    <div className="rounded-2xl border border-hairline bg-surface-1 p-4">
+    <div className="rounded-xl border border-hairline bg-surface-1 p-4">
       <p className={`text-xl font-black tabular-nums ${accent}`}>{value}</p>
       <p className="mt-1 text-xs text-ink-subtle">{label}</p>
     </div>

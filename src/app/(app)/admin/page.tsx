@@ -88,7 +88,7 @@ export default function AdminPage() {
 
   if (error) {
     return (
-      <p className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-300">
+      <p className="rounded-xl border border-rose-500/30 bg-red-50 p-4 text-sm text-[#eb5757]">
         {error}
       </p>
     );
@@ -98,7 +98,7 @@ export default function AdminPage() {
   }
   if (!isStaff(me.role)) {
     return (
-      <div className="rounded-2xl border border-hairline bg-surface-1 p-10 text-center">
+      <div className="rounded-xl border border-hairline bg-surface-1 p-10 text-center">
         <p className="text-lg font-bold">{t("此頁面僅限隊長與老師使用")}</p>
         <p className="mt-2 text-sm text-ink-subtle">
           {t("需要調整隊伍設定或成員時，請聯絡隊長。")}
@@ -305,12 +305,12 @@ export default function AdminPage() {
     <div className="space-y-6">
       <h1 className="text-lg font-bold">{t("管理")}（{t("隊長與老師")}）</h1>
       {msg && (
-        <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">
+        <p className="rounded-lg border border-emerald-500/30 bg-green-50 px-3 py-2 text-sm text-emerald-600">
           {msg}
         </p>
       )}
 
-      <section className="rounded-2xl border border-hairline bg-surface-1 p-5">
+      <section className="rounded-xl border border-hairline bg-surface-1 p-5">
         <h2 className="mb-3 font-bold">{t("隊伍設定")}</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
@@ -336,7 +336,7 @@ export default function AdminPage() {
         <button className={`${BTN} mt-3`} onClick={saveSettings}>{t("儲存設定")}</button>
       </section>
 
-      <section className="rounded-2xl border border-hairline bg-surface-1 p-5">
+      <section className="rounded-xl border border-hairline bg-surface-1 p-5">
         <h2 className="mb-1 font-bold">{t("通知與整合")}</h2>
         <p className="mb-3 text-xs text-ink-tertiary">
           {t("設定 Discord Webhook 後，各類事件會自動推到對應的頻道")}（{t("Discord 頻道設定 → 整合 → Webhook → 建立並複製網址）")}）。
@@ -379,7 +379,7 @@ export default function AdminPage() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-hairline bg-surface-1 p-5">
+      <section className="rounded-xl border border-hairline bg-surface-1 p-5">
         <h2 className="mb-1 font-bold">{t("組別管理")}</h2>
         <p className="mb-3 text-xs text-ink-tertiary">{t("自訂全站使用的組別（任務、成員、活動都會跟著）；刪除組別時，原屬成員與任務會自動改到第一個剩餘組別")}</p>
         <div className="space-y-2">
@@ -425,13 +425,13 @@ export default function AdminPage() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-hairline bg-surface-1 p-5">
+      <section className="rounded-xl border border-hairline bg-surface-1 p-5">
         <h2 className="mb-1 font-bold">{t("Google 登入")}</h2>
         <p className="mb-3 text-xs text-ink-tertiary">
           {t("設定後隊員可在登入頁用學校 Google 帳號登入（首次自動建立帳號）。")} {t("回呼網址（複製到 Google Cloud OAuth 設定）")}：
         </p>
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <code className="rounded-lg bg-surface-2 px-3 py-1.5 text-xs text-primary-hover">
+          <code className="rounded-lg bg-surface-2 px-3 py-1.5 text-xs text-[#2383a5]">
             {typeof window !== "undefined" ? `${location.origin}/api/auth/google/callback` : "/api/auth/google/callback"}
           </code>
           <button className={BTN_GHOST} onClick={copyGoogleCallback}>{t("複製")}</button>
@@ -495,7 +495,7 @@ export default function AdminPage() {
         </p>
       </section>
 
-      <section className="rounded-2xl border border-hairline bg-surface-1 p-5">
+      <section className="rounded-xl border border-hairline bg-surface-1 p-5">
         <h2 className="mb-3 font-bold">{t("成員")}（{members.length}）</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -556,7 +556,7 @@ export default function AdminPage() {
                     ) : (
                       <span className="inline-flex gap-3">
                         <button
-                          className="text-ink-subtle transition hover:text-primary-hover"
+                          className="text-ink-subtle transition hover:text-[#2383a5]"
                           onClick={() => setResetId(m.id)}
                         >{t("重設密碼")}</button>
                         {m.id !== me.id && (
@@ -575,7 +575,7 @@ export default function AdminPage() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-hairline bg-surface-1 p-5">
+      <section className="rounded-xl border border-hairline bg-surface-1 p-5">
         <h2 className="mb-3 font-bold">{t("新增成員")}</h2>
         <div className="grid gap-3 sm:grid-cols-3">
           <input

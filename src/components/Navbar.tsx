@@ -94,7 +94,7 @@ function RailButton({
       aria-label={label}
       className={`flex h-11 w-11 items-center justify-center rounded-xl transition ${
         active
-          ? "bg-surface-2 text-primary-hover"
+          ? "bg-surface-2 text-[#2383a5]"
           : "text-ink-subtle hover:bg-surface-2 hover:text-ink"
       }`}
     >
@@ -169,7 +169,7 @@ export default function Navbar({
             disabled={busy}
             title={t("登出")}
             aria-label={t("登出")}
-            className="flex h-11 w-11 items-center justify-center rounded-xl text-ink-subtle transition hover:bg-surface-2 hover:text-rose-300"
+            className="flex h-11 w-11 items-center justify-center rounded-xl text-ink-subtle transition hover:bg-surface-2 hover:text-[#eb5757]"
           >
             <IconLogout className="h-[22px] w-[22px]" />
           </button>
@@ -177,7 +177,7 @@ export default function Navbar({
       </aside>
 
       {/* ── 手機／桌面：原本的頂欄 ── */}
-      <header className="topbar sticky top-0 z-40 border-b border-hairline bg-canvas/85 backdrop-blur">
+      <header className="topbar sticky top-0 z-40 border-b border-hairline bg-white">
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4">
           <Link href="/" className="flex shrink-0 items-center gap-2 font-bold">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-[10px] font-black text-white">
@@ -214,7 +214,7 @@ export default function Navbar({
             <button
               onClick={logout}
               disabled={busy}
-              className="text-ink-subtle transition hover:text-rose-300"
+              className="text-ink-subtle transition hover:text-[#eb5757]"
             >
               {t("登出")}
             </button>

@@ -74,7 +74,7 @@ export default function MonthCalendar({
     view.getFullYear() === todayParts[0] && view.getMonth() + 1 === todayParts[1];
 
   return (
-    <section className="rounded-2xl border border-hairline bg-surface-1 p-5">
+    <section className="rounded-xl border border-hairline bg-surface-1 p-5">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-2xl font-bold text-ink">本月日曆</h2>
         <div className="flex items-center gap-2">
@@ -129,7 +129,7 @@ export default function MonthCalendar({
             >
               <div
                 className={`mb-1 text-sm font-bold ${
-                  isToday ? "text-primary-hover" : weekend ? "text-ink-tertiary" : "text-ink-muted"
+                  isToday ? "text-[#2383a5]" : weekend ? "text-ink-tertiary" : "text-ink-muted"
                 }`}
               >
                 {cell.day}

@@ -40,7 +40,7 @@ export default function DashboardPage() {
 
   if (error) {
     return (
-      <p className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-300">
+      <p className="rounded-xl border border-rose-500/30 bg-red-50 p-4 text-sm text-[#eb5757]">
         {t(error)}
       </p>
     );
@@ -78,10 +78,10 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-2xl border border-hairline bg-surface-1 p-5 md:col-span-1">
+        <div className="rounded-xl border border-hairline bg-surface-1 p-5 md:col-span-1">
           {countdown ? (
             <>
-              <p className="text-sm text-primary-hover/90">{countdown.label}</p>
+              <p className="text-sm text-[#2383a5]/90">{countdown.label}</p>
               <p className="mt-1 text-5xl font-black tabular-nums">
                 {countdown.days}
                 <span className="ml-1 text-base font-medium text-ink-subtle">{t("天")}</span>
@@ -96,7 +96,7 @@ export default function DashboardPage() {
               {isStaff(me.role) ? (
                 <Link
                   href="/admin"
-                  className="mt-2 inline-block text-sm text-primary-hover hover:underline"
+                  className="mt-2 inline-block text-sm text-[#2383a5] hover:underline"
                 >
                   {t("前往「管理」設定 →")}
                 </Link>
@@ -107,9 +107,9 @@ export default function DashboardPage() {
           )}
         </div>
         <div className="grid grid-cols-3 gap-4 md:col-span-2">
-          <StatCard label={t("進行中週期")} value={myActive.length} accent="text-primary-hover" />
-          <StatCard label={t("遲交")} value={myLate.length} accent={myLate.length ? "text-orange-300" : "text-ink-subtle"} />
-          <StatCard label={t("已核准待開始")} value={myApproved.length} accent="text-emerald-300" />
+          <StatCard label={t("進行中週期")} value={myActive.length} accent="text-[#2383a5]" />
+          <StatCard label={t("遲交")} value={myLate.length} accent={myLate.length ? "text-orange-600" : "text-ink-subtle"} />
+          <StatCard label={t("已核准待開始")} value={myApproved.length} accent="text-emerald-600" />
         </div>
       </div>
 
@@ -120,12 +120,12 @@ export default function DashboardPage() {
           <h2 className="font-bold">
             {isTeacher ? t("全隊週期進度") : t("我的開發週期進度")}
           </h2>
-          <Link href="/cycles" className="text-sm text-primary-hover hover:underline">
+          <Link href="/cycles" className="text-sm text-[#2383a5] hover:underline">
             {t("開發週期")} →
           </Link>
         </div>
         {mine.length === 0 ? (
-          <p className="rounded-2xl border border-hairline bg-surface-1 py-10 text-center text-sm text-ink-tertiary">
+          <p className="rounded-xl border border-hairline bg-surface-1 py-10 text-center text-sm text-ink-tertiary">
             {t("目前沒有參與中的週期，到「開發週期」提案一個吧")}
           </p>
         ) : (
@@ -140,11 +140,11 @@ export default function DashboardPage() {
                   <Link
                     key={c.id}
                     href="/cycles"
-                    className="block rounded-2xl border border-hairline bg-surface-1 p-4 transition hover:border-hairline-strong"
+                    className="block rounded-xl border border-hairline bg-surface-1 p-4 transition hover:border-hairline-strong"
                   >
                     <div className="flex flex-wrap items-center gap-2">
                       <span
-                        className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${cycleStatus(c.status).chip}`}
+                        className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-medium ${cycleStatus(c.status).chip}`}
                       >
                         {cycleStatusLabel(c.status)}
                       </span>
@@ -158,7 +158,7 @@ export default function DashboardPage() {
                         {fmtMD(c.start_date)} ~ {fmtMD(c.end_date)}
                         {c.status === "active" && (
                           <span
-                            className={`ml-2 ${left < 0 ? "text-rose-400" : left <= 3 ? "text-amber-300" : "text-ink-tertiary"}`}
+                            className={`ml-2 ${left < 0 ? "text-rose-400" : left <= 3 ? "text-amber-600" : "text-ink-tertiary"}`}
                           >
                             {left < 0 ? `${t("已超過結束日")} ${-left} ${t("天")}` : `${t("剩")} ${left} ${t("天")}`}
                           </span>
@@ -183,10 +183,10 @@ export default function DashboardPage() {
         )}
       </section>
 
-      <section className="rounded-2xl border border-hairline bg-surface-1 p-5">
+      <section className="rounded-xl border border-hairline bg-surface-1 p-5">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="font-bold">{t("近期活動")}</h2>
-          <Link href="/calendar" className="text-sm text-primary-hover hover:underline">
+          <Link href="/calendar" className="text-sm text-[#2383a5] hover:underline">
             {t("日曆 →")}
           </Link>
         </div>
@@ -215,7 +215,7 @@ export default function DashboardPage() {
 
 function StatCard({ label, value, accent }: { label: string; value: number; accent: string }) {
   return (
-    <div className="flex flex-col justify-center rounded-2xl border border-hairline bg-surface-1 p-4 text-center">
+    <div className="flex flex-col justify-center rounded-xl border border-hairline bg-surface-1 p-4 text-center">
       <p className={`text-3xl font-black tabular-nums ${accent}`}>{value}</p>
       <p className="mt-1 text-xs text-ink-subtle">{label}</p>
     </div>

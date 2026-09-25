@@ -11,9 +11,9 @@ import { useDialogs } from "@/components/ui/Dialogs";
 import type { Equipment, Me } from "@/lib/types";
 
 const STATUS_STYLE: Record<string, { label: string; chip: string }> = {
-  available: { label: "可借用", chip: "bg-emerald-500/15 text-emerald-300 border-emerald-500/40" },
-  borrowed: { label: "借出中", chip: "bg-amber-500/15 text-amber-300 border-amber-500/40" },
-  maintenance: { label: "維修中", chip: "bg-rose-500/15 text-rose-300 border-rose-500/40" },
+  available: { label: "可借用", chip: "bg-green-50 text-[#0f7b6c] border-emerald-200" },
+  borrowed: { label: "借出中", chip: "bg-yellow-50 text-amber-700 border-amber-200" },
+  maintenance: { label: "維修中", chip: "bg-red-50 text-[#eb5757] border-rose-200" },
 };
 
 export default function EquipmentPage() {
@@ -42,7 +42,7 @@ export default function EquipmentPage() {
 
   if (error) {
     return (
-      <p className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-300">{error}</p>
+      <p className="rounded-xl border border-rose-500/30 bg-red-50 p-4 text-sm text-[#eb5757]">{error}</p>
     );
   }
   if (!equipment || !me) {
@@ -138,7 +138,7 @@ export default function EquipmentPage() {
         </span>
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-hairline bg-surface-1">
+      <div className="overflow-x-auto rounded-xl border border-hairline bg-surface-1">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-xs text-ink-tertiary">
@@ -163,7 +163,7 @@ export default function EquipmentPage() {
                   </td>
                   <td className="px-4 py-3 text-ink-subtle">{t(e.category)}</td>
                   <td className="px-4 py-3">
-                    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${st.chip}`}>
+                    <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs ${st.chip}`}>
                       {t(st.label)}
                     </span>
                   </td>
@@ -174,12 +174,12 @@ export default function EquipmentPage() {
                   <td className="px-4 py-3">
                     <div className="flex gap-3 text-xs">
                       {e.status === "available" && (
-                        <button className="text-primary-hover hover:underline" onClick={() => act(e, "borrow")}>
+                        <button className="text-[#2383a5] hover:underline" onClick={() => act(e, "borrow")}>
                           {t("借用")}
                         </button>
                       )}
                       {e.status === "borrowed" && (isStaff(me.role) || e.borrower_id === me.id) && (
-                        <button className="text-emerald-300 hover:underline" onClick={() => act(e, "return")}>
+                        <button className="text-emerald-600 hover:underline" onClick={() => act(e, "return")}>
                           {t("歸還")}
                         </button>
                       )}
@@ -210,7 +210,7 @@ export default function EquipmentPage() {
       </div>
 
       {isStaff(me.role) && (
-        <form onSubmit={addEquipment} className="grid gap-3 rounded-2xl border border-hairline bg-surface-1 p-5 sm:grid-cols-[1fr_10rem_1fr_auto]">
+        <form onSubmit={addEquipment} className="grid gap-3 rounded-xl border border-hairline bg-surface-1 p-5 sm:grid-cols-[1fr_10rem_1fr_auto]">
           <input className={INPUT_CLS} placeholder={t("設備名稱，例如：T200 備用推進器")} value={name} onChange={(e) => setName(e.target.value)} />
           <select className={INPUT_CLS} value={category} onChange={(e) => setCategory(e.target.value)}>
             {EQUIPMENT_CATEGORIES.map((c) => (

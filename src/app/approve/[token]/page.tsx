@@ -16,10 +16,10 @@ export default async function ApprovePage({
   const part = await getPartByToken(token);
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-canvas bg-[radial-gradient(ellipse_at_top,rgba(8,145,178,0.22),transparent_60%)] px-4 py-10">
+    <main className="flex min-h-screen items-center justify-center bg-canvas px-4 py-10">
       <div className="w-full max-w-md">
         <div className="mb-6 flex flex-col items-center gap-2">
-          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-xs font-black text-white">
+          <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-xs font-black text-white">
             ROV
           </span>
           <h1 className="text-xl font-bold">{t("零件申請審批", "Part Request Approval")}</h1>
@@ -27,11 +27,11 @@ export default async function ApprovePage({
         </div>
 
         {!part ? (
-          <div className="rounded-2xl border border-hairline bg-surface-1/80 p-8 text-center">
-            <p className="text-rose-300">{t("找不到這個審批連結，請跟學生確認連結是否正確。", "Approval link not found — please check the link with the student.")}</p>
+          <div className="rounded-xl border border-hairline bg-surface-1/80 p-8 text-center">
+            <p className="text-[#eb5757]">{t("找不到這個審批連結，請跟學生確認連結是否正確。", "Approval link not found — please check the link with the student.")}</p>
           </div>
         ) : (
-          <div className="space-y-4 rounded-2xl border border-hairline bg-surface-1/80 p-6 shadow-xl">
+          <div className="space-y-4 rounded-xl border border-hairline bg-surface-1/80 p-6 shadow-xl">
             <div>
               <p className="text-2xl font-bold">
                 {part.name}
@@ -39,7 +39,7 @@ export default async function ApprovePage({
                   × {part.qty} {part.unit}
                 </span>
               </p>
-              <p className="mt-1 text-lg text-primary-hover">{t("預估金額 ", "Estimated total ")}${part.est_price * part.qty}</p>
+              <p className="mt-1 text-lg text-[#2383a5]">{t("預估金額 ", "Estimated total ")}${part.est_price * part.qty}</p>
             </div>
             <dl className="space-y-2 text-sm">
               {part.spec && (
@@ -52,7 +52,7 @@ export default async function ApprovePage({
                 <div>
                   <dt className="text-ink-tertiary">{t("購買連結", "Purchase link")}</dt>
                   <dd>
-                    <a href={part.link} target="_blank" rel="noreferrer" className="break-all text-primary-hover hover:underline">
+                    <a href={part.link} target="_blank" rel="noreferrer" className="break-all text-[#2383a5] hover:underline">
                       {part.link} ↗
                     </a>
                   </dd>
@@ -74,9 +74,9 @@ export default async function ApprovePage({
               <div
                 className={`rounded-xl border px-4 py-3 text-sm ${
                   part.status === "approved"
-                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                    ? "border-emerald-500/30 bg-green-50 text-[#0f7b6c]"
                     : part.status === "rejected"
-                      ? "border-rose-500/30 bg-rose-500/10 text-rose-300"
+                      ? "border-rose-500/30 bg-red-50 text-[#eb5757]"
                       : "border-hairline-strong bg-surface-2 text-ink-muted"
                 }`}
               >

@@ -101,7 +101,7 @@ export default function DialogProvider({
             <button
               className={
                 confirmState.danger
-                  ? "rounded-lg bg-rose-500 px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-rose-400"
+                  ? "rounded-lg bg-[#eb5757] px-4 py-2 text-sm font-medium text-white transition-colors duration-150 hover:bg-[#d94a4a]"
                   : BTN
               }
               onClick={() => closeConfirm(true)}
@@ -126,7 +126,7 @@ export default function DialogProvider({
                 ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-200"
                 : t.kind === "err"
                   ? "border-rose-500/30 bg-rose-500/15 text-rose-200"
-                  : "border-hairline bg-surface-2/90 text-ink"
+                  : "border-hairline bg-white shadow-md text-ink"
             }`}
           >
             {t.msg}
@@ -157,7 +157,7 @@ function Modal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm rounded-2xl border border-hairline-strong bg-surface-1 p-6 shadow-2xl"
+        className="w-full max-w-sm rounded-lg border border-hairline bg-white p-6 shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         {children}
