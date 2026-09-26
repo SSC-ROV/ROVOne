@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&family=Noto+Serif+TC:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
 /* ── Notion 風格色板（STYLEKIT notion-style） ── */
@@ -27,14 +28,13 @@ body {
   background: var(--color-canvas);
   color: var(--color-ink);
   font-family:
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    "Noto Sans TC",
-    "PingFang TC",
-    "Microsoft JhengHei",
-    sans-serif;
+    "EB Garamond",
+    Garamond,
+    "Noto Serif TC",
+    "Songti TC",
+    "Songti SC",
+    SimSun,
+    serif;
 }
 
 ::-webkit-scrollbar {
