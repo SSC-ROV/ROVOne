@@ -137,13 +137,6 @@ export default function Navbar({
       {/* ── iPad／大屏觸控：Instagram 式左側圖標欄 ── */}
       <aside className="rail" aria-label={t("主導航")}>
         <div className="flex flex-col items-center gap-1">
-          <Link
-            href="/"
-            title={teamName}
-            className="mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-[11px] font-black text-white"
-          >
-            ROV
-          </Link>
           {links.map((l) => (
             <RailButton key={l.href} href={l.href} label={l.label} active={pathname === l.href}>
               {l.icon}
@@ -179,11 +172,8 @@ export default function Navbar({
       {/* ── 手機／桌面：原本的頂欄 ── */}
       <header className="topbar sticky top-0 z-40 border-b border-hairline bg-white">
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4">
-          <Link href="/" className="flex shrink-0 items-center gap-2 font-bold">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-[10px] font-black text-white">
-              ROV
-            </span>
-            <span className="hidden max-w-40 truncate sm:inline">{teamName}</span>
+          <Link href="/" className="shrink-0 font-semibold tracking-tight text-ink">
+            {teamName}
           </Link>
           <nav className="flex flex-1 gap-1 overflow-x-auto">
             {links.map((l) => (
