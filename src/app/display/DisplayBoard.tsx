@@ -42,7 +42,10 @@ function FullscreenButton() {
   );
 }
 
-/** 看板本體：資料以 fetch 輪詢更新（純 DOM 差異更新，永不整頁刷新＝零閃黑） */
+/**
+ * 看板本體：左＝月曆（固定常駐），右＝週期列表（獨立捲動，再多也不會擠走日曆）。
+ * 資料以 fetch 輪詢更新（純 DOM 差異更新，永不整頁刷新＝零閃黑）。
+ */
 export default function DisplayBoard({
   token,
   initial,
@@ -111,28 +114,28 @@ export default function DisplayBoard({
     return (
       <div key={c.id} className="rounded-xl border border-hairline bg-white p-6 shadow-sm">
         <div className="flex items-start justify-between gap-4">
-          <h3 className="text-4xl font-bold text-ink">{c.title}</h3>
-          <span className={`shrink-0 rounded-md px-4 py-1.5 text-xl font-bold ${chip}`}>
+          <h3 className="text-3xl font-bold text-ink">{c.title}</h3>
+          <span className={`shrink-0 rounded-md px-4 py-1.5 text-lg font-bold ${chip}`}>
             {chipLabel}
           </span>
         </div>
-        <p className="mt-2 text-xl font-medium text-ink-subtle">
+        <p className="mt-2 text-lg font-medium text-ink-subtle">
           {c.start_date} ~ {c.end_date}
           {c.status !== "approved" && (
-            <span className="ml-4 text-2xl font-bold text-ink">
+            <span className="ml-4 text-xl font-bold text-ink">
               {c.status === "late" ? "已超時" : `剩餘 ${left} 日`}
             </span>
           )}
           {c.status === "approved" && (
-            <span className="ml-4 text-2xl font-bold text-[#2383a5]">
+            <span className="ml-4 text-xl font-bold text-[#2383a5]">
               {daysBetween(today, c.start_date)} 日後開始
             </span>
           )}
         </p>
-        <div className="mt-3 h-4 overflow-hidden rounded-lg bg-surface-2">
+        <div className="mt-3 h-3.5 overflow-hidden rounded-lg bg-surface-2">
           <div className={`h-full rounded-lg ${barColor}`} style={{ width: `${pct}%` }} />
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-1 text-xl text-ink-subtle">
+        <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-1 text-lg text-ink-subtle">
           <span>
             任務進度{" "}
             <span className="text-2xl font-bold text-ink">
@@ -140,7 +143,7 @@ export default function DisplayBoard({
             </span>
           </span>
           {c.members.length > 0 && (
-            <span className="truncate text-lg">成員：{c.members.join("、")}</span>
+            <span className="truncate text-base">成員：{c.members.join("、")}</span>
           )}
         </div>
       </div>
@@ -148,9 +151,9 @@ export default function DisplayBoard({
   };
 
   return (
-    <main className="min-h-screen bg-canvas px-8 py-6 text-ink">
-      {/* 頂部：隊名＋比賽倒數｜大時鐘 */}
-      <header className="flex items-end justify-between gap-6">
+    <main className="flex h-screen flex-col overflow-hidden bg-canvas px-8 py-6 text-ink">
+      {/* 頂部：隊名＋比賽倒數｜大時鐘（固定常駐） */}
+      <header className="flex shrink-0 items-end justify-between gap-6">
         <div>
           <h1 className="text-6xl font-black tracking-tight text-ink">
             {data.teamName}
@@ -168,69 +171,70 @@ export default function DisplayBoard({
         </div>
       </header>
 
-      {/* 週期：雙列大卡 */}
-      <section className="mt-6">
-        {late.length > 0 && (
-          <>
-            <h2 className="text-3xl font-bold text-[#eb5757]">⚠ 遲交（{late.length}）</h2>
-            <div className="mt-3 grid grid-cols-1 gap-4 2xl:grid-cols-2">
-              {late.map(cycleCard)}
-            </div>
-          </>
-        )}
-        <h2 className="text-3xl font-bold text-ink-muted">進行中（{active.length}）</h2>
-        {active.length === 0 && late.length === 0 ? (
-          <p className="mt-3 rounded-xl border border-hairline bg-white p-10 text-center text-2xl text-ink-tertiary shadow-sm">
-            目前沒有進行中的週期
-          </p>
-        ) : (
-          <div className="mt-3 grid grid-cols-1 gap-4 2xl:grid-cols-2">
-            {active.map(cycleCard)}
-          </div>
-        )}
-        {upcoming.length > 0 && (
-          <>
-            <h2 className="mt-5 text-3xl font-bold text-ink-muted">
-              即將開始（{upcoming.length}）
-            </h2>
-            <div className="mt-3 grid grid-cols-1 gap-4 2xl:grid-cols-2">
-              {upcoming.map(cycleCard)}
-            </div>
-          </>
-        )}
-      </section>
+      {/* 主區：左＝月曆＋兩週重點（常駐），右＝週期列表（獨立捲動）；窄螢幕退回上下堆疊 */}
+      <div className="mt-6 grid min-h-0 flex-1 grid-cols-1 gap-6 xl:grid-cols-[46fr_54fr] xl:overflow-hidden">
+        {/* 左：月曆＋兩週重點 */}
+        <div className="min-h-0 space-y-6 xl:overflow-y-auto xl:pr-1">
+          <MonthCalendar events={data.events} tasks={data.tasksDue} today={data.today} />
 
-      {/* 未來兩週重點（大字清單） */}
-      {agenda.size > 0 && (
-        <section className="mt-6 rounded-xl border border-hairline bg-white p-6 shadow-sm">
-          <h2 className="text-3xl font-bold text-ink">未來兩週重點</h2>
-          <div className="mt-4 flex flex-wrap gap-x-10 gap-y-3">
-            {[...agenda.entries()].map(([date, items]) => (
-              <div
-                key={date}
-                className={`flex items-baseline gap-3 ${
-                  date === today ? "text-[#2383a5]" : "text-ink"
-                }`}
-              >
-                <span className="text-3xl font-bold">
-                  {Number(date.slice(5, 7))}/{Number(date.slice(8, 10))}
-                </span>
-                <span className="text-base text-ink-subtle">{weekdayZh(date)}</span>
-                {items.map((e) => (
-                  <span key={e.id} className="flex items-center gap-2 text-2xl font-semibold text-ink">
-                    <span className={`h-2.5 w-2.5 rounded-full ${TYPE_DOT[e.type] ?? TYPE_DOT.other}`} />
-                    {e.title}
-                  </span>
+          {agenda.size > 0 && (
+            <section className="rounded-xl border border-hairline bg-white p-6 shadow-sm">
+              <h2 className="text-3xl font-bold text-ink">未來兩週重點</h2>
+              <div className="mt-4 space-y-3">
+                {[...agenda.entries()].map(([date, items]) => (
+                  <div
+                    key={date}
+                    className={`flex items-baseline gap-3 ${
+                      date === today ? "text-[#2383a5]" : "text-ink"
+                    }`}
+                  >
+                    <span className="w-16 shrink-0 text-2xl font-bold">
+                      {Number(date.slice(5, 7))}/{Number(date.slice(8, 10))}
+                    </span>
+                    <span className="w-12 shrink-0 text-base text-ink-subtle">{weekdayZh(date)}</span>
+                    <span className="flex flex-wrap gap-x-4 gap-y-1">
+                      {items.map((e) => (
+                        <span
+                          key={e.id}
+                          className="flex items-center gap-2 text-xl font-semibold"
+                        >
+                          <span className={`h-2.5 w-2.5 rounded-full ${TYPE_DOT[e.type] ?? TYPE_DOT.other}`} />
+                          {e.title}
+                        </span>
+                      ))}
+                    </span>
+                  </div>
                 ))}
               </div>
-            ))}
-          </div>
-        </section>
-      )}
+            </section>
+          )}
+        </div>
 
-      {/* 本月日曆（圖像化，可翻月） */}
-      <div className="mt-6">
-        <MonthCalendar events={data.events} tasks={data.tasksDue} today={data.today} />
+        {/* 右：週期列表（獨立捲動） */}
+        <div className="min-h-0 space-y-5 xl:overflow-y-auto xl:pl-1">
+          {late.length > 0 && (
+            <>
+              <h2 className="text-3xl font-bold text-[#eb5757]">⚠ 遲交（{late.length}）</h2>
+              <div className="space-y-5">{late.map(cycleCard)}</div>
+            </>
+          )}
+          <h2 className="text-3xl font-bold text-ink-muted">進行中（{active.length}）</h2>
+          {active.length === 0 && late.length === 0 ? (
+            <p className="rounded-xl border border-hairline bg-white p-10 text-center text-2xl text-ink-tertiary shadow-sm">
+              目前沒有進行中的週期
+            </p>
+          ) : (
+            <div className="space-y-5">{active.map(cycleCard)}</div>
+          )}
+          {upcoming.length > 0 && (
+            <>
+              <h2 className="pt-2 text-3xl font-bold text-ink-muted">
+                即將開始（{upcoming.length}）
+              </h2>
+              <div className="space-y-5">{upcoming.map(cycleCard)}</div>
+            </>
+          )}
+        </div>
       </div>
     </main>
   );
