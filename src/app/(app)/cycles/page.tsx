@@ -445,7 +445,7 @@ export default function CyclesPage() {
 }
 
 function CycleHead({ c, today }: { c: Cycle; today: string }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const st = cycleStatus(c.status);
   const left = daysBetween(today, c.end_date);
   return (
@@ -469,7 +469,7 @@ function CycleHead({ c, today }: { c: Cycle; today: string }) {
         <span>{t("提案")}：{c.proposer_name ?? "—"}</span>
         {c.claimed_by_name && (
           <p className="mt-1 text-sm font-semibold text-[#2383a5]">
-            🙋 {t("已由")} {c.claimed_by_name} {t("認領")}
+            {lang === "en" ? `🙋 Claimed by ${c.claimed_by_name}` : `🙋 已由 ${c.claimed_by_name} 認領`}
           </p>
         )}
         {c.members.length > 0 && (
