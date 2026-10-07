@@ -23,7 +23,14 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="zh-Hant" className="h-full antialiased">
+    <html lang="zh-Hant" className="h-full antialiased" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem("rov_theme");if(t!=="dark"&&t!=="light"){t="light";}document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme="light";}})();`,
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col">
         <I18nProvider><SubteamsProvider>{children}</SubteamsProvider></I18nProvider>
       </body>

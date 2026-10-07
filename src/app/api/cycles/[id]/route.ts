@@ -19,6 +19,8 @@ type CycleRow = {
   end_date: string;
   description: string;
   proposer_id: number | null;
+  claimable: boolean;
+  claimed_by: number | null;
 };
 
 async function load(id: number): Promise<CycleRow | undefined> {
@@ -51,6 +53,36 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       return NextResponse.json({ error: "只有隊長或老師可以審批" }, { status: 403 });
     }
   }
+  // ── 隊員認領開放中的週期 ──
+  if (body.action === "claim") {
+    if (user.role === "teacher") {
+      return NextResponse.json({ error: "認領是給隊員的，老師不需要認領" }, { status: 403 });
+    }
+    if (!cycle.claimable) {
+      return NextResponse.json({ error: "這個週期不是開放認領的" }, { status: 400 });
+    }
+    if (cycle.claimed_by) {
+      return NextResponse.json({ error: "這個週期已被認領" }, { status: 400 });
+    }
+    if (cycle.proposer_id === user.id) {
+      return NextResponse.json({ error: "不能認領自己發佈的週期" }, { status: 400 });
+    }
+    if (!["active", "approved"].includes(cycle.status)) {
+      return NextResponse.json({ error: "這個週期還沒開放" }, { status: 400 });
+    }
+    await sql`
+      UPDATE cycles SET claimed_by = ${user.id} WHERE id = ${cycle.id} AND claimed_by IS NULL`;
+    await sql`
+      INSERT INTO cycle_members (cycle_id, user_id) VALUES (${cycle.id}, ${user.id})
+      ON CONFLICT DO NOTHING`;
+    await logAudit(user.id, user.username, "cycle.claim", `cycle:${cycle.id}`, cycle.title);
+    after(() => pushToUsers([cycle.proposer_id],
+      "🙋 你的週期已被認領",
+      `「${cycle.title}」由 ${user.display_name} 認領`,
+      "/cycles", user.id));
+    return NextResponse.json({ ok: true });
+  }
+
   if (body.action === "approve") {
     if (cycle.status === "pending_leader") {
       // 老師是最終審批者，批准即「已核准」；隊長批准後升級待老師審批

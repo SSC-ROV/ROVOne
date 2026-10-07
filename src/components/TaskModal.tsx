@@ -154,7 +154,7 @@ export default function TaskModal({
       onClick={onClose}
     >
       <div
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg border border-hairline bg-white p-6 shadow-lg"
+        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg border border-hairline bg-surface-1 p-6 shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">

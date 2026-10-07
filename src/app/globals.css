@@ -1,28 +1,69 @@
 @import url("https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&family=Noto+Serif+TC:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
-/* ── Notion 風格色板（STYLEKIT notion-style） ── */
-@theme {
-  --color-canvas: #f7f6f3;
-  --color-surface-1: #ffffff;
-  --color-surface-2: #efedea;
-  --color-surface-3: #e3e1db;
-  --color-surface-4: #d9d6d0;
-  --color-hairline: #e9e7e4;
-  --color-hairline-strong: #d3d1cb;
-  --color-ink: #37352f;
-  --color-ink-muted: #5f5e5b;
-  --color-ink-subtle: #787774;
-  --color-ink-tertiary: #9b9a97;
-  --color-primary: #2eaadc;
-  --color-primary-hover: #2383a5;
-  --color-primary-focus: #2eaadc;
+/* ── Notion 風格色板：明暗雙主題（使用者可切換） ── */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@theme inline {
+  --color-canvas: var(--tk-canvas);
+  --color-surface-1: var(--tk-surface-1);
+  --color-surface-2: var(--tk-surface-2);
+  --color-surface-3: var(--tk-surface-3);
+  --color-surface-4: var(--tk-surface-4);
+  --color-hairline: var(--tk-hairline);
+  --color-hairline-strong: var(--tk-hairline-strong);
+  --color-ink: var(--tk-ink);
+  --color-ink-muted: var(--tk-ink-muted);
+  --color-ink-subtle: var(--tk-ink-subtle);
+  --color-ink-tertiary: var(--tk-ink-tertiary);
+  --color-primary: var(--tk-primary);
+  --color-primary-hover: var(--tk-primary-hover);
+  --color-primary-focus: var(--tk-primary-focus);
+}
+
+:root,
+[data-theme="light"] {
+  --tk-canvas: #f7f6f3;
+  --tk-surface-1: #ffffff;
+  --tk-surface-2: #efedea;
+  --tk-surface-3: #e3e1db;
+  --tk-surface-4: #d9d6d0;
+  --tk-hairline: #e9e7e4;
+  --tk-hairline-strong: #d3d1cb;
+  --tk-ink: #37352f;
+  --tk-ink-muted: #5f5e5b;
+  --tk-ink-subtle: #787774;
+  --tk-ink-tertiary: #9b9a97;
+  --tk-primary: #2eaadc;
+  --tk-primary-hover: #2383a5;
+  --tk-primary-focus: #2eaadc;
+}
+
+[data-theme="dark"] {
+  --tk-canvas: #010102;
+  --tk-surface-1: #0f1011;
+  --tk-surface-2: #1a1b1e;
+  --tk-surface-3: #232529;
+  --tk-surface-4: #2a2c30;
+  --tk-hairline: #23252a;
+  --tk-hairline-strong: #34343a;
+  --tk-ink: #f7f8f8;
+  --tk-ink-muted: #d0d6e0;
+  --tk-ink-subtle: #8a8f98;
+  --tk-ink-tertiary: #62666d;
+  --tk-primary: #5e6ad2;
+  --tk-primary-hover: #828fff;
+  --tk-primary-focus: #5e69d1;
 }
 
 html {
   color-scheme: light;
   -webkit-text-size-adjust: 100%;
   font-size: 17.5px;
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 body {
@@ -119,7 +160,7 @@ summary {
     width: 84px;
     padding: 12px 0 16px;
     border-right: 1px solid var(--color-hairline);
-    background: rgba(247, 246, 243, 0.94);
+    background: color-mix(in srgb, var(--color-canvas) 94%, transparent);
   }
   .app-main {
     /* 內容避開左側欄：左移 84px 並等量縮窄，避免横向溢出 */

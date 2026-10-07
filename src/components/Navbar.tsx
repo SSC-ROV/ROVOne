@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useI18n } from "@/lib/i18n";
+import ThemeToggle from "./ThemeToggle";
 import type { Me } from "@/lib/types";
 
 /* ── 線性圖標（Instagram iPad 版風格的側欄用） ── */
@@ -137,6 +138,7 @@ export default function Navbar({
       {/* ── iPad／大屏觸控：Instagram 式左側圖標欄 ── */}
       <aside className="rail" aria-label={t("主導航")}>
         <div className="flex flex-col items-center gap-1">
+          <ThemeToggle compact />
           {links.map((l) => (
             <RailButton key={l.href} href={l.href} label={l.label} active={pathname === l.href}>
               {l.icon}
@@ -170,7 +172,7 @@ export default function Navbar({
       </aside>
 
       {/* ── 手機／桌面：原本的頂欄 ── */}
-      <header className="topbar sticky top-0 z-40 border-b border-hairline bg-white">
+      <header className="topbar sticky top-0 z-40 border-b border-hairline bg-surface-1">
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4">
           <Link href="/" className="shrink-0 font-semibold tracking-tight text-ink">
             {teamName}
@@ -194,6 +196,7 @@ export default function Navbar({
             <span className="hidden text-ink-subtle sm:inline">
               {user.display_name}
             </span>
+            <ThemeToggle />
             <button
               onClick={toggle}
               className="rounded-lg border border-hairline-strong px-2 py-1 text-xs text-ink-muted transition hover:border-hairline-strong hover:text-ink"

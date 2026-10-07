@@ -70,6 +70,14 @@ export default function CyclesPage() {
   const invitableMembers = members.filter(
     (m) => m.role !== "teacher" && !DEMO_USERNAMES.includes(m.username)
   );
+  // 開放認領中：幹部發佈、尚未被認領、已核准／進行中，且不是自己發的
+  const claimableOpen = cycles.filter(
+    (c) =>
+      c.claimable &&
+      !c.claimed_by &&
+      (c.status === "active" || c.status === "approved") &&
+      c.proposer_id !== meId
+  );
 
   // 樂觀更新：任務勾選（立即改畫面，背景同步；失敗則還原）
   async function toggleTaskDone(task: Task) {
@@ -141,6 +149,19 @@ export default function CyclesPage() {
     }
   }
 
+  async function claim(c: Cycle) {
+    try {
+      await api(`/api/cycles/${c.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ action: "claim" }),
+      });
+      toast(t("認領成功！週期已加入你的名下"), "ok");
+      await load();
+    } catch (err) {
+      toast(t((err as Error).message), "err");
+    }
+  }
+
   async function removeCycle(c: Cycle) {
     const ok = await confirm({ title: `${t("刪除週期「")}${c.title}${t("」？")}`, message: t("任務不會被刪除，只會解除關聯。"), confirmText: t("刪除"), danger: true });
     if (!ok) return;
@@ -163,7 +184,9 @@ export default function CyclesPage() {
   const stats = invitableMembers
     .map((m) => {
       const mine = cycles.filter(
-        (c) => c.proposer_id === m.id || c.members.some((x) => x.id === m.id)
+        (c) =>
+          (c.proposer_id === m.id && !(c.claimable && !c.count_for_leader)) ||
+          c.members.some((x) => x.id === m.id)
       );
       return {
         member: m,
@@ -252,6 +275,33 @@ export default function CyclesPage() {
               );
             })}
           </div>
+        </section>
+      )}
+
+      {claimableOpen.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="font-bold text-[#2383a5]">{t("可認領的週期")}（{claimableOpen.length}）</h2>
+          {claimableOpen.map((c) => (
+            <div
+              key={c.id}
+              className="rounded-xl border border-primary/40 bg-blue-50/50 p-4 dark:bg-primary/5"
+            >
+              <CycleHead c={c} today={today} />
+              {c.description && (
+                <p className="mt-1 text-sm text-ink-subtle">{c.description}</p>
+              )}
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <span className="text-sm text-ink-subtle">
+                  {t("提案人")}：{c.proposer_name}
+                </span>
+                {!isStaff(myRole) && (
+                  <button className={BTN} onClick={() => claim(c)}>
+                    🙋 {t("認領")}
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
         </section>
       )}
 
@@ -420,6 +470,11 @@ function CycleHead({ c, today }: { c: Cycle; today: string }) {
       {c.description && <p className="mt-1 text-sm text-ink-subtle">{c.description}</p>}
       <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-ink-tertiary">
         <span>{t("提案")}：{c.proposer_name ?? "—"}</span>
+        {c.claimed_by_name && (
+          <p className="mt-1 text-sm font-semibold text-[#2383a5]">
+            🙋 {t("已由")} {c.claimed_by_name} {t("認領")}
+          </p>
+        )}
         {c.members.length > 0 && (
           <span className="flex flex-wrap items-center gap-1">
             · {t("合作")}：
@@ -480,6 +535,9 @@ function CycleForm({
   );
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const staffCreating = !editing && isStaff(me.role);
+  const [claimable, setClaimable] = useState(false);
+  const [countForLeader, setCountForLeader] = useState(true);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -503,9 +561,13 @@ function CycleForm({
       } else {
         await api("/api/cycles", {
           method: "POST",
-          body: JSON.stringify({ title: title.trim(), description, start_date: start, end_date: end, member_ids: picked }),
+          body: JSON.stringify({
+            title: title.trim(), description, start_date: start, end_date: end, member_ids: picked,
+            claimable: staffCreating ? claimable : undefined,
+            count_for_leader: staffCreating && claimable ? countForLeader : undefined,
+          }),
         });
-        toast(t("提案已送出，等審批結果"));
+        toast(claimable && staffCreating ? t("已發佈，等老師審批後開放認領") : t("提案已送出，等審批結果"));
       }
       onSaved();
     } catch (error) {
@@ -557,6 +619,20 @@ function CycleForm({
       </div>
       {err && (
         <p className="rounded-lg border border-rose-500/30 bg-red-50 px-3 py-2 text-sm text-[#eb5757]">{err}</p>
+      )}
+      {staffCreating && (
+        <div className="space-y-2 rounded-lg border border-hairline bg-surface-2/60 p-3">
+          <label className="flex items-center gap-2 text-sm text-ink">
+            <input type="checkbox" checked={claimable} onChange={(e) => setClaimable(e.target.checked)} className="h-4 w-4 accent-primary" />
+            {t("開放給隊員認領")}
+          </label>
+          {claimable && (
+            <label className="flex items-center gap-2 pl-6 text-sm text-ink-subtle">
+              <input type="checkbox" checked={countForLeader} onChange={(e) => setCountForLeader(e.target.checked)} className="h-4 w-4 accent-primary" />
+              {t("計入隊長週期統計")}
+            </label>
+          )}
+        </div>
       )}
       <div className="flex gap-2">
         <button className={BTN} disabled={busy}>

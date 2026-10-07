@@ -19,10 +19,12 @@ export async function GET() {
     WHERE status = 'approved' AND start_date <= ((now() AT TIME ZONE 'Asia/Hong_Kong')::date)::text`;
 
   const rows = await sql`
-    SELECT c.*, a.display_name AS proposer_name, b.display_name AS decided_by_name
+    SELECT c.*, a.display_name AS proposer_name, b.display_name AS decided_by_name,
+           d.display_name AS claimed_by_name
     FROM cycles c
     LEFT JOIN users a ON a.id = c.proposer_id
     LEFT JOIN users b ON b.id = c.decided_by
+    LEFT JOIN users d ON d.id = c.claimed_by
     ORDER BY CASE c.status
        WHEN 'active' THEN 0 WHEN 'pending_teacher' THEN 1 WHEN 'pending_leader' THEN 2
        WHEN 'approved' THEN 3 WHEN 'late' THEN 4 WHEN 'completed' THEN 5 ELSE 6 END, c.end_date, c.id`;
@@ -70,6 +72,8 @@ export async function POST(req: NextRequest) {
     start_date?: string;
     end_date?: string;
     member_ids?: number[];
+    claimable?: boolean;
+    count_for_leader?: boolean;
   } | null;
   const title = String(body?.title ?? "").trim();
   const start = String(body?.start_date ?? "");
@@ -86,9 +90,14 @@ export async function POST(req: NextRequest) {
   const status =
     user.role === "teacher" ? "approved" : isStaff(user.role) ? "pending_teacher" : "pending_leader";
 
+  // 「可認領」週期僅幹部可開；可選擇是否計入隊長自己的統計
+  const claimable = isStaff(user.role) && body?.claimable === true;
+  const countForLeader = body?.count_for_leader !== false;
+
   const [created] = await sql`
-    INSERT INTO cycles (title, description, start_date, end_date, status, proposer_id)
-    VALUES (${title}, ${String(body?.description ?? "")}, ${start}, ${end}, ${status}, ${user.id})
+    INSERT INTO cycles (title, description, start_date, end_date, status, proposer_id, claimable, count_for_leader)
+    VALUES (${title}, ${String(body?.description ?? "")}, ${start}, ${end}, ${status}, ${user.id},
+            ${claimable}, ${claimable ? countForLeader : true})
     RETURNING id`;
   const cycleId = Number(created.id);
 

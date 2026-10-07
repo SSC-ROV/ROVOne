@@ -39,6 +39,10 @@ export interface Cycle {
   members: CycleMemberRef[];
   task_total: number;
   task_done: number;
+  claimable: boolean;
+  claimed_by: number | null;
+  claimed_by_name: string | null;
+  count_for_leader: boolean;
 }
 export type Subteam = "mech" | "elec" | "sw" | "pilot" | "general";
 export type TaskStatus = "todo" | "doing" | "done";
