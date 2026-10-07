@@ -287,9 +287,6 @@ export default function CyclesPage() {
               className="rounded-xl border border-primary/40 bg-blue-50/50 p-4 dark:bg-primary/5"
             >
               <CycleHead c={c} today={today} />
-              {c.description && (
-                <p className="mt-1 text-sm text-ink-subtle">{c.description}</p>
-              )}
               <div className="mt-3 flex items-center justify-between gap-3">
                 <span className="text-sm text-ink-subtle">
                   {t("提案人")}：{c.proposer_name}
