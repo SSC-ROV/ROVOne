@@ -83,10 +83,12 @@ export default function CalendarPage() {
     return <p className="py-20 text-center text-sm text-ink-tertiary">{t("載入中…")}</p>;
   }
 
-  const y = now.getFullYear();
-  const m = now.getMonth();
+  // 月份與星期皆以北京時間計算（不依賴裝置時區）
+  const bjNow = new Date(Date.now() + (8 * 60 + new Date().getTimezoneOffset()) * 60000);
+  const y = bjNow.getFullYear();
+  const m = bjNow.getMonth();
   const monthStart = new Date(y, m, 1);
-  const offset = (monthStart.getDay() + 6) % 7; // 週一開頭
+  const offset = monthStart.getDay(); // 週日開頭
   const cells: string[] = [];
   for (let i = 0; i < 42; i++) {
     cells.push(localDateStr(new Date(y, m, 1 - offset + i)));

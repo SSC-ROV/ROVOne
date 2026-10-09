@@ -33,17 +33,21 @@ export default function MonthCalendar({
   const [offset, setOffset] = useState(0);
   const today = todayProp ?? hkToday();
 
+  // 以北京時間的今天為基準（today 由伺服器提供，YYYY-MM-DD）
   const view = useMemo(() => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth() + offset, 1);
-  }, [offset]);
+    const base = todayProp ?? hkToday();
+    const y = Number(base.slice(0, 4));
+    const m = Number(base.slice(5, 7)) - 1;
+    const d = new Date(Date.UTC(y, m + offset, 1));
+    return { y: d.getUTCFullYear(), m: d.getUTCMonth() };
+  }, [offset, todayProp]);
 
   const grid = useMemo(() => {
-    const y = view.getFullYear();
-    const m = view.getMonth();
-    const first = new Date(y, m, 1);
-    const lead = (first.getDay() + 6) % 7; // 週一開頭
-    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    const y = view.y;
+    const m = view.m;
+    const first = new Date(Date.UTC(y, m, 1));
+    const lead = first.getUTCDay(); // 週日開頭
+    const daysInMonth = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
     const cells: { date: string | null; day: number | null }[] = [];
     for (let i = 0; i < lead; i++) cells.push({ date: null, day: null });
     for (let d = 1; d <= daysInMonth; d++) {
@@ -70,10 +74,10 @@ export default function MonthCalendar({
     return map;
   }, [events, tasks]);
 
-  const monthLabel = `${view.getFullYear()} 年 ${view.getMonth() + 1} 月`;
+  const monthLabel = `${view.y} 年 ${view.m + 1} 月`;
   const todayParts = today.split("-").map(Number);
   const isCurrentMonth =
-    view.getFullYear() === todayParts[0] && view.getMonth() + 1 === todayParts[1];
+    view.y === todayParts[0] && view.m + 1 === todayParts[1];
 
   return (
     <section className="rounded-xl border border-hairline bg-surface-1 p-5">
@@ -107,7 +111,7 @@ export default function MonthCalendar({
       </div>
 
       <div className="grid grid-cols-7 gap-1.5">
-        {["一", "二", "三", "四", "五", "六", "日"].map((w) => (
+        {["日", "一", "二", "三", "四", "五", "六"].map((w) => (
           <div key={w} className="pb-1 text-center text-base font-bold text-ink-subtle">
             週{w}
           </div>
