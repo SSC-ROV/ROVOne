@@ -136,12 +136,14 @@ export default function DisplayBoard({
           <div className={`h-full rounded-lg ${barColor}`} style={{ width: `${pct}%` }} />
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-1 text-lg text-ink-subtle">
-          <span>
-            任務進度{" "}
-            <span className="text-2xl font-bold text-ink">
-              {c.done}/{c.total}
+          {c.total > 0 && (
+            <span>
+              任務進度{" "}
+              <span className="text-2xl font-bold text-ink">
+                {c.done}/{c.total}
+              </span>
             </span>
-          </span>
+          )}
           {c.members.length > 0 && (
             <span className="truncate text-base">成員：{c.members.join("、")}</span>
           )}

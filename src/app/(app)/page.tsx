@@ -165,17 +165,16 @@ export default function DashboardPage() {
                         )}
                       </span>
                     </div>
-                    <div className="mt-2 flex items-center gap-3 text-xs text-ink-subtle">
-                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-2">
-                        <div
-                          className={`h-full rounded-full ${c.task_total > 0 ? "bg-primary" : ""}`}
-                          style={{ width: `${pct}%` }}
-                        />
+                    {c.task_total > 0 && (
+                      <div className="mt-2 flex items-center gap-3 text-xs text-ink-subtle">
+                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-2">
+                          <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="tabular-nums">
+                          {t("任務")} {c.task_done}/{c.task_total}（{pct}%）
+                        </span>
                       </div>
-                      <span className="tabular-nums">
-                        {t("任務")} {c.task_done}/{c.task_total}（{pct}%）
-                      </span>
-                    </div>
+                    )}
                   </Link>
                 );
               })}
