@@ -114,7 +114,7 @@ export default function DisplayBoard({
       c.status === "late" ? t("遲交") : c.status === "active" ? t("進行中") : t("即將開始");
     const left = daysBetween(today, c.end_date);
     return (
-      <div key={c.id} className="rounded-xl border border-hairline bg-white p-6 shadow-sm">
+      <div key={c.id} className="rounded-xl border border-hairline bg-surface-1 p-6 shadow-sm">
         <div className="flex items-start justify-between gap-4">
           <h3 className="text-3xl font-bold text-ink">{c.title}</h3>
           <span className={`shrink-0 rounded-md px-4 py-1.5 text-lg font-bold ${chip}`}>
@@ -188,7 +188,7 @@ export default function DisplayBoard({
           <MonthCalendar events={data.events} tasks={data.tasksDue} today={data.today} />
 
           {agenda.size > 0 && (
-            <section className="rounded-xl border border-hairline bg-white p-6 shadow-sm">
+            <section className="rounded-xl border border-hairline bg-surface-1 p-6 shadow-sm">
               <h2 className="text-3xl font-bold text-ink">{t("未來兩週重點")}</h2>
               <div className="mt-4 space-y-3">
                 {[...agenda.entries()].map(([date, items]) => (
@@ -230,7 +230,7 @@ export default function DisplayBoard({
           )}
           <h2 className="text-3xl font-bold text-ink-muted">{t("進行中")}（{active.length}）</h2>
           {active.length === 0 && late.length === 0 ? (
-            <p className="rounded-xl border border-hairline bg-white p-10 text-center text-2xl text-ink-tertiary shadow-sm">
+            <p className="rounded-xl border border-hairline bg-surface-1 p-10 text-center text-2xl text-ink-tertiary shadow-sm">
               目前沒有進行中的週期
             </p>
           ) : (
