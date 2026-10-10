@@ -19,11 +19,11 @@ function daysBetween(a: string, b: string): number {
   );
 }
 
-function weekdayZh(dateStr: string): string {
-  return new Date(dateStr + "T00:00:00+08:00").toLocaleDateString("zh-TW", {
-    weekday: "short",
-    timeZone: "Asia/Hong_Kong",
-  });
+function weekdayLabel(dateStr: string, lang: string): string {
+  return new Date(dateStr + "T00:00:00+08:00").toLocaleDateString(
+    lang === "en" ? "en-GB" : "zh-TW",
+    { weekday: "short", timeZone: "Asia/Hong_Kong" }
+  );
 }
 
 /** 全屏按鈕（Raspberry Pi／PC 上也可直接用瀏覽器 --kiosk 參數） */
@@ -201,7 +201,7 @@ export default function DisplayBoard({
                     <span className="w-16 shrink-0 text-2xl font-bold">
                       {Number(date.slice(5, 7))}/{Number(date.slice(8, 10))}
                     </span>
-                    <span className="w-12 shrink-0 text-base text-ink-subtle">{weekdayZh(date)}</span>
+                    <span className="w-12 shrink-0 text-base text-ink-subtle">{weekdayLabel(date, lang)}</span>
                     <span className="flex flex-wrap gap-x-4 gap-y-1">
                       {items.map((e) => (
                         <span
