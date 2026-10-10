@@ -12,7 +12,7 @@ export type CalTask = { title: string; cycle_title: string; due_date: string };
 const TYPE_DOT: Record<string, string> = {
   meeting: "bg-primary-hover",
   watertest: "bg-sky-400",
-  competition: "bg-rose-400",
+  competition: "bg-[#a14545]",
   other: "bg-ink-subtle",
 };
 
@@ -150,9 +150,9 @@ export default function MonthCalendar({
               </div>
               <div className="space-y-1">
                 {items.slice(0, 2).map((it, k) => (
-                  <div key={k} className="flex items-center gap-1.5 text-base font-semibold leading-tight text-ink">
-                    <span className={`h-2 w-2 shrink-0 rounded-full ${it.dot}`} />
-                    <span className="truncate">{it.text}</span>
+                  <div key={k} className="flex items-center gap-1 text-[13px] font-medium leading-tight text-ink">
+                    <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${it.dot}`} />
+                    <span className="truncate" title={it.text}>{it.text}</span>
                   </div>
                 ))}
                 {items.length > 2 && (
@@ -166,7 +166,7 @@ export default function MonthCalendar({
       <p className="mt-2 text-xs text-ink-tertiary">
         <span className="mr-3"><span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-primary-hover align-middle" />{t("例會")}</span>
         <span className="mr-3"><span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-sky-400 align-middle" />{t("水測")}</span>
-        <span className="mr-3"><span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-rose-400 align-middle" />{t("比賽")}</span>
+        <span className="mr-3"><span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-[#a14545] align-middle" />{t("比賽")}</span>
         <span><span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-amber-400 align-middle" />{t("任務截止")}</span>
       </p>
     </section>

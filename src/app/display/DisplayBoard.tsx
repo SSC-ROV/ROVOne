@@ -9,7 +9,7 @@ import type { BoardData } from "@/lib/board";
 const TYPE_DOT: Record<string, string> = {
   meeting: "bg-[#2eaadc]",
   watertest: "bg-sky-400",
-  competition: "bg-[#eb5757]",
+  competition: "bg-[#a14545]",
   other: "bg-gray-400",
 };
 
@@ -106,7 +106,7 @@ export default function DisplayBoard({
       c.status === "late" ? "bg-rose-400" : c.status === "active" ? "bg-emerald-400" : "bg-sky-400";
     const chip =
       c.status === "late"
-        ? "bg-red-50 text-[#eb5757]"
+        ? "bg-[#a14545]/15 text-[#b85c5c]"
         : c.status === "active"
           ? "bg-green-50 text-[#0f7b6c]"
           : "bg-blue-50 text-[#2383a5]";
@@ -170,7 +170,7 @@ export default function DisplayBoard({
           </h1>
           <p className="mt-1 text-lg text-ink-subtle">{t("團隊看板 · 每分鐘自動更新")}</p>
           {compDays !== null && (
-            <p className="mt-2 inline-block rounded-md bg-red-50 px-5 py-1.5 text-2xl font-bold text-[#eb5757]">
+            <p className="mt-2 inline-block rounded-md bg-[#a14545]/15 px-5 py-1.5 text-2xl font-bold text-[#b85c5c]">
               {lang === "en" ? `Competition in ${compDays} days` : `距比賽 ${compDays} 日`}
             </p>
           )}
@@ -224,7 +224,7 @@ export default function DisplayBoard({
         <div className="min-h-0 space-y-5 xl:overflow-y-auto xl:pl-1">
           {late.length > 0 && (
             <>
-              <h2 className="text-3xl font-bold text-[#eb5757]">⚠ {t("遲交")}（{late.length}）</h2>
+              <h2 className="text-3xl font-bold text-[#b85c5c]">⚠ {t("遲交")}（{late.length}）</h2>
               <div className="space-y-5">{late.map(cycleCard)}</div>
             </>
           )}
