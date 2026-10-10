@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useI18n } from "@/lib/i18n";
 
 export type CalEvent = {
   id: number; title: string; type: string; date: string;
@@ -31,6 +32,7 @@ export default function MonthCalendar({
   today?: string;
 }) {
   const [offset, setOffset] = useState(0);
+  const { t, lang } = useI18n();
   const today = todayProp ?? hkToday();
 
   // 以北京時間的今天為基準（today 由伺服器提供，YYYY-MM-DD）
@@ -74,7 +76,10 @@ export default function MonthCalendar({
     return map;
   }, [events, tasks]);
 
-  const monthLabel = `${view.y} 年 ${view.m + 1} 月`;
+  const monthLabel =
+    lang === "en"
+      ? new Date(Date.UTC(view.y, view.m, 1)).toLocaleString("en-US", { month: "long", timeZone: "UTC" }) + ` ${view.y}`
+      : `${view.y} 年 ${view.m + 1} 月`;
   const todayParts = today.split("-").map(Number);
   const isCurrentMonth =
     view.y === todayParts[0] && view.m + 1 === todayParts[1];
@@ -82,12 +87,12 @@ export default function MonthCalendar({
   return (
     <section className="rounded-xl border border-hairline bg-surface-1 p-5">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-3xl font-bold text-ink">本月日曆</h2>
+        <h2 className="text-3xl font-bold text-ink">{t("本月日曆")}</h2>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setOffset((o) => o - 1)}
             className="h-10 w-10 rounded-lg border border-hairline-strong text-lg text-ink-muted transition hover:border-hairline-strong hover:text-ink"
-            aria-label="上個月"
+            aria-label={t("上個月")}
           >
             ‹
           </button>
@@ -95,7 +100,7 @@ export default function MonthCalendar({
           <button
             onClick={() => setOffset((o) => o + 1)}
             className="h-10 w-10 rounded-lg border border-hairline-strong text-lg text-ink-muted transition hover:border-hairline-strong hover:text-ink"
-            aria-label="下個月"
+            aria-label={t("下個月")}
           >
             ›
           </button>
@@ -104,16 +109,19 @@ export default function MonthCalendar({
               onClick={() => setOffset(0)}
               className="h-10 rounded-lg border border-hairline-strong px-3 text-sm text-ink-muted transition hover:border-hairline-strong hover:text-ink"
             >
-              本月
+              {t("本月")}
             </button>
           )}
         </div>
       </div>
 
       <div className="grid grid-cols-7 gap-1.5">
-        {["日", "一", "二", "三", "四", "五", "六"].map((w) => (
+        {(lang === "en"
+          ? ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+          : ["日", "一", "二", "三", "四", "五", "六"]
+        ).map((w) => (
           <div key={w} className="pb-1 text-center text-base font-bold text-ink-subtle">
-            週{w}
+            {lang === "en" ? w : `週${w}`}
           </div>
         ))}
         {grid.map((cell, i) => {
@@ -148,7 +156,7 @@ export default function MonthCalendar({
                   </div>
                 ))}
                 {items.length > 2 && (
-                  <div className="text-sm text-ink-tertiary">+{items.length - 2} 更多</div>
+                  <div className="text-sm text-ink-tertiary">+{items.length - 2} {t("更多")}</div>
                 )}
               </div>
             </div>
@@ -156,10 +164,10 @@ export default function MonthCalendar({
         })}
       </div>
       <p className="mt-2 text-xs text-ink-tertiary">
-        <span className="mr-3"><span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-primary-hover align-middle" />例會</span>
-        <span className="mr-3"><span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-sky-400 align-middle" />水測</span>
-        <span className="mr-3"><span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-rose-400 align-middle" />比賽</span>
-        <span><span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-amber-400 align-middle" />任務截止</span>
+        <span className="mr-3"><span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-primary-hover align-middle" />{t("例會")}</span>
+        <span className="mr-3"><span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-sky-400 align-middle" />{t("水測")}</span>
+        <span className="mr-3"><span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-rose-400 align-middle" />{t("比賽")}</span>
+        <span><span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-amber-400 align-middle" />{t("任務截止")}</span>
       </p>
     </section>
   );

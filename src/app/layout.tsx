@@ -27,7 +27,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem("rov_theme");if(t!=="dark"&&t!=="light"){t="light";}document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme="light";}})();`,
+            __html: `(function(){try{var p=new URLSearchParams(location.search);var t=p.get("theme");if(t==="dark"||t==="light")localStorage.setItem("rov_theme",t);var l=p.get("lang");if(l==="en"||l==="zh")localStorage.setItem("rov_lang",l);t=localStorage.getItem("rov_theme");if(t!=="dark"&&t!=="light")t="light";document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme="light";}})();`,
           }}
         />
       </head>

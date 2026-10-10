@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useI18n } from "@/lib/i18n";
 import Clock from "./Clock";
 import MonthCalendar, { type CalEvent, type CalTask } from "./MonthCalendar";
 import type { BoardData } from "@/lib/board";
@@ -54,6 +55,7 @@ export default function DisplayBoard({
   initial: BoardData;
 }) {
   const [data, setData] = useState<BoardData>(initial);
+  const { t, lang } = useI18n();
 
   useEffect(() => {
     let alive = true;
@@ -109,7 +111,7 @@ export default function DisplayBoard({
           ? "bg-green-50 text-[#0f7b6c]"
           : "bg-blue-50 text-[#2383a5]";
     const chipLabel =
-      c.status === "late" ? "遲交" : c.status === "active" ? "進行中" : "即將開始";
+      c.status === "late" ? t("遲交") : c.status === "active" ? t("進行中") : t("即將開始");
     const left = daysBetween(today, c.end_date);
     return (
       <div key={c.id} className="rounded-xl border border-hairline bg-white p-6 shadow-sm">
@@ -123,12 +125,18 @@ export default function DisplayBoard({
           {c.start_date} ~ {c.end_date}
           {c.status !== "approved" && (
             <span className="ml-4 text-xl font-bold text-ink">
-              {c.status === "late" ? "已超時" : `剩餘 ${left} 日`}
+              {c.status === "late"
+                ? t("已超時")
+                : lang === "en"
+                  ? `${left} days left`
+                  : `剩餘 ${left} 日`}
             </span>
           )}
           {c.status === "approved" && (
             <span className="ml-4 text-xl font-bold text-[#2383a5]">
-              {daysBetween(today, c.start_date)} 日後開始
+              {lang === "en"
+                ? `Starts in ${daysBetween(today, c.start_date)} days`
+                : `${daysBetween(today, c.start_date)} 日後開始`}
             </span>
           )}
         </p>
@@ -138,14 +146,14 @@ export default function DisplayBoard({
         <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-1 text-lg text-ink-subtle">
           {c.total > 0 && (
             <span>
-              任務進度{" "}
+              {t("任務進度")}{" "}
               <span className="text-2xl font-bold text-ink">
                 {c.done}/{c.total}
               </span>
             </span>
           )}
           {c.members.length > 0 && (
-            <span className="truncate text-base">成員：{c.members.join("、")}</span>
+            <span className="truncate text-base">{t("成員：")}{c.members.join("、")}</span>
           )}
         </div>
       </div>
@@ -160,10 +168,10 @@ export default function DisplayBoard({
           <h1 className="text-6xl font-black tracking-tight text-ink">
             {data.teamName}
           </h1>
-          <p className="mt-1 text-lg text-ink-subtle">團隊看板 · 每分鐘自動更新</p>
+          <p className="mt-1 text-lg text-ink-subtle">{t("團隊看板 · 每分鐘自動更新")}</p>
           {compDays !== null && (
             <p className="mt-2 inline-block rounded-md bg-red-50 px-5 py-1.5 text-2xl font-bold text-[#eb5757]">
-              距比賽 {compDays} 日
+              {lang === "en" ? `Competition in ${compDays} days` : `距比賽 ${compDays} 日`}
             </p>
           )}
         </div>
@@ -181,7 +189,7 @@ export default function DisplayBoard({
 
           {agenda.size > 0 && (
             <section className="rounded-xl border border-hairline bg-white p-6 shadow-sm">
-              <h2 className="text-3xl font-bold text-ink">未來兩週重點</h2>
+              <h2 className="text-3xl font-bold text-ink">{t("未來兩週重點")}</h2>
               <div className="mt-4 space-y-3">
                 {[...agenda.entries()].map(([date, items]) => (
                   <div
@@ -216,11 +224,11 @@ export default function DisplayBoard({
         <div className="min-h-0 space-y-5 xl:overflow-y-auto xl:pl-1">
           {late.length > 0 && (
             <>
-              <h2 className="text-3xl font-bold text-[#eb5757]">⚠ 遲交（{late.length}）</h2>
+              <h2 className="text-3xl font-bold text-[#eb5757]">⚠ {t("遲交")}（{late.length}）</h2>
               <div className="space-y-5">{late.map(cycleCard)}</div>
             </>
           )}
-          <h2 className="text-3xl font-bold text-ink-muted">進行中（{active.length}）</h2>
+          <h2 className="text-3xl font-bold text-ink-muted">{t("進行中")}（{active.length}）</h2>
           {active.length === 0 && late.length === 0 ? (
             <p className="rounded-xl border border-hairline bg-white p-10 text-center text-2xl text-ink-tertiary shadow-sm">
               目前沒有進行中的週期
@@ -231,7 +239,7 @@ export default function DisplayBoard({
           {upcoming.length > 0 && (
             <>
               <h2 className="pt-2 text-3xl font-bold text-ink-muted">
-                即將開始（{upcoming.length}）
+                {t("即將開始")}（{upcoming.length}）
               </h2>
               <div className="space-y-5">{upcoming.map(cycleCard)}</div>
             </>

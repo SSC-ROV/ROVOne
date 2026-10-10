@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useI18n } from "@/lib/i18n";
 
 /** 大時鐘：香港時區，每秒跳動；掛載前顯示 --:-- 避免水合不匹配 */
 export default function Clock() {
   const [now, setNow] = useState<Date | null>(null);
+  const { lang } = useI18n();
 
   useEffect(() => {
     setNow(new Date());
@@ -20,12 +22,19 @@ export default function Clock() {
       })
     : "--:--";
   const date = now
-    ? now.toLocaleDateString("zh-TW", {
-        month: "long",
-        day: "numeric",
-        weekday: "short",
-        timeZone: "Asia/Hong_Kong",
-      })
+    ? lang === "en"
+      ? now.toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "short",
+          weekday: "short",
+          timeZone: "Asia/Hong_Kong",
+        })
+      : now.toLocaleDateString("zh-TW", {
+          month: "long",
+          day: "numeric",
+          weekday: "short",
+          timeZone: "Asia/Hong_Kong",
+        })
     : "";
 
   return (
