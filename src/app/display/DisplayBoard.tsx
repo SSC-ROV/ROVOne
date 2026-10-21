@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import Clock from "./Clock";
-import MonthCalendar, { type CalEvent, type CalTask } from "./MonthCalendar";
+import MonthCalendar from "./MonthCalendar";
 import type { BoardData } from "@/lib/board";
 
 const TYPE_DOT: Record<string, string> = {
@@ -34,9 +34,9 @@ function FullscreenButton() {
         if (document.fullscreenElement) void document.exitFullscreen();
         else void document.documentElement.requestFullscreen();
       }}
-      title="全屏"
-      aria-label="全屏"
-      className="h-12 w-12 rounded-lg border border-hairline-strong text-xl text-ink-subtle transition hover:border-hairline-strong hover:text-ink"
+      title="Fullscreen / 全屏"
+      aria-label="Fullscreen / 全屏"
+      className="h-12 w-12 rounded-lg border border-[rgba(0,212,255,0.35)] text-xl text-[#7defff] transition hover:bg-[rgba(0,212,255,0.1)]"
     >
       ⛶
     </button>
@@ -44,8 +44,8 @@ function FullscreenButton() {
 }
 
 /**
- * 看板本體：左＝月曆（固定常駐），右＝週期列表（獨立捲動，再多也不會擠走日曆）。
- * 資料以 fetch 輪詢更新（純 DOM 差異更新，永不整頁刷新＝零閃黑）。
+ * 看板本體：左＝月曆（固定常駐），右＝週期列表（獨立捲動）。
+ * HUD 風格；資料以 fetch 輪詢更新（純 DOM 差異更新，永不整頁刷新＝零閃黑）。
  */
 export default function DisplayBoard({
   token,
@@ -103,57 +103,53 @@ export default function DisplayBoard({
     const elapsed = Math.min(totalDays, Math.max(0, daysBetween(c.start_date, today)));
     const pct = Math.round((elapsed / totalDays) * 100);
     const barColor =
-      c.status === "late" ? "bg-rose-400" : c.status === "active" ? "bg-emerald-400" : "bg-sky-400";
-    const chip =
       c.status === "late"
-        ? "bg-[#a14545]/15 text-[#b85c5c]"
-        : c.status === "active"
-          ? "bg-green-50 text-[#0f7b6c]"
-          : "bg-blue-50 text-[#2383a5]";
+        ? "linear-gradient(90deg, rgba(255,120,120,0.5), rgba(255,120,120,0.95))"
+        : "linear-gradient(90deg, rgba(0,212,255,0.45), rgba(0,212,255,0.95))";
+    const chipCls =
+      c.status === "late"
+        ? "border-[rgba(255,120,120,0.6)] text-[#ffb3b3]"
+        : "border-[rgba(0,212,255,0.5)] text-[#7defff]";
     const chipLabel =
-      c.status === "late" ? t("遲交") : c.status === "active" ? t("進行中") : t("即將開始");
+      c.status === "late" ? t("遲交") : c.status === "active" ? "ACTIVE" : "QUEUED";
     const left = daysBetween(today, c.end_date);
     return (
-      <div key={c.id} className="rounded-xl border border-hairline bg-surface-1 p-6 shadow-sm">
+      <div key={c.id} className="b-panel rounded-lg p-6">
         <div className="flex items-start justify-between gap-4">
-          <h3 className="text-3xl font-bold text-ink">{c.title}</h3>
-          <span className={`shrink-0 rounded-md px-4 py-1.5 text-lg font-bold ${chip}`}>
-            {chipLabel}
-          </span>
+          <h3 className="tech text-2xl font-bold text-white">{c.title}</h3>
+          <span className={`b-chip shrink-0 ${chipCls}`}>{chipLabel}</span>
         </div>
-        <p className="mt-2 text-lg font-medium text-ink-subtle">
-          {c.start_date} ~ {c.end_date}
+        <p className="mt-2 text-lg text-[#8fb8cc]">
+          {c.start_date} → {c.end_date}
           {c.status !== "approved" && (
-            <span className="ml-4 text-xl font-bold text-ink">
+            <span className={`ml-4 text-xl font-bold ${c.status === "late" ? "text-[#ffb3b3]" : "text-[#7defff]"}`}>
               {c.status === "late"
                 ? t("已超時")
                 : lang === "en"
-                  ? `${left} days left`
+                  ? `T-${left}`
                   : `剩餘 ${left} 日`}
             </span>
           )}
           {c.status === "approved" && (
-            <span className="ml-4 text-xl font-bold text-[#2383a5]">
+            <span className="ml-4 text-xl font-bold text-[#7defff]">
               {lang === "en"
-                ? `Starts in ${daysBetween(today, c.start_date)} days`
+                ? `T-${daysBetween(today, c.start_date)}`
                 : `${daysBetween(today, c.start_date)} 日後開始`}
             </span>
           )}
         </p>
-        <div className="mt-3 h-3.5 overflow-hidden rounded-lg bg-surface-2">
-          <div className={`h-full rounded-lg ${barColor}`} style={{ width: `${pct}%` }} />
+        <div className="b-track mt-3 rounded-md">
+          <div className="h-full rounded-md" style={{ width: `${pct}%`, background: barColor }} />
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-1 text-lg text-ink-subtle">
-          {c.total > 0 && (
-            <span>
-              {t("任務進度")}{" "}
-              <span className="text-2xl font-bold text-ink">
-                {c.done}/{c.total}
-              </span>
+        <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-1 text-base text-[#8fb8cc]">
+          <span>
+            {t("任務進度")}{" "}
+            <span className="tech text-xl font-bold text-white">
+              {c.done}/{c.total}
             </span>
-          )}
+          </span>
           {c.members.length > 0 && (
-            <span className="truncate text-base">{t("成員：")}{c.members.join("、")}</span>
+            <span className="truncate text-sm">{c.members.join(" · ")}</span>
           )}
         </div>
       </div>
@@ -161,17 +157,17 @@ export default function DisplayBoard({
   };
 
   return (
-    <main className="flex h-screen flex-col overflow-hidden bg-canvas px-8 py-6 text-ink">
+    <main className="board flex h-screen flex-col overflow-hidden px-8 py-6">
       {/* 頂部：隊名＋比賽倒數｜大時鐘（固定常駐） */}
       <header className="flex shrink-0 items-end justify-between gap-6">
         <div>
-          <h1 className="text-6xl font-black tracking-tight text-ink">
+          <p className="b-label">ROV MISSION CONTROL</p>
+          <h1 className="tech glow mt-2 text-6xl font-black text-white">
             {data.teamName}
           </h1>
-          <p className="mt-1 text-lg text-ink-subtle">{t("團隊看板 · 每分鐘自動更新")}</p>
           {compDays !== null && (
-            <p className="mt-2 inline-block rounded-md bg-[#a14545]/15 px-5 py-1.5 text-2xl font-bold text-[#b85c5c]">
-              {lang === "en" ? `Competition in ${compDays} days` : `距比賽 ${compDays} 日`}
+            <p className="mt-3 inline-block rounded-md border border-[rgba(255,120,120,0.5)] bg-[rgba(255,120,120,0.08)] px-5 py-1.5 text-2xl font-bold text-[#ffb3b3]">
+              {lang === "en" ? `COMPETITION T-${compDays}` : `距比賽 ${compDays} 日`}
             </p>
           )}
         </div>
@@ -188,25 +184,25 @@ export default function DisplayBoard({
           <MonthCalendar events={data.events} tasks={data.tasksDue} today={data.today} />
 
           {agenda.size > 0 && (
-            <section className="rounded-xl border border-hairline bg-surface-1 p-6 shadow-sm">
-              <h2 className="text-3xl font-bold text-ink">{t("未來兩週重點")}</h2>
+            <section className="b-panel rounded-lg p-6">
+              <p className="b-label">{t("未來兩週重點")}</p>
               <div className="mt-4 space-y-3">
                 {[...agenda.entries()].map(([date, items]) => (
                   <div
                     key={date}
                     className={`flex items-baseline gap-3 ${
-                      date === today ? "text-[#2383a5]" : "text-ink"
+                      date === today ? "text-[#7defff]" : "text-[#c9ecf7]"
                     }`}
                   >
-                    <span className="w-16 shrink-0 text-2xl font-bold">
+                    <span className="tech w-16 shrink-0 text-2xl font-bold">
                       {Number(date.slice(5, 7))}/{Number(date.slice(8, 10))}
                     </span>
-                    <span className="w-12 shrink-0 text-base text-ink-subtle">{weekdayLabel(date, lang)}</span>
+                    <span className="w-12 shrink-0 text-sm text-[#8fb8cc]">{weekdayLabel(date, lang)}</span>
                     <span className="flex flex-wrap gap-x-4 gap-y-1">
                       {items.map((e) => (
                         <span
                           key={e.id}
-                          className="flex items-center gap-2 text-xl font-semibold"
+                          className="flex items-center gap-2 text-xl"
                         >
                           <span className={`h-2.5 w-2.5 rounded-full ${TYPE_DOT[e.type] ?? TYPE_DOT.other}`} />
                           {e.title}
@@ -224,23 +220,21 @@ export default function DisplayBoard({
         <div className="min-h-0 space-y-5 xl:overflow-y-auto xl:pl-1">
           {late.length > 0 && (
             <>
-              <h2 className="text-3xl font-bold text-[#b85c5c]">⚠ {t("遲交")}（{late.length}）</h2>
+              <p className="b-label !text-[#ffb3b3]">⚠ {t("遲交")} ({late.length})</p>
               <div className="space-y-5">{late.map(cycleCard)}</div>
             </>
           )}
-          <h2 className="text-3xl font-bold text-ink-muted">{t("進行中")}（{active.length}）</h2>
+          <p className="b-label">{t("進行中")} ({active.length})</p>
           {active.length === 0 && late.length === 0 ? (
-            <p className="rounded-xl border border-hairline bg-surface-1 p-10 text-center text-2xl text-ink-tertiary shadow-sm">
-              目前沒有進行中的週期
-            </p>
+            <div className="b-panel rounded-lg p-10 text-center text-2xl text-[#4f7a8f]">
+              {lang === "en" ? "NO ACTIVE MISSIONS" : "目前沒有進行中的週期"}
+            </div>
           ) : (
             <div className="space-y-5">{active.map(cycleCard)}</div>
           )}
           {upcoming.length > 0 && (
             <>
-              <h2 className="pt-2 text-3xl font-bold text-ink-muted">
-                {t("即將開始")}（{upcoming.length}）
-              </h2>
+              <p className="b-label pt-2">{t("即將開始")} ({upcoming.length})</p>
               <div className="space-y-5">{upcoming.map(cycleCard)}</div>
             </>
           )}

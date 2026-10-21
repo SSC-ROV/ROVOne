@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 
-/** 大時鐘：香港時區，每秒跳動；掛載前顯示 --:-- 避免水合不匹配 */
+/** 看板大時鐘：Orbitron 數碼字體＋青色輝光＋冒號呼吸；香港時區，每秒跳動 */
 export default function Clock() {
-  const [now, setNow] = useState<Date | null>(null);
   const { lang } = useI18n();
+  const [now, setNow] = useState<Date | null>(null);
 
   useEffect(() => {
     setNow(new Date());
@@ -14,13 +14,12 @@ export default function Clock() {
     return () => clearInterval(id);
   }, []);
 
-  const time = now
-    ? now.toLocaleTimeString("en-GB", {
-        hour: "2-digit",
-        minute: "2-digit",
-        timeZone: "Asia/Hong_Kong",
-      })
-    : "--:--";
+  const h = now
+    ? now.toLocaleTimeString("en-GB", { hour: "2-digit", timeZone: "Asia/Hong_Kong" })
+    : "--";
+  const m = now
+    ? now.toLocaleTimeString("en-GB", { minute: "2-digit", timeZone: "Asia/Hong_Kong" })
+    : "--";
   const date = now
     ? lang === "en"
       ? now.toLocaleDateString("en-GB", {
@@ -39,10 +38,12 @@ export default function Clock() {
 
   return (
     <div className="text-right leading-none">
-      <div className="font-mono text-6xl font-black tracking-tight text-ink tabular-nums">
-        {time}
+      <div className="tech glow text-8xl font-bold text-[#7defff] tabular-nums">
+        {h}
+        <span className="clock-colon">:</span>
+        {m}
       </div>
-      <div className="mt-1 text-lg text-ink-subtle">{date}</div>
+      <div className="mt-2 text-2xl font-semibold text-[#9fdcec]">{date}</div>
     </div>
   );
 }

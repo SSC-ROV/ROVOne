@@ -1,4 +1,5 @@
 @import url("https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&family=Noto+Serif+TC:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&display=swap");
 @import "tailwindcss";
 
 /* ── Notion 風格色板：明暗雙主題（使用者可切換） ── */
@@ -167,4 +168,109 @@ summary {
     width: calc(100% - 84px);
     margin-left: 84px;
   }
+}
+
+/* ── 常駐看板：ROV 控制台 HUD 風格（自我主題，不隨網站明暗切換） ── */
+
+.board {
+  min-height: 100vh;
+  background-color: #030810;
+  background-image:
+    radial-gradient(ellipse at 50% -20%, rgba(0, 212, 255, 0.09), transparent 62%),
+    linear-gradient(rgba(0, 212, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 212, 255, 0.035) 1px, transparent 1px);
+  background-size: auto, 44px 44px, 44px 44px;
+  color: #c9ecf7;
+  font-family: "Share Tech Mono", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", ui-monospace, monospace;
+}
+
+.board h1,
+.board h2,
+.board h3 {
+  letter-spacing: 0.06em;
+}
+
+/* 科技標題字（歐美數字/英文）＋青色輝光 */
+.board .tech {
+  font-family: "Orbitron", "Share Tech Mono", "Noto Sans TC", sans-serif;
+}
+.board .glow {
+  text-shadow: 0 0 14px rgba(0, 212, 255, 0.5), 0 0 40px rgba(0, 212, 255, 0.2);
+}
+
+/* 小標籤：等寬全大寫加寬字距 */
+.board .b-label {
+  font-family: "Share Tech Mono", "Noto Sans TC", monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.28em;
+  color: rgba(0, 212, 255, 0.85);
+  font-size: 0.8rem;
+}
+
+/* HUD 面板：深藍玻璃＋髮絲青框＋四角括號 */
+.board .b-panel {
+  position: relative;
+  background: linear-gradient(180deg, rgba(8, 22, 40, 0.82), rgba(3, 10, 22, 0.92));
+  border: 1px solid rgba(0, 212, 255, 0.22);
+}
+.board .b-panel::before,
+.board .b-panel::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-color: rgba(0, 212, 255, 0.85);
+  border-style: solid;
+  pointer-events: none;
+}
+.board .b-panel::before {
+  top: -1px;
+  left: -1px;
+  border-width: 2px 0 0 2px;
+}
+.board .b-panel::after {
+  bottom: -1px;
+  right: -1px;
+  border-width: 0 2px 2px 0;
+}
+
+/* 狀態徽章 */
+.board .b-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.95rem;
+  letter-spacing: 0.12em;
+  border: 1px solid;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+/* 進度條：數值軌道＋青色能量 */
+.board .b-track {
+  height: 12px;
+  background: rgba(0, 212, 255, 0.08);
+  border: 1px solid rgba(0, 212, 255, 0.18);
+  overflow: hidden;
+}
+.board .b-fill {
+  height: 100%;
+  background: linear-gradient(90deg, rgba(0, 212, 255, 0.55), rgba(0, 212, 255, 0.95));
+  box-shadow: 0 0 12px rgba(0, 212, 255, 0.55);
+}
+
+/* 時鐘冒號呼吸 */
+.board .clock-colon {
+  animation: board-blink 1s steps(1) infinite;
+}
+@keyframes board-blink {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+/* 今日格：青色輝光框 */
+.board .b-today {
+  border-color: rgba(0, 212, 255, 0.75) !important;
+  background: rgba(0, 212, 255, 0.07) !important;
+  box-shadow: 0 0 14px rgba(0, 212, 255, 0.25), inset 0 0 18px rgba(0, 212, 255, 0.08);
 }
