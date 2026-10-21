@@ -2,7 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { useI18n } from "@/lib/i18n";
-import { hkToday } from "@/lib/board";
+
+/** 香港時間今天（YYYY-MM-DD）；客戶端元件不可引入 DB 層 */
+function hkToday(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Hong_Kong" });
+}
 
 export type CalEvent = {
   id: number; title: string; type: string; date: string;
