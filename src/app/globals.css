@@ -287,8 +287,9 @@ summary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
+  padding: 0 9px;
   height: 30px;
+  white-space: nowrap;
   border-radius: 8px;
   color: var(--b-text-3);
   transition: background 0.15s, color 0.15s;
