@@ -1,52 +1,160 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useI18n } from "@/lib/i18n";
-import Clock from "./Clock";
+import { useEffect, useMemo, useState } from "react";
 import MonthCalendar from "./MonthCalendar";
 import type { BoardData } from "@/lib/board";
 
-const TYPE_DOT: Record<string, string> = {
-  meeting: "bg-[#2eaadc]",
-  watertest: "bg-sky-400",
-  competition: "bg-[#a14545]",
-  other: "bg-gray-400",
+const DAY = 86400000;
+
+type FsDoc = Document & {
+  webkitFullscreenEnabled?: boolean;
+  webkitFullscreenElement?: Element;
+  webkitExitFullscreen?: () => void;
 };
+type FsHtml = HTMLElement & { webkitRequestFullscreen?: () => void };
 
 function daysBetween(a: string, b: string): number {
-  return Math.round(
-    (Date.parse(b + "T00:00:00+08:00") - Date.parse(a + "T00:00:00+08:00")) / 86400000
+  return Math.round((Date.parse(b + "T00:00:00+08:00") - Date.parse(a + "T00:00:00+08:00")) / DAY);
+}
+
+/** 標題錯字修正 */
+function fixTitle(s: string): string {
+  return s.replace(/medhanical/gi, "mechanical").replace(/mon rack/gi, "monitor rack");
+}
+
+/** 成員名 → 頭像縮寫（去掉 (班號) 前綴，取首尾字首） */
+function initials(name: string): string {
+  const clean = name.replace(/\([^)]*\)/g, "").trim();
+  const words = clean.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "?";
+  return (words[0][0] + (words[words.length - 1][0] || "")).toUpperCase();
+}
+
+function avatarColors(name: string, mode: "dark" | "light") {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) % 360;
+  const h = hash;
+  return mode === "dark"
+    ? { background: `hsl(${h} 38% 78%)`, color: `hsl(${h} 60% 16%)` }
+    : { background: `hsl(${h} 45% 27%)`, color: "#ffffff" };
+}
+
+const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const DAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const DAYS_LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+function fmtDayMon(dateStr: string): string {
+  const d = new Date(dateStr + "T00:00:00+08:00");
+  return `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`;
+}
+
+function weekdayShort(dateStr: string): string {
+  return DAYS_SHORT[new Date(dateStr + "T00:00:00+08:00").getDay()];
+}
+
+/* ── 主題分段切換 ── */
+function ThemeSeg({ mode, setMode }: { mode: "dark" | "light"; setMode: (m: "dark" | "light") => void }) {
+  return (
+    <div className="b-seg" role="group" aria-label="Theme">
+      <button aria-pressed={mode === "light"} onClick={() => setMode("light")} title="Light mode">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+          <circle cx="12" cy="12" r="4" />
+          <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+        </svg>
+      </button>
+      <button aria-pressed={mode === "dark"} onClick={() => setMode("dark")} title="Dark mode">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+        </svg>
+      </button>
+    </div>
   );
 }
 
-function weekdayLabel(dateStr: string, lang: string): string {
-  return new Date(dateStr + "T00:00:00+08:00").toLocaleDateString(
-    lang === "en" ? "en-GB" : "zh-TW",
-    { weekday: "short", timeZone: "Asia/Hong_Kong" }
-  );
-}
-
-/** 全屏按鈕（Raspberry Pi／PC 上也可直接用瀏覽器 --kiosk 參數） */
+/* ── 全屏按鈕（含 F 快捷鍵與 Esc 同步） ── */
 function FullscreenButton() {
+  const [on, setOn] = useState(false);
+
+  useEffect(() => {
+    const doc = document as FsDoc;
+    if (!(document.fullscreenEnabled || doc.webkitFullscreenEnabled)) return;
+    const sync = () => setOn(!!(document.fullscreenElement || doc.webkitFullscreenElement));
+    ["fullscreenchange", "webkitfullscreenchange"].forEach((ev) => document.addEventListener(ev, sync));
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (e.key.toLowerCase() === "f" && !e.metaKey && !e.ctrlKey && !/input|textarea/i.test(target.tagName)) {
+        toggleFs();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      ["fullscreenchange", "webkitfullscreenchange"].forEach((ev) => document.removeEventListener(ev, sync));
+      document.removeEventListener("keydown", onKey);
+    };
+  }, []);
+
+  function toggleFs() {
+    const root = document.documentElement as FsHtml;
+    const doc = document as FsDoc;
+    if (!(document.fullscreenElement || doc.webkitFullscreenElement)) {
+      (root.requestFullscreen || root.webkitRequestFullscreen)?.call(root);
+    } else {
+      (document.exitFullscreen || doc.webkitExitFullscreen)?.call(document);
+    }
+  }
+
+  const doc = document as FsDoc;
+  const supported = !!(document.fullscreenEnabled || doc.webkitFullscreenEnabled);
+
   return (
     <button
-      onClick={() => {
-        if (document.fullscreenElement) void document.exitFullscreen();
-        else void document.documentElement.requestFullscreen();
-      }}
-      title="Fullscreen / 全屏"
-      aria-label="Fullscreen / 全屏"
-      className="h-12 w-12 rounded-lg border border-[rgba(0,212,255,0.35)] text-xl text-[#7defff] transition hover:bg-[rgba(0,212,255,0.1)]"
+      id="fs"
+      onClick={toggleFs}
+      aria-label={on ? "Exit full screen" : "Enter full screen"}
+      aria-pressed={on}
+      title={on ? "Exit full screen (F)" : "Enter full screen (F)"}
+      hidden={!supported}
+      className="flex h-[38px] w-[38px] items-center justify-center rounded-xl border border-[var(--b-line)] bg-[var(--b-surface)] text-[var(--b-text-3)] shadow-[var(--b-card-shadow)] transition-colors duration-150 hover:text-[var(--b-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--b-accent)]"
     >
-      ⛶
+      {on ? (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" />
+        </svg>
+      ) : (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+        </svg>
+      )}
     </button>
   );
 }
 
-/**
- * 看板本體：左＝月曆（固定常駐），右＝週期列表（獨立捲動）。
- * HUD 風格；資料以 fetch 輪詢更新（純 DOM 差異更新，永不整頁刷新＝零閃黑）。
- */
+/* ── 主題分段切換（頂欄用） ── */
+function ThemeSegTop({ mode, setMode }: { mode: "dark" | "light"; setMode: (m: "dark" | "light") => void }) {
+  return (
+    <div className="b-seg" role="group" aria-label="Theme">
+      <button aria-pressed={mode === "light"} onClick={() => setMode("light")} title="Light mode">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+          <circle cx="12" cy="12" r="4" />
+          <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+        </svg>
+      </button>
+      <button aria-pressed={mode === "dark"} onClick={() => setMode("dark")} title="Dark mode">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
+const EV_COLOR: Record<string, string> = {
+  meeting: "var(--b-accent)",
+  watertest: "var(--b-green)",
+  competition: "var(--b-red)",
+  other: "var(--b-violet)",
+};
+
 export default function DisplayBoard({
   token,
   initial,
@@ -54,9 +162,19 @@ export default function DisplayBoard({
   token: string;
   initial: BoardData;
 }) {
-  const [data, setData] = useState<BoardData>(initial);
-  const { t, lang } = useI18n();
+  const [data, setData] = useState(initial);
+  const [mode, setMode] = useState<"dark" | "light">("dark");
+  const [sortBy, setSortBy] = useState<"due" | "progress">("due");
+  const [now, setNow] = useState<Date | null>(null);
 
+  // 時鐘每秒
+  useEffect(() => {
+    setNow(new Date());
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  // 資料每 60 秒（fetch 純 DOM 更新，永不整頁刷新）
   useEffect(() => {
     let alive = true;
     const poll = async () => {
@@ -64,7 +182,7 @@ export default function DisplayBoard({
         const r = await fetch(`/api/display?token=${token}`, { cache: "no-store" });
         if (r.ok && alive) setData(await r.json());
       } catch {
-        /* 網路抖動時保留舊畫面 */
+        /* 保留舊畫面 */
       }
     };
     const id = setInterval(poll, 60000);
@@ -80,8 +198,50 @@ export default function DisplayBoard({
   }, [token]);
 
   const today = data.today;
+  const longDate = now
+    ? now.toLocaleDateString("en-GB", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        timeZone: "Asia/Hong_Kong",
+      })
+    : "";
+  const hh = now ? String(now.getHours()).padStart(2, "0") : "--";
+  const mm = now ? String(now.getMinutes()).padStart(2, "0") : "--";
+  const ss = now ? String(now.getSeconds()).padStart(2, "0") : "--";
 
-  // 日程按日期分組（未來兩週重點）
+  const active = data.cycles.filter((c) => c.status === "active");
+
+  const taskCards = useMemo(() => {
+    const cards = [...active];
+    if (sortBy === "due") cards.sort((a, b) => a.end_date.localeCompare(b.end_date));
+    else cards.sort((a, b) => (b.total ? b.done / b.total : 0) - (a.total ? a.done / a.total : 0));
+    return cards;
+  }, [active, sortBy]);
+
+  const membersInvolved = new Set<string>();
+  for (const c of active) for (const m of c.members) membersInvolved.add(m);
+
+  const dueIn7 = data.tasksDue.filter((t) => t.due_date >= today && daysBetween(today, t.due_date) <= 7);
+  const dueToday = dueIn7.filter((t) => t.due_date === today);
+
+  const nextWater = data.events
+    .filter((e) => e.type === "watertest" && e.date >= today)
+    .sort((a, b) => a.date.localeCompare(b.date))[0];
+
+  const compDate = data.competitionDate;
+  let seasonPct = 0;
+  let seasonStartYear = "";
+  if (compDate) {
+    const cy = Number(compDate.slice(0, 4));
+    const start = (compDate.slice(5, 7) >= "09" ? cy : cy - 1) + "-09-01";
+    seasonStartYear = start.slice(0, 4);
+    const total = Math.max(1, daysBetween(start, compDate));
+    seasonPct = Math.min(100, Math.max(0, Math.round((daysBetween(start, today) / total) * 100)));
+  }
+  const compDays = compDate ? daysBetween(today, compDate) : null;
+
   const agenda = new Map<string, typeof data.events>();
   for (const e of data.events) {
     if (e.date >= today && daysBetween(today, e.date) <= 14) {
@@ -89,159 +249,217 @@ export default function DisplayBoard({
     }
   }
 
-  const late = data.cycles.filter((c) => c.status === "late");
-  const active = data.cycles.filter((c) => c.status === "active");
-  const upcoming = data.cycles.filter((c) => c.status === "approved");
-
-  const compDays =
-    data.competitionDate && data.competitionDate >= today
-      ? daysBetween(today, data.competitionDate)
-      : null;
-
   const cycleCard = (c: (typeof data.cycles)[number]) => {
     const totalDays = Math.max(1, daysBetween(c.start_date, c.end_date));
     const elapsed = Math.min(totalDays, Math.max(0, daysBetween(c.start_date, today)));
-    const pct = Math.round((elapsed / totalDays) * 100);
-    const barColor =
-      c.status === "late"
-        ? "linear-gradient(90deg, rgba(255,120,120,0.5), rgba(255,120,120,0.95))"
-        : "linear-gradient(90deg, rgba(0,212,255,0.45), rgba(0,212,255,0.95))";
-    const chipCls =
-      c.status === "late"
-        ? "border-[rgba(255,120,120,0.6)] text-[#ffb3b3]"
-        : "border-[rgba(0,212,255,0.5)] text-[#7defff]";
-    const chipLabel =
-      c.status === "late" ? t("遲交") : c.status === "active" ? "ACTIVE" : "QUEUED";
-    const left = daysBetween(today, c.end_date);
+    const elapsedPct = Math.round((elapsed / totalDays) * 100);
+    const endDays = daysBetween(today, c.end_date);
+    const statusColor =
+      endDays < 0 || endDays === 0 ? "var(--b-red)" : endDays <= 3 ? "var(--b-amber)" : "var(--b-green)";
+    const statusText =
+      endDays < 0 ? "Overdue" : endDays === 0 ? "Due today" : endDays <= 3 ? "Due soon" : "On track";
+    const rel =
+      endDays < 0
+        ? `-${Math.abs(endDays)}d`
+        : endDays === 0
+          ? "Today"
+          : `T-${endDays}`;
+    const taskPct = c.total > 0 ? Math.round((c.done / c.total) * 100) : 0;
+    const bar = endDays < 0 ? "var(--b-red)" : endDays <= 3 ? "var(--b-amber)" : "var(--b-green)";
     return (
-      <div key={c.id} className="b-panel rounded-lg p-6">
+      <div key={c.id} className="b-task rounded-lg border border-[var(--b-line)] bg-[var(--b-surface)] p-5 transition-all duration-200">
         <div className="flex items-start justify-between gap-4">
-          <h3 className="tech text-2xl font-bold text-white">{c.title}</h3>
-          <span className={`b-chip shrink-0 ${chipCls}`}>{chipLabel}</span>
-        </div>
-        <p className="mt-2 text-lg text-[#8fb8cc]">
-          {c.start_date} → {c.end_date}
-          {c.status !== "approved" && (
-            <span className={`ml-4 text-xl font-bold ${c.status === "late" ? "text-[#ffb3b3]" : "text-[#7defff]"}`}>
-              {c.status === "late"
-                ? t("已超時")
-                : lang === "en"
-                  ? `T-${left}`
-                  : `剩餘 ${left} 日`}
+          <div className="min-w-0">
+            <h3 className="text-[19.5px] leading-snug text-[var(--b-text)]">{fixTitle(c.title)}</h3>
+            <p className="mt-1 text-[14.5px] text-[var(--b-text-2)]">
+              {fmtDayMon(c.start_date)} → {fmtDayMon(c.end_date)} · {c.members.length} member
+              {c.members.length === 1 ? "" : "s"}
+            </p>
+          </div>
+          <div className="shrink-0 text-right">
+            <span className="b-chip" style={{ "--ev-color": statusColor } as React.CSSProperties}>
+              {statusText}
             </span>
-          )}
-          {c.status === "approved" && (
-            <span className="ml-4 text-xl font-bold text-[#7defff]">
-              {lang === "en"
-                ? `T-${daysBetween(today, c.start_date)}`
-                : `${daysBetween(today, c.start_date)} 日後開始`}
-            </span>
-          )}
-        </p>
-        <div className="b-track mt-3 rounded-md">
-          <div className="h-full rounded-md" style={{ width: `${pct}%`, background: barColor }} />
+            <div className={`mt-1 text-[26px] leading-tight ${endDays === 0 || endDays < 0 ? "italic text-[var(--b-red)]" : "text-[var(--b-text)]"}`}>
+              {endDays < 0 ? rel : endDays === 0 ? rel : `T-${endDays}`}
+            </div>
+          </div>
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-1 text-base text-[#8fb8cc]">
-          {c.total > 0 && (
-            <span>
-              {t("任務進度")}{" "}
-              <span className="tech text-xl font-bold text-white">
-                {c.done}/{c.total}
+
+        <div className="mt-3 flex items-center gap-3">
+          <div className="h-[3px] flex-1 rounded-full bg-[var(--b-surface-2)]">
+            <div className="h-full rounded-full" style={{ width: `${elapsedPct}%`, background: bar }} />
+          </div>
+          <span className="text-[13px] tabular-nums text-[var(--b-text-3)]">{elapsedPct}%</span>
+        </div>
+
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <div className="flex -space-x-[7px]">
+            {c.members.map((m) => (
+              <span key={m} title={m} className="b-avatar" style={avatarColors(m, mode)}>
+                {initials(m)}
               </span>
-            </span>
-          )}
-          {c.members.length > 0 && (
-            <span className="truncate text-sm">{c.members.join(" · ")}</span>
-          )}
+            ))}
+          </div>
+          <span className="text-[14.5px] text-[var(--b-text-2)]">
+            {c.total > 0 ? `Subtasks ${c.done}/${c.total}` : "No subtasks"}
+          </span>
         </div>
       </div>
     );
   };
 
   return (
-    <main className="board flex h-screen flex-col overflow-hidden px-8 py-6">
-      {/* 頂部：隊名＋比賽倒數｜大時鐘（固定常駐） */}
-      <header className="flex shrink-0 items-end justify-between gap-6">
+    <div data-mode={mode} className="board-root min-h-screen transition-colors duration-300 min-[1100px]:flex min-[1100px]:h-screen min-[1100px]:flex-col min-[1100px]:overflow-hidden" style={{ padding: "28px 32px" }}>
+      {/* Header */}
+      <header className="flex shrink-0 flex-wrap items-start justify-between gap-x-6 gap-y-4">
         <div>
-          <p className="b-label">ROV MISSION CONTROL</p>
-          <h1 className="tech glow mt-2 text-6xl font-black text-white">
+          <div className="flex items-center gap-3">
+            <span className="b-eyebrow">ROV Mission Control</span>
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--b-green)]" />
+              <span className="text-[13px] italic text-[var(--b-green)]">LIVE</span>
+            </span>
+          </div>
+          <h1 className="mt-1 text-[44px] leading-tight text-[var(--b-text)]">
             {data.teamName}
+            <span className="italic text-[var(--b-text-3)]"> Overview</span>
           </h1>
-          {compDays !== null && (
-            <p className="mt-3 inline-block rounded-md border border-[rgba(255,120,120,0.5)] bg-[rgba(255,120,120,0.08)] px-5 py-1.5 text-2xl font-bold text-[#ffb3b3]">
-              {lang === "en" ? `COMPETITION T-${compDays}` : `距比賽 ${compDays} 日`}
-            </p>
-          )}
         </div>
-        <div className="flex items-end gap-4">
+        <div className="flex items-start gap-3">
+          <div className="text-right leading-none">
+            <div className="text-[64px] tabular-nums text-[var(--b-text)]">
+              {hh}
+              <span className="clock-colon">:</span>
+              {mm}
+              <span className="text-[28px] italic text-[var(--b-text-3)]">:{ss}</span>
+            </div>
+            <div className="mt-1 text-[15px] text-[var(--b-text-2)]">{longDate}</div>
+          </div>
+          <ThemeSegTop mode={mode} setMode={setMode} />
           <FullscreenButton />
-          <Clock />
         </div>
       </header>
 
-      {/* 主區：左＝月曆＋兩週重點（常駐），右＝週期列表（獨立捲動）；窄螢幕退回上下堆疊 */}
-      <div className="mt-6 grid min-h-0 flex-1 grid-cols-1 gap-6 xl:grid-cols-[46fr_54fr] xl:overflow-hidden">
-        {/* 左：月曆＋兩週重點 */}
-        <div className="min-h-0 space-y-6 xl:overflow-y-auto xl:pr-1">
-          <MonthCalendar events={data.events} tasks={data.tasksDue} today={data.today} />
+      {/* KPI */}
+      <section className="mt-6 grid shrink-0 grid-cols-2 gap-4 min-[1100px]:grid-cols-[1.4fr_1fr_1fr_1fr]">
+        <div className="b-card p-5">
+          <div className="flex items-start justify-between gap-2">
+            <span className="b-eyebrow">Days to competition</span>
+            <span className="text-[13px] text-[var(--b-text-3)]">
+              {compDate ? `${fmtDayMon(compDate)} ${compDate.slice(0, 4)}` : ""}
+            </span>
+          </div>
+          <div className="mt-1 text-[52px] leading-none tabular-nums text-[var(--b-text)]">
+            {compDays ?? "—"}
+            <span className="text-[18px] italic text-[var(--b-text-3)]"> days</span>
+          </div>
+          <div className="mt-3 h-[3px] rounded-full bg-[var(--b-surface-2)]">
+            <div className="h-full rounded-full bg-[var(--b-accent)]" style={{ width: `${seasonPct}%` }} />
+          </div>
+          <p className="mt-2 text-[13px] text-[var(--b-text-3)]">
+            Season start · 1 Sep {seasonStartYear}
+            <span className="ml-2 italic text-[var(--b-text-2)]">{seasonPct}% of season elapsed</span>
+          </p>
+        </div>
+
+        <div className="b-card p-5">
+          <span className="b-eyebrow">Active tasks</span>
+          <div className="mt-1 text-[42px] leading-none tabular-nums text-[var(--b-text)]">{active.length}</div>
+          <p className="mt-2 text-[15.5px] text-[var(--b-text-2)]">
+            {membersInvolved.size} member{membersInvolved.size === 1 ? "" : "s"} involved
+          </p>
+        </div>
+
+        <div className="b-card p-5">
+          <span className="b-eyebrow">Due within 7 days</span>
+          <div className="mt-1 text-[42px] leading-none tabular-nums text-[var(--b-text)]">{dueIn7.length}</div>
+          <p className="mt-2 text-[15.5px] text-[var(--b-text-2)]">
+            {dueToday.length > 0
+              ? `${dueToday.length} due today`
+              : dueIn7.length > 0
+                ? `Next in ${daysBetween(today, dueIn7[0].due_date)} day${daysBetween(today, dueIn7[0].due_date) === 1 ? "" : "s"}`
+                : "Nothing due"}
+          </p>
+        </div>
+
+        <div className="b-card p-5">
+          <span className="b-eyebrow">Next water test</span>
+          {nextWater ? (
+            <>
+              <div className="mt-1 text-[42px] leading-none text-[var(--b-text)]">
+                {Number(nextWater.date.slice(8, 10))}{" "}
+                <span className="text-[24px]">{MONTHS_SHORT[Number(nextWater.date.slice(5, 7)) - 1]}</span>
+              </div>
+              <p className="mt-2 text-[15.5px] text-[var(--b-text-2)]">
+                {weekdayShort(nextWater.date)} · In {daysBetween(today, nextWater.date)} day
+                {daysBetween(today, nextWater.date) === 1 ? "" : "s"}
+              </p>
+            </>
+          ) : (
+            <p className="mt-3 text-[15.5px] text-[var(--b-text-3)]">Not scheduled</p>
+          )}
+        </div>
+      </section>
+
+      {/* 主體兩欄：左月曆＋兩週，右任務 */}
+      <div className="mt-6 grid min-h-0 flex-1 grid-cols-1 gap-6 min-[1100px]:grid-cols-[11fr_13fr] min-[1100px]:overflow-hidden">
+        {/* 左欄 */}
+        <div className="min-h-0 space-y-6 min-[1100px]:overflow-y-auto min-[1100px]:pr-1">
+          <MonthCalendar events={data.events} tasks={data.tasksDue} today={today} />
 
           {agenda.size > 0 && (
-            <section className="b-panel rounded-lg p-6">
-              <p className="b-label">{t("未來兩週重點")}</p>
-              <div className="mt-4 space-y-3">
-                {[...agenda.entries()].map(([date, items]) => (
-                  <div
-                    key={date}
-                    className={`flex items-baseline gap-3 ${
-                      date === today ? "text-[#7defff]" : "text-[#c9ecf7]"
-                    }`}
-                  >
-                    <span className="tech w-24 shrink-0 text-2xl font-bold">
-                      {Number(date.slice(5, 7))}/{Number(date.slice(8, 10))}
-                    </span>
-                    <span className="w-14 shrink-0 text-sm text-[#8fb8cc]">{weekdayLabel(date, lang)}</span>
-                    <span className="flex flex-wrap gap-x-4 gap-y-1">
-                      {items.map((e) => (
-                        <span
-                          key={e.id}
-                          className="flex items-center gap-2 text-xl"
-                        >
-                          <span className={`h-2.5 w-2.5 rounded-full ${TYPE_DOT[e.type] ?? TYPE_DOT.other}`} />
-                          {e.title}
-                        </span>
-                      ))}
-                    </span>
-                  </div>
-                ))}
+            <section className="b-card p-5">
+              <span className="b-eyebrow">Next two weeks</span>
+              <div className="mt-3 space-y-1">
+                {[...agenda.entries()].map(([date, items]) => {
+                  const diff = daysBetween(today, date);
+                  const rel = diff === 0 ? "Today" : diff === 1 ? "Tomorrow" : `In ${diff} days`;
+                  return (
+                    <div key={date} className="flex items-center gap-3 rounded-md px-2 py-1.5 transition-colors duration-150 hover:bg-[var(--b-surface-2)]">
+                      <span className="w-16 shrink-0 text-right text-[19.5px] text-[var(--b-text)]">
+                        {Number(date.slice(8, 10))} {MONTHS_SHORT[Number(date.slice(5, 7)) - 1]}
+                      </span>
+                      <span className="w-14 shrink-0 text-[13px] italic text-[var(--b-text-3)]">{weekdayShort(date)}</span>
+                      <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
+                        {items.map((e) => (
+                          <span key={e.id} className="flex min-w-0 items-center gap-2 text-[15.5px] text-[var(--b-text)]">
+                            <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: EV_COLOR[e.type] ?? "var(--b-violet)" }} />
+                            <span className="truncate">{fixTitle(e.title)}</span>
+                          </span>
+                        ))}
+                      </span>
+                      <span className="shrink-0 text-[13px] italic text-[var(--b-text-3)]">{rel}</span>
+                    </div>
+                  );
+                })}
               </div>
             </section>
           )}
         </div>
 
-        {/* 右：週期列表（獨立捲動） */}
-        <div className="min-h-0 space-y-5 xl:overflow-y-auto xl:pl-1">
-          {late.length > 0 && (
-            <>
-              <p className="b-label !text-[#ffb3b3]">⚠ {t("遲交")} ({late.length})</p>
-              <div className="space-y-5">{late.map(cycleCard)}</div>
-            </>
-          )}
-          <p className="b-label">{t("進行中")} ({active.length})</p>
-          {active.length === 0 && late.length === 0 ? (
-            <div className="b-panel rounded-lg p-10 text-center text-2xl text-[#4f7a8f]">
-              {lang === "en" ? "NO ACTIVE MISSIONS" : "目前沒有進行中的週期"}
+        {/* 右欄：進行中任務 */}
+        <section className="b-card flex min-h-0 flex-col p-5">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-[26px] leading-tight text-[var(--b-text)]">Active tasks</h2>
+            <div className="b-seg">
+              <button aria-pressed={sortBy === "due"} onClick={() => setSortBy("due")}>
+                <span className="px-1 text-[12.5px]">By due date</span>
+              </button>
+              <button aria-pressed={sortBy === "progress"} onClick={() => setSortBy("progress")}>
+                <span className="px-1 text-[12.5px]">By progress</span>
+              </button>
             </div>
-          ) : (
-            <div className="space-y-5">{active.map(cycleCard)}</div>
-          )}
-          {upcoming.length > 0 && (
-            <>
-              <p className="b-label pt-2">{t("即將開始")} ({upcoming.length})</p>
-              <div className="space-y-5">{upcoming.map(cycleCard)}</div>
-            </>
-          )}
-        </div>
+          </div>
+
+          <div className="mt-4 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+            {taskCards.length === 0 && (
+              <p className="py-10 text-center text-[15.5px] text-[var(--b-text-3)]">No active tasks</p>
+            )}
+            {taskCards.map(cycleCard)}
+          </div>
+        </section>
       </div>
-    </main>
+    </div>
   );
 }

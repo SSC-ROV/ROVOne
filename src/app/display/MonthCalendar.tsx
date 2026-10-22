@@ -1,12 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useI18n } from "@/lib/i18n";
-
-/** 香港時間今天（YYYY-MM-DD）；客戶端元件不可引入 DB 層 */
-function hkToday(): string {
-  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Hong_Kong" });
-}
 
 export type CalEvent = {
   id: number; title: string; type: string; date: string;
@@ -14,161 +8,140 @@ export type CalEvent = {
 };
 export type CalTask = { title: string; cycle_title: string; due_date: string };
 
-const TYPE_DOT: Record<string, string> = {
-  meeting: "bg-[#2eaadc]",
-  watertest: "bg-sky-400",
-  competition: "bg-[#a14545]",
-  other: "bg-gray-400",
+const EV: Record<string, { color: string; label: string }> = {
+  meeting: { color: "var(--b-accent)", label: "Meeting" },
+  watertest: { color: "var(--b-green)", label: "Water test" },
+  competition: { color: "var(--b-red)", label: "Competition" },
+  other: { color: "var(--b-violet)", label: "Event" },
 };
 
-/** 月曆：圖像化顯示這個月每天的活動與任務截止；可切換上／下月（HUD 風格） */
+/** 週日開頭的月曆格（UTC 運算，不受裝置時區影響） */
+function buildGrid(y: number, m: number): (string | null)[] {
+  const lead = new Date(Date.UTC(y, m, 1)).getUTCDay();
+  const days = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  const cells: (string | null)[] = [];
+  for (let i = 0; i < lead; i++) cells.push(null);
+  for (let d = 1; d <= days; d++) {
+    cells.push(`${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`);
+  }
+  while (cells.length % 7 !== 0) cells.push(null);
+  return cells;
+}
+
 export default function MonthCalendar({
   events,
   tasks,
-  today: todayProp,
+  today,
 }: {
   events: CalEvent[];
   tasks: CalTask[];
-  today?: string;
+  today: string;
 }) {
   const [offset, setOffset] = useState(0);
-  const { t, lang } = useI18n();
-  const today = todayProp ?? hkToday();
 
-  // 以北京時間的今天為基準（today 由伺服器提供，YYYY-MM-DD）
-  const view = useMemo(() => {
-    const base = todayProp ?? hkToday();
-    const y = Number(base.slice(0, 4));
-    const m = Number(base.slice(5, 7)) - 1;
+  const base = useMemo(() => {
+    const y = Number(today.slice(0, 4));
+    const m = Number(today.slice(5, 7)) - 1;
     const d = new Date(Date.UTC(y, m + offset, 1));
     return { y: d.getUTCFullYear(), m: d.getUTCMonth() };
-  }, [offset, todayProp]);
+  }, [offset, today]);
 
-  const grid = useMemo(() => {
-    const y = view.y;
-    const m = view.m;
-    const first = new Date(Date.UTC(y, m, 1));
-    const lead = first.getUTCDay(); // 週日開頭
-    const daysInMonth = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
-    const cells: { date: string | null; day: number | null }[] = [];
-    for (let i = 0; i < lead; i++) cells.push({ date: null, day: null });
-    for (let d = 1; d <= daysInMonth; d++) {
-      const date = `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-      cells.push({ date, day: d });
-    }
-    while (cells.length % 7 !== 0) cells.push({ date: null, day: null });
-    return cells;
-  }, [view]);
+  const cells = useMemo(() => buildGrid(base.y, base.m), [base]);
+  const monthKey = `${base.y}-${String(base.m + 1).padStart(2, "0")}`;
+  const monthTitle = new Date(Date.UTC(base.y, base.m, 1)).toLocaleString("en-US", {
+    month: "long", timeZone: "UTC",
+  });
 
   const byDate = useMemo(() => {
-    const map = new Map<string, { kind: "event" | "task"; dot: string; text: string }[]>();
+    const map = new Map<string, { color: string; title: string }[]>();
     for (const e of events) {
+      if (!e.date.startsWith(monthKey)) continue;
       (map.get(e.date) ?? map.set(e.date, []).get(e.date)!).push({
-        kind: "event", dot: TYPE_DOT[e.type] ?? TYPE_DOT.other, text: e.title,
+        color: (EV[e.type] ?? EV.other).color, title: e.title,
       });
     }
     for (const t of tasks) {
+      if (!t.due_date.startsWith(monthKey)) continue;
       (map.get(t.due_date) ?? map.set(t.due_date, []).get(t.due_date)!).push({
-        kind: "task", dot: "bg-amber-400", text: t.title,
+        color: "var(--b-amber)", title: t.title,
       });
     }
     return map;
-  }, [events, tasks]);
-
-  const monthLabel =
-    lang === "en"
-      ? new Date(Date.UTC(view.y, view.m, 1)).toLocaleString("en-US", { month: "long", timeZone: "UTC" }) + ` ${view.y}`
-      : `${view.y} 年 ${view.m + 1} 月`;
-  const todayParts = today.split("-").map(Number);
-  const isCurrentMonth =
-    view.y === todayParts[0] && view.m + 1 === todayParts[1];
+  }, [events, tasks, monthKey]);
 
   return (
-    <section className="b-panel rounded-lg p-5">
-      <div className="mb-3 flex items-center justify-between">
-        <p className="b-label">{t("本月日曆")}</p>
-        <div className="flex items-center gap-2">
+    <section className="b-card p-5">
+      <div className="flex items-center justify-between">
+        <h2 className="text-[26px] leading-tight text-[var(--b-text)]">
+          {monthTitle}{" "}
+          <span className="text-[var(--b-text-3)]">{base.y}</span>
+        </h2>
+        <div className="flex items-center gap-1">
           <button
             onClick={() => setOffset((o) => o - 1)}
-            className="h-10 w-10 rounded-md border border-[rgba(0,212,255,0.35)] text-lg text-[#7defff] transition hover:bg-[rgba(0,212,255,0.1)]"
-            aria-label={lang === "en" ? "Previous month" : t("上個月")}
+            className="flex h-8 w-8 items-center justify-center rounded-md text-[var(--b-text-2)] transition-colors duration-150 hover:bg-[var(--b-surface-2)]"
+            aria-label="Previous month"
           >
             ‹
           </button>
-          <span className="tech min-w-44 text-center text-xl font-bold text-white">
-            {lang === "en"
-              ? new Date(Date.UTC(view.y, view.m, 1)).toLocaleString("en-US", { month: "long", timeZone: "UTC" }) + ` ${view.y}`
-              : `${view.y} 年 ${view.m + 1} 月`}
-          </span>
           <button
             onClick={() => setOffset((o) => o + 1)}
-            className="h-10 w-10 rounded-md border border-[rgba(0,212,255,0.35)] text-lg text-[#7defff] transition hover:bg-[rgba(0,212,255,0.1)]"
-            aria-label={lang === "en" ? "Next month" : t("下個月")}
+            className="flex h-8 w-8 items-center justify-center rounded-md text-[var(--b-text-2)] transition-colors duration-150 hover:bg-[var(--b-surface-2)]"
+            aria-label="Next month"
           >
             ›
           </button>
-          {offset !== 0 && (
-            <button
-              onClick={() => setOffset(0)}
-              className="h-10 rounded-md border border-[rgba(0,212,255,0.35)] px-3 text-sm text-[#7defff] transition hover:bg-[rgba(0,212,255,0.1)]"
-            >
-              {lang === "en" ? "NOW" : t("本月")}
-            </button>
-          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-1.5">
-        {(lang === "en"
-          ? ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-          : ["週日", "週一", "週二", "週三", "週四", "週五", "週六"]
-        ).map((w) => (
-          <div key={w} className="b-label pb-1 text-center">{w}</div>
+      <div className="mt-3 grid grid-cols-7 gap-1">
+        {["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].map((w) => (
+          <div key={w} className="b-eyebrow pb-1 text-center !text-[12.5px]">{w}</div>
         ))}
-        {grid.map((cell, i) => {
-          if (!cell.date) return <div key={i} className="min-h-20 rounded-md border border-[rgba(0,212,255,0.06)]" />;
-          const items = byDate.get(cell.date) ?? [];
-          const isToday = cell.date === today;
-          const dow = i % 7;
-          const weekend = dow >= 5;
+        {cells.map((date, i) => {
+          if (!date) return <div key={i} className="min-h-20" />;
+          const items = byDate.get(date) ?? [];
+          const isToday = date === today;
+          const past = date < today;
           return (
             <div
               key={i}
-              className={`min-h-20 rounded-md border p-1.5 ${
+              className={`relative min-h-20 rounded-md border p-1.5 ${
                 isToday
-                  ? "b-today"
-                  : weekend
-                    ? "border-[rgba(0,212,255,0.12)] bg-[rgba(0,212,255,0.03)]"
-                    : "border-[rgba(0,212,255,0.14)] bg-[rgba(3,12,24,0.6)]"
-              }`}
+                  ? "border-[var(--b-accent)] bg-[color-mix(in_srgb,var(--b-accent)_8%,transparent)]"
+                  : "border-transparent"
+              } ${past && !isToday ? "opacity-45" : ""}`}
             >
-              <div
-                className={`tech mb-1 text-base font-bold ${
-                  isToday ? "text-[#7defff]" : weekend ? "text-[#3f6b80]" : "text-[#9fdcec]"
-                }`}
-              >
-                {cell.day}
+              {isToday && (
+                <span className="absolute right-1.5 top-1 text-[12.5px] italic text-[var(--b-accent)]">Today</span>
+              )}
+              <div className={`text-[15px] ${isToday ? "text-[var(--b-text)]" : "text-[var(--b-text-2)]"}`}>
+                {Number(date.slice(8, 10))}
               </div>
-              <div className="space-y-0.5">
+              <div className="mt-0.5 space-y-0.5">
                 {items.slice(0, 2).map((it, k) => (
-                  <div key={k} className="flex items-center gap-1 text-[13px] leading-tight text-[#c9ecf7]">
-                    <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${it.dot}`} />
-                    <span className="truncate" title={it.text}>{it.text}</span>
+                  <div
+                    key={k}
+                    title={it.title}
+                    className="b-event flex items-center truncate rounded-sm px-1 py-px text-[12.5px] leading-snug text-[var(--b-text)]"
+                  >
+                    <span className="truncate">{it.title}</span>
                   </div>
                 ))}
                 {items.length > 2 && (
-                  <div className="text-[13px] text-[#4f7a8f]">+{items.length - 2} MORE</div>
+                  <div className="px-1 text-[12.5px] text-[var(--b-text-3)]">+{items.length - 2} more</div>
                 )}
               </div>
             </div>
           );
         })}
       </div>
-      <p className="mt-2 text-[13px] text-[#4f7a8f]">
-        <span className="mr-3"><span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-[#2eaadc] align-middle" />{t("例會")}</span>
-        <span className="mr-3"><span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-sky-400 align-middle" />{t("水測")}</span>
-        <span className="mr-3"><span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-[#a14545] align-middle" />{t("比賽")}</span>
-        <span><span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-amber-400 align-middle" />{t("任務截止")}</span>
+
+      <p className="mt-3 text-[13px] text-[var(--b-text-3)]">
+        <span className="mr-3"><span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-[var(--b-accent)] align-middle" />Meeting</span>
+        <span className="mr-3"><span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-sky-400 align-middle" />Water test</span>
+        <span className="mr-3"><span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-[#a14545] align-middle" />Competition</span>
+        <span><span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-amber-400 align-middle" />Deadline</span>
       </p>
     </section>
   );
