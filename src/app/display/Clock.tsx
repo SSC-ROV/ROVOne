@@ -14,12 +14,15 @@ export default function Clock() {
     return () => clearInterval(id);
   }, []);
 
-  const h = now
-    ? now.toLocaleTimeString("en-GB", { hour: "2-digit", timeZone: "Asia/Hong_Kong" })
-    : "--";
-  const m = now
-    ? now.toLocaleTimeString("en-GB", { minute: "2-digit", timeZone: "Asia/Hong_Kong" })
-    : "--";
+  // 一次格式化後切分，避免分鐘前導零在某些環境被丟掉
+  const hm = now
+    ? now.toLocaleTimeString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "Asia/Hong_Kong",
+      })
+    : "--:--";
+  const [h, m] = hm.split(":");
   const date = now
     ? lang === "en"
       ? now.toLocaleDateString("en-GB", {
