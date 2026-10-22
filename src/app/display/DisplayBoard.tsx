@@ -199,7 +199,7 @@ export default function DisplayBoard({
                     <span className="tech w-16 shrink-0 text-2xl font-bold">
                       {Number(date.slice(5, 7))}/{Number(date.slice(8, 10))}
                     </span>
-                    <span className="w-12 shrink-0 text-sm text-[#8fb8cc]">{weekdayLabel(date, lang)}</span>
+                    <span className="w-14 shrink-0 text-sm text-[#8fb8cc]">{weekdayLabel(date, lang)}</span>
                     <span className="flex flex-wrap gap-x-4 gap-y-1">
                       {items.map((e) => (
                         <span
