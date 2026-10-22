@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useI18n } from "@/lib/i18n";
 
 export type CalEvent = {
   id: number; title: string; type: string; date: string;
@@ -37,6 +38,7 @@ export default function MonthCalendar({
   tasks: CalTask[];
   today: string;
 }) {
+  const { lang } = useI18n();
   const [offset, setOffset] = useState(0);
 
   const base = useMemo(() => {
@@ -47,6 +49,7 @@ export default function MonthCalendar({
   }, [offset, today]);
 
   const cells = useMemo(() => buildGrid(base.y, base.m), [base]);
+  const rows = Math.ceil(cells.length / 7);
   const monthKey = `${base.y}-${String(base.m + 1).padStart(2, "0")}`;
   const monthTitle = new Date(Date.UTC(base.y, base.m, 1)).toLocaleString("en-US", {
     month: "long", timeZone: "UTC",
@@ -70,7 +73,7 @@ export default function MonthCalendar({
   }, [events, tasks, monthKey]);
 
   return (
-    <section className="b-card p-5">
+    <section className="flex h-full flex-col rounded-lg p-5" style={{ background: "var(--b-surface)", border: "1px solid var(--b-line)" }}>
       <div className="flex items-center justify-between">
         <h2 className="text-[26px] leading-tight text-[var(--b-text)]">
           {monthTitle}{" "}
@@ -94,42 +97,52 @@ export default function MonthCalendar({
         </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-7 gap-1">
-        {["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].map((w) => (
-          <div key={w} className="b-eyebrow pb-1 text-center !text-[12.5px]">{w}</div>
+      {/* 滿版格線月曆：gap-px + 底色 = 髮絲格線，列高自動撐滿可用高度 */}
+      <div
+        className="mt-3 grid flex-1 grid-cols-7 gap-px"
+        style={{ gridTemplateRows: `repeat(${rows}, minmax(64px, 1fr))`, background: "var(--b-line)" }}
+      >
+        {(lang === "en"
+          ? ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"]
+          : ["週日", "週一", "週二", "週三", "週四", "週五", "週六"]
+        ).map((w) => (
+          <div key={w} className="flex items-center justify-center bg-[var(--b-surface)] pb-1">
+            <span className="text-[13px] font-medium uppercase tracking-[0.12em] text-[var(--b-text-3)]">{w}</span>
+          </div>
         ))}
         {cells.map((date, i) => {
-          if (!date) return <div key={i} className="min-h-20" />;
+          if (!date) return <div key={i} className="bg-[var(--b-surface)]" />;
           const items = byDate.get(date) ?? [];
           const isToday = date === today;
-          const past = date < today;
+          const dow = i % 7;
+          const weekend = dow >= 5;
           return (
             <div
               key={i}
-              className={`relative min-h-20 rounded-md border p-1.5 ${
+              className={`min-h-16 p-1.5 ${
                 isToday
-                  ? "border-[var(--b-accent)] bg-[color-mix(in_srgb,var(--b-accent)_8%,transparent)]"
-                  : "border-transparent"
-              } ${past && !isToday ? "opacity-45" : ""}`}
+                  ? "b-today"
+                  : weekend
+                    ? "bg-[color-mix(in_srgb,var(--b-accent)_4%,var(--b-surface))]"
+                    : "bg-[var(--b-surface)]"
+              }`}
             >
-              {isToday && (
-                <span className="absolute right-1.5 top-1 text-[12.5px] italic text-[var(--b-accent)]">Today</span>
-              )}
-              <div className={`text-[15px] ${isToday ? "text-[var(--b-text)]" : "text-[var(--b-text-2)]"}`}>
+              <div
+                className={`text-[15px] leading-tight ${
+                  isToday ? "font-medium text-[var(--b-accent)]" : weekend ? "text-[var(--b-text-3)]" : "text-[var(--b-text)]"
+                }`}
+              >
                 {Number(date.slice(8, 10))}
               </div>
               <div className="mt-0.5 space-y-0.5">
                 {items.slice(0, 2).map((it, k) => (
-                  <div
-                    key={k}
-                    title={it.title}
-                    className="b-event flex items-center truncate rounded-sm px-1 py-px text-[12.5px] leading-snug text-[var(--b-text)]"
-                  >
-                    <span className="truncate">{it.title}</span>
+                  <div key={k} className="flex items-center gap-1 text-[12.5px] leading-tight text-[var(--b-text)]">
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: it.color }} />
+                    <span className="truncate" title={it.title}>{it.title}</span>
                   </div>
                 ))}
                 {items.length > 2 && (
-                  <div className="px-1 text-[12.5px] text-[var(--b-text-3)]">+{items.length - 2} more</div>
+                  <div className="text-[12.5px] text-[var(--b-text-3)]">+{items.length - 2} more</div>
                 )}
               </div>
             </div>
@@ -137,8 +150,8 @@ export default function MonthCalendar({
         })}
       </div>
 
-      <p className="mt-3 text-[13px] text-[var(--b-text-3)]">
-        <span className="mr-3"><span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-[var(--b-accent)] align-middle" />Meeting</span>
+      <p className="mt-2 text-[13px] text-[var(--b-text-3)]">
+        <span className="mr-3"><span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-[#2eaadc] align-middle" />Meeting</span>
         <span className="mr-3"><span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-sky-400 align-middle" />Water test</span>
         <span className="mr-3"><span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-[#a14545] align-middle" />Competition</span>
         <span><span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-amber-400 align-middle" />Deadline</span>

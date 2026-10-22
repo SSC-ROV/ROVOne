@@ -303,6 +303,12 @@ summary {
   box-shadow: var(--b-card-shadow);
 }
 
+/* 今日格：accent 描邊＋accent-soft 底 */
+.board-root .b-today {
+  border: 1px solid var(--b-accent) !important;
+  background: color-mix(in srgb, var(--b-accent) 8%, var(--b-surface)) !important;
+}
+
 /* 全屏 */
 .board-root:fullscreen {
   padding: 36px 44px;

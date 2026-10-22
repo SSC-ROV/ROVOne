@@ -242,12 +242,10 @@ export default function DisplayBoard({
   }
   const compDays = compDate ? daysBetween(today, compDate) : null;
 
-  const agenda = new Map<string, typeof data.events>();
-  for (const e of data.events) {
-    if (e.date >= today && daysBetween(today, e.date) <= 14) {
-      (agenda.get(e.date) ?? agenda.set(e.date, []).get(e.date)!).push(e);
-    }
-  }
+  // 最近的三個進行中任務（依截止日排序）
+  const recentTasks = [...active]
+    .sort((a, b) => a.end_date.localeCompare(b.end_date))
+    .slice(0, 3);
 
   const cycleCard = (c: (typeof data.cycles)[number]) => {
     const totalDays = Math.max(1, daysBetween(c.start_date, c.end_date));
@@ -260,10 +258,10 @@ export default function DisplayBoard({
       endDays < 0 ? "Overdue" : endDays === 0 ? "Due today" : endDays <= 3 ? "Due soon" : "On track";
     const rel =
       endDays < 0
-        ? `-${Math.abs(endDays)}d`
+        ? `${Math.abs(endDays)}d overdue`
         : endDays === 0
-          ? "Today"
-          : `T-${endDays}`;
+          ? "Due today"
+          : `${endDays} day${endDays === 1 ? "" : "s"} to deadline`;
     const taskPct = c.total > 0 ? Math.round((c.done / c.total) * 100) : 0;
     const bar = endDays < 0 ? "var(--b-red)" : endDays <= 3 ? "var(--b-amber)" : "var(--b-green)";
     return (
@@ -286,11 +284,8 @@ export default function DisplayBoard({
           </div>
         </div>
 
-        <div className="mt-3 flex items-center gap-3">
-          <div className="h-[3px] flex-1 rounded-full bg-[var(--b-surface-2)]">
-            <div className="h-full rounded-full" style={{ width: `${elapsedPct}%`, background: bar }} />
-          </div>
-          <span className="text-[13px] tabular-nums text-[var(--b-text-3)]">{elapsedPct}%</span>
+        <div className="mt-3 h-[3px] rounded-full bg-[var(--b-surface-2)]">
+          <div className="h-full rounded-full" style={{ width: `${elapsedPct}%`, background: bar }} />
         </div>
 
         <div className="mt-3 flex items-center justify-between gap-3">
@@ -321,7 +316,7 @@ export default function DisplayBoard({
               <span className="text-[13px] italic text-[var(--b-green)]">LIVE</span>
             </span>
           </div>
-          <h1 className="mt-1 text-[44px] leading-tight text-[var(--b-text)]">
+          <h1 className="mt-1 text-[60px] leading-tight text-[var(--b-text)]">
             {data.teamName}
             <span className="italic text-[var(--b-text-3)]"> Overview</span>
           </h1>
@@ -341,45 +336,16 @@ export default function DisplayBoard({
         </div>
       </header>
 
-      {/* KPI */}
-      <section className="mt-6 grid shrink-0 grid-cols-2 gap-4 min-[1100px]:grid-cols-[1.4fr_1fr_1fr_1fr]">
+      {/* 頂排：比賽倒數＋水測＋最近三個任務 */}
+      <section className="mt-6 grid shrink-0 grid-cols-1 gap-4 min-[1100px]:grid-cols-[300fr_300fr_900fr]">
         <div className="b-card p-5">
-          <div className="flex items-start justify-between gap-2">
-            <span className="b-eyebrow">Days to competition</span>
-            <span className="text-[13px] text-[var(--b-text-3)]">
-              {compDate ? `${fmtDayMon(compDate)} ${compDate.slice(0, 4)}` : ""}
-            </span>
-          </div>
+          <span className="b-eyebrow">Days to competition</span>
           <div className="mt-1 text-[52px] leading-none tabular-nums text-[var(--b-text)]">
             {compDays ?? "—"}
             <span className="text-[18px] italic text-[var(--b-text-3)]"> days</span>
           </div>
-          <div className="mt-3 h-[3px] rounded-full bg-[var(--b-surface-2)]">
-            <div className="h-full rounded-full bg-[var(--b-accent)]" style={{ width: `${seasonPct}%` }} />
-          </div>
           <p className="mt-2 text-[13px] text-[var(--b-text-3)]">
-            Season start · 1 Sep {seasonStartYear}
-            <span className="ml-2 italic text-[var(--b-text-2)]">{seasonPct}% of season elapsed</span>
-          </p>
-        </div>
-
-        <div className="b-card p-5">
-          <span className="b-eyebrow">Active tasks</span>
-          <div className="mt-1 text-[42px] leading-none tabular-nums text-[var(--b-text)]">{active.length}</div>
-          <p className="mt-2 text-[15.5px] text-[var(--b-text-2)]">
-            {membersInvolved.size} member{membersInvolved.size === 1 ? "" : "s"} involved
-          </p>
-        </div>
-
-        <div className="b-card p-5">
-          <span className="b-eyebrow">Due within 7 days</span>
-          <div className="mt-1 text-[42px] leading-none tabular-nums text-[var(--b-text)]">{dueIn7.length}</div>
-          <p className="mt-2 text-[15.5px] text-[var(--b-text-2)]">
-            {dueToday.length > 0
-              ? `${dueToday.length} due today`
-              : dueIn7.length > 0
-                ? `Next in ${daysBetween(today, dueIn7[0].due_date)} day${daysBetween(today, dueIn7[0].due_date) === 1 ? "" : "s"}`
-                : "Nothing due"}
+            {compDate ? `${fmtDayMon(compDate)} ${compDate.slice(0, 4)}` : ""}
           </p>
         </div>
 
@@ -387,18 +353,45 @@ export default function DisplayBoard({
           <span className="b-eyebrow">Next water test</span>
           {nextWater ? (
             <>
-              <div className="mt-1 text-[42px] leading-none text-[var(--b-text)]">
+              <div className="mt-1 text-[52px] leading-none text-[var(--b-text)]">
                 {Number(nextWater.date.slice(8, 10))}{" "}
                 <span className="text-[24px]">{MONTHS_SHORT[Number(nextWater.date.slice(5, 7)) - 1]}</span>
               </div>
-              <p className="mt-2 text-[15.5px] text-[var(--b-text-2)]">
-                {weekdayShort(nextWater.date)} · In {daysBetween(today, nextWater.date)} day
-                {daysBetween(today, nextWater.date) === 1 ? "" : "s"}
+              <p className="mt-2 text-[13px] text-[var(--b-text-3)]">
+                {weekdayShort(nextWater.date)}
+                <span className="ml-2 italic text-[var(--b-text-2)]">
+                  In {daysBetween(today, nextWater.date)} day{daysBetween(today, nextWater.date) === 1 ? "" : "s"}
+                </span>
               </p>
             </>
           ) : (
             <p className="mt-3 text-[15.5px] text-[var(--b-text-3)]">Not scheduled</p>
           )}
+        </div>
+
+        <div className="b-card flex flex-col justify-center p-5">
+          <span className="b-eyebrow">Upcoming deadlines</span>
+          <div className="mt-2 space-y-1.5">
+            {recentTasks.length === 0 && (
+              <p className="text-[15.5px] text-[var(--b-text-3)]">No active tasks</p>
+            )}
+            {recentTasks.map((c) => {
+              const d = daysBetween(today, c.end_date);
+              const overdue = d < 0;
+              return (
+                <div key={c.id} className="flex items-baseline justify-between gap-4 border-b border-[var(--b-line)] pb-1.5 last:border-0">
+                  <span className="truncate text-[17px] text-[var(--b-text)]">{fixTitle(c.title)}</span>
+                  <span className={`shrink-0 text-[15px] ${overdue || d === 0 ? "italic text-[var(--b-red)]" : "text-[var(--b-text-2)]"}`}>
+                    {overdue
+                      ? `Overdue ${-d}d`
+                      : d === 0
+                        ? "Due today"
+                        : `${d} day${d === 1 ? "" : "s"} to deadline`}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </section>
 
@@ -408,34 +401,6 @@ export default function DisplayBoard({
         <div className="min-h-0 space-y-6 min-[1100px]:overflow-y-auto min-[1100px]:pr-1">
           <MonthCalendar events={data.events} tasks={data.tasksDue} today={today} />
 
-          {agenda.size > 0 && (
-            <section className="b-card p-5">
-              <span className="b-eyebrow">Next two weeks</span>
-              <div className="mt-3 space-y-1">
-                {[...agenda.entries()].map(([date, items]) => {
-                  const diff = daysBetween(today, date);
-                  const rel = diff === 0 ? "Today" : diff === 1 ? "Tomorrow" : `In ${diff} days`;
-                  return (
-                    <div key={date} className="flex items-center gap-3 rounded-md px-2 py-1.5 transition-colors duration-150 hover:bg-[var(--b-surface-2)]">
-                      <span className="w-16 shrink-0 text-right text-[19.5px] text-[var(--b-text)]">
-                        {Number(date.slice(8, 10))} {MONTHS_SHORT[Number(date.slice(5, 7)) - 1]}
-                      </span>
-                      <span className="w-14 shrink-0 text-[13px] italic text-[var(--b-text-3)]">{weekdayShort(date)}</span>
-                      <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
-                        {items.map((e) => (
-                          <span key={e.id} className="flex min-w-0 items-center gap-2 text-[15.5px] text-[var(--b-text)]">
-                            <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: EV_COLOR[e.type] ?? "var(--b-violet)" }} />
-                            <span className="truncate">{fixTitle(e.title)}</span>
-                          </span>
-                        ))}
-                      </span>
-                      <span className="shrink-0 text-[13px] italic text-[var(--b-text-3)]">{rel}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          )}
         </div>
 
         {/* 右欄：進行中任務 */}
