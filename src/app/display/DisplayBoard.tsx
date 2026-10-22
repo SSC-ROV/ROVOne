@@ -226,10 +226,6 @@ export default function DisplayBoard({
   }
   const compDays = compDate ? daysBetween(today, compDate) : null;
 
-  // 最近的三個進行中任務（依截止日排序）
-  const recentTasks = [...active]
-    .sort((a, b) => a.end_date.localeCompare(b.end_date))
-    .slice(0, 3);
 
   const cycleCard = (c: (typeof data.cycles)[number]) => {
     const totalDays = Math.max(1, daysBetween(c.start_date, c.end_date));
@@ -318,8 +314,8 @@ export default function DisplayBoard({
         </div>
       </header>
 
-      {/* 頂排：比賽倒數＋水測＋最近三個任務 */}
-      <section className="mt-6 grid shrink-0 grid-cols-1 gap-4 min-[1100px]:grid-cols-[300fr_300fr_900fr]">
+      {/* 頂排：比賽倒數＋下次水測 */}
+      <section className="mt-6 grid shrink-0 grid-cols-1 gap-4 min-[1100px]:grid-cols-2">
         <div className="b-card p-5">
           <span className="b-eyebrow">Days to competition</span>
           <div className="mt-1 text-[52px] leading-none tabular-nums text-[var(--b-text)]">
@@ -349,31 +345,6 @@ export default function DisplayBoard({
           ) : (
             <p className="mt-3 text-[15.5px] text-[var(--b-text-3)]">Not scheduled</p>
           )}
-        </div>
-
-        <div className="b-card flex flex-col justify-center p-5">
-          <span className="b-eyebrow">Upcoming deadlines</span>
-          <div className="mt-2 space-y-1.5">
-            {recentTasks.length === 0 && (
-              <p className="text-[15.5px] text-[var(--b-text-3)]">No active tasks</p>
-            )}
-            {recentTasks.map((c) => {
-              const d = daysBetween(today, c.end_date);
-              const overdue = d < 0;
-              return (
-                <div key={c.id} className="flex items-baseline justify-between gap-4 border-b border-[var(--b-line)] pb-1.5 last:border-0">
-                  <span className="truncate text-[17px] text-[var(--b-text)]">{fixTitle(c.title)}</span>
-                  <span className={`shrink-0 text-[15px] ${overdue || d === 0 ? "italic text-[var(--b-red)]" : "text-[var(--b-text-2)]"}`}>
-                    {overdue
-                      ? `Overdue ${-d}d`
-                      : d === 0
-                        ? "Due today"
-                        : `${d} day${d === 1 ? "" : "s"} to deadline`}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
         </div>
       </section>
 

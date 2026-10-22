@@ -106,8 +106,8 @@ export default function MonthCalendar({
           ? ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"]
           : ["週日", "週一", "週二", "週三", "週四", "週五", "週六"]
         ).map((w) => (
-          <div key={w} className="flex items-center justify-center bg-[var(--b-surface)] pb-1">
-            <span className="text-[13px] font-medium uppercase tracking-[0.12em] text-[var(--b-text-3)]">{w}</span>
+          <div key={w} className="flex items-center justify-center bg-[var(--b-surface)] py-0.5">
+            <span className="text-[12.5px] font-medium uppercase tracking-[0.12em] text-[var(--b-text-3)]">{w}</span>
           </div>
         ))}
         {cells.map((date, i) => {
