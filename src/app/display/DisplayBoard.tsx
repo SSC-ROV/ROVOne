@@ -142,12 +142,14 @@ export default function DisplayBoard({
           <div className="h-full rounded-md" style={{ width: `${pct}%`, background: barColor }} />
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-1 text-base text-[#8fb8cc]">
-          <span>
-            {t("任務進度")}{" "}
-            <span className="tech text-xl font-bold text-white">
-              {c.done}/{c.total}
+          {c.total > 0 && (
+            <span>
+              {t("任務進度")}{" "}
+              <span className="tech text-xl font-bold text-white">
+                {c.done}/{c.total}
+              </span>
             </span>
-          </span>
+          )}
           {c.members.length > 0 && (
             <span className="truncate text-sm">{c.members.join(" · ")}</span>
           )}
