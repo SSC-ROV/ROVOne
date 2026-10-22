@@ -74,10 +74,13 @@ function ThemeSeg({ mode, setMode }: { mode: "dark" | "light"; setMode: (m: "dar
 /* ── 全屏按鈕（含 F 快捷鍵與 Esc 同步） ── */
 function FullscreenButton() {
   const [on, setOn] = useState(false);
+  const [supported, setSupported] = useState(true);
 
   useEffect(() => {
     const doc = document as FsDoc;
-    if (!(document.fullscreenEnabled || doc.webkitFullscreenEnabled)) return;
+    const ok = !!(document.fullscreenEnabled || doc.webkitFullscreenEnabled);
+    setSupported(ok);
+    if (!ok) return;
     const sync = () => setOn(!!(document.fullscreenElement || doc.webkitFullscreenElement));
     ["fullscreenchange", "webkitfullscreenchange"].forEach((ev) => document.addEventListener(ev, sync));
     const onKey = (e: KeyboardEvent) => {
@@ -102,9 +105,6 @@ function FullscreenButton() {
       (document.exitFullscreen || doc.webkitExitFullscreen)?.call(document);
     }
   }
-
-  const doc = document as FsDoc;
-  const supported = !!(document.fullscreenEnabled || doc.webkitFullscreenEnabled);
 
   return (
     <button
