@@ -279,7 +279,7 @@ export default function DisplayBoard({
               {statusText}
             </span>
             <div className={`mt-1 text-[26px] leading-tight ${endDays === 0 || endDays < 0 ? "italic text-[var(--b-red)]" : "text-[var(--b-text)]"}`}>
-              {endDays < 0 ? rel : endDays === 0 ? rel : `T-${endDays}`}
+              {rel}
             </div>
           </div>
         </div>
