@@ -196,7 +196,7 @@ export default function DisplayBoard({
                       date === today ? "text-[#7defff]" : "text-[#c9ecf7]"
                     }`}
                   >
-                    <span className="tech w-16 shrink-0 text-2xl font-bold">
+                    <span className="tech w-24 shrink-0 text-2xl font-bold">
                       {Number(date.slice(5, 7))}/{Number(date.slice(8, 10))}
                     </span>
                     <span className="w-14 shrink-0 text-sm text-[#8fb8cc]">{weekdayLabel(date, lang)}</span>
