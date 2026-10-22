@@ -22,22 +22,6 @@ function fixTitle(s: string): string {
   return s.replace(/medhanical/gi, "mechanical").replace(/mon rack/gi, "monitor rack");
 }
 
-/** 成員名 → 頭像縮寫（去掉 (班號) 前綴，取首尾字首） */
-function initials(name: string): string {
-  const clean = name.replace(/\([^)]*\)/g, "").trim();
-  const words = clean.split(/\s+/).filter(Boolean);
-  if (words.length === 0) return "?";
-  return (words[0][0] + (words[words.length - 1][0] || "")).toUpperCase();
-}
-
-function avatarColors(name: string, mode: "dark" | "light") {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) % 360;
-  const h = hash;
-  return mode === "dark"
-    ? { background: `hsl(${h} 38% 78%)`, color: `hsl(${h} 60% 16%)` }
-    : { background: `hsl(${h} 45% 27%)`, color: "#ffffff" };
-}
 
 const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -273,6 +257,11 @@ export default function DisplayBoard({
               {fmtDayMon(c.start_date)} → {fmtDayMon(c.end_date)} · {c.members.length} member
               {c.members.length === 1 ? "" : "s"}
             </p>
+            {c.members.length > 0 && (
+              <p className="text-[14.5px] text-[var(--b-text-2)]">
+                {c.members.map((m) => m.replace(/\([^)]*\)\s*/g, "").trim()).join(" · ")}
+              </p>
+            )}
           </div>
           <div className="shrink-0 text-right">
             <span className="b-chip" style={{ "--ev-color": statusColor } as React.CSSProperties}>
@@ -288,14 +277,7 @@ export default function DisplayBoard({
           <div className="h-full rounded-full" style={{ width: `${elapsedPct}%`, background: bar }} />
         </div>
 
-        <div className="mt-3 flex items-center justify-between gap-3">
-          <div className="flex -space-x-[7px]">
-            {c.members.map((m) => (
-              <span key={m} title={m} className="b-avatar" style={avatarColors(m, mode)}>
-                {initials(m)}
-              </span>
-            ))}
-          </div>
+        <div className="mt-3 flex items-center justify-end">
           <span className="text-[14.5px] text-[var(--b-text-2)]">
             {c.total > 0 ? `Subtasks ${c.done}/${c.total}` : "No subtasks"}
           </span>
