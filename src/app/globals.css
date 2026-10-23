@@ -309,6 +309,27 @@ summary {
   background: color-mix(in srgb, var(--b-accent) 8%, var(--b-surface)) !important;
 }
 
+/* 時鐘數字翻頁：變動時新數字帶運動模糊滾入（Split-flap 風格） */
+.board-root .digit-flip {
+  display: inline-block;
+  animation: digit-flip 0.26s cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+@keyframes digit-flip {
+  0% {
+    transform: translateY(-0.3em);
+    opacity: 0;
+    filter: blur(9px);
+  }
+  55% {
+    filter: blur(2px);
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
 /* 全屏 */
 .board-root:fullscreen {
   padding: 36px 44px;
