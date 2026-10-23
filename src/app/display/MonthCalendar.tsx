@@ -97,19 +97,21 @@ export default function MonthCalendar({
         </div>
       </div>
 
-      {/* 滿版格線月曆：gap-px + 底色 = 髮絲格線，列高自動撐滿可用高度 */}
-      <div
-        className="mt-3 grid flex-1 grid-cols-7 gap-px"
-        style={{ gridTemplateRows: `repeat(${rows}, minmax(64px, 1fr))`, background: "var(--b-line)" }}
-      >
+      {/* 星期表頭：獨立矮行，不佔資料列高 */}
+      <div className="grid grid-cols-7">
         {(lang === "en"
           ? ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"]
           : ["週日", "週一", "週二", "週三", "週四", "週五", "週六"]
         ).map((w) => (
-          <div key={w} className="flex items-center justify-center bg-[var(--b-surface)] py-0.5">
-            <span className="text-[12.5px] font-medium uppercase tracking-[0.12em] text-[var(--b-text-3)]">{w}</span>
-          </div>
+          <div key={w} className="b-eyebrow pb-1 text-center">{w}</div>
         ))}
+      </div>
+
+      {/* 滿版格線月曆：gap-px + 底色 = 髮絲格線，列高自動撐滿可用高度 */}
+      <div
+        className="grid flex-1 grid-cols-7 gap-px"
+        style={{ gridTemplateRows: `repeat(${rows}, minmax(64px, 1fr))`, background: "var(--b-line)" }}
+      >
         {cells.map((date, i) => {
           if (!date) return <div key={i} className="bg-[var(--b-surface)]" />;
           const items = byDate.get(date) ?? [];

@@ -274,9 +274,11 @@ export default function DisplayBoard({
         </div>
 
         <div className="mt-3 flex items-center justify-end">
-          <span className="text-[14.5px] text-[var(--b-text-2)]">
-            {c.total > 0 ? `Subtasks ${c.done}/${c.total}` : "No subtasks"}
-          </span>
+          {c.total > 0 && (
+            <span className="text-[14.5px] text-[var(--b-text-2)]">
+              Subtasks {c.done}/{c.total}
+            </span>
+          )}
         </div>
       </div>
     );
