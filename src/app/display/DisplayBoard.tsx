@@ -111,6 +111,30 @@ function FullscreenButton() {
   );
 }
 
+/** 數字翻頁：字元變動時重新掛載，帶運動模糊滾入（key 變化觸發動畫） */
+function FlipDigit({ char }: { char: string }) {
+  return (
+    <span className="inline-block w-[0.6em] text-center" key={char}>
+      <span className="digit-flip inline-block">{char}</span>
+    </span>
+  );
+}
+
+/** 逐字渲染時間；冒號不翻頁 */
+function FlipClock({ text }: { text: string }) {
+  return (
+    <span className="tabular-nums">
+      {text.split("").map((ch, i) =>
+        ch === ":" ? (
+          <span key={`c${i}`} className="clock-colon">:</span>
+        ) : (
+          <FlipDigit key={`${i}-${ch}`} char={ch} />
+        )
+      )}
+    </span>
+  );
+}
+
 const EV_COLOR: Record<string, string> = {
   meeting: "var(--b-accent)",
   watertest: "var(--b-green)",
@@ -285,11 +309,12 @@ export default function DisplayBoard({
           </h1>
         </div>
         <div className="text-right leading-none">
-          <div className="text-[64px] tabular-nums text-[var(--b-text)]">
-            {hh}
-            <span className="clock-colon">:</span>
-            {mm}
-            <span className="text-[28px] italic text-[var(--b-text-3)]">:{ss}</span>
+          <div className="text-[64px] text-[var(--b-text)]">
+            <FlipClock text={`${hh}:${mm}`} />
+            <span className="text-[28px] italic text-[var(--b-text-3)]">
+              :<FlipDigit char={ss[0]} />
+              {ss[1] ? <FlipDigit char={ss[1]} /> : null}
+            </span>
           </div>
           <div className="mt-1 text-[15px] text-[var(--b-text-2)]">{longDate}</div>
         </div>
