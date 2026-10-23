@@ -271,29 +271,27 @@ export default function DisplayBoard({
     <div data-mode={mode} className="board-root min-h-screen transition-colors duration-300 min-[1100px]:flex min-[1100px]:h-screen min-[1100px]:flex-col min-[1100px]:overflow-hidden" style={{ padding: "24px 28px" }}>
       {/* Header：時間靠最左，隊名居次 */}
       <header className="flex shrink-0 items-end justify-between gap-x-6 gap-y-4">
-        <div className="flex items-end gap-8">
-          <div className="leading-none">
-            <div className="text-[64px] tabular-nums text-[var(--b-text)]">
-              {hh}
-              <span className="clock-colon">:</span>
-              {mm}
-              <span className="text-[28px] italic text-[var(--b-text-3)]">:{ss}</span>
-            </div>
-            <div className="mt-1 text-[15px] text-[var(--b-text-2)]">{longDate}</div>
+        <div>
+          <div className="flex items-center gap-3">
+            <span className="b-eyebrow">ROV Mission Control</span>
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--b-green)]" />
+              <span className="text-[13px] italic text-[var(--b-green)]">LIVE</span>
+            </span>
           </div>
-          <div>
-            <div className="flex items-center gap-3">
-              <span className="b-eyebrow">ROV Mission Control</span>
-              <span className="flex items-center gap-1.5">
-                <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--b-green)]" />
-                <span className="text-[13px] italic text-[var(--b-green)]">LIVE</span>
-              </span>
-            </div>
-            <h1 className="mt-1 text-[60px] leading-tight text-[var(--b-text)]">
-              {data.teamName}
-              <span className="italic text-[var(--b-text-3)]"> Overview</span>
-            </h1>
+          <h1 className="mt-1 text-[60px] leading-tight text-[var(--b-text)]">
+            {data.teamName}
+            <span className="italic text-[var(--b-text-3)]"> Overview</span>
+          </h1>
+        </div>
+        <div className="text-right leading-none">
+          <div className="text-[64px] tabular-nums text-[var(--b-text)]">
+            {hh}
+            <span className="clock-colon">:</span>
+            {mm}
+            <span className="text-[28px] italic text-[var(--b-text-3)]">:{ss}</span>
           </div>
+          <div className="mt-1 text-[15px] text-[var(--b-text-2)]">{longDate}</div>
         </div>
       </header>
 
