@@ -114,16 +114,16 @@ function FullscreenButton() {
 /** 數字翻頁：字元變動時重新掛載，帶運動模糊滾入（key 變化觸發動畫） */
 function FlipDigit({ char }: { char: string }) {
   return (
-    <span className="inline-block w-[0.6em] text-center" key={char}>
-      <span className="digit-flip inline-block">{char}</span>
+    <span className="digit-flip inline-block" key={char}>
+      {char}
     </span>
   );
 }
 
-/** 逐字渲染時間；冒號不翻頁 */
+/** 逐字渲染時間（斜體）；冒號不翻頁 */
 function FlipClock({ text }: { text: string }) {
   return (
-    <span className="tabular-nums">
+    <span className="italic">
       {text.split("").map((ch, i) =>
         ch === ":" ? (
           <span key={`c${i}`} className="clock-colon">:</span>
