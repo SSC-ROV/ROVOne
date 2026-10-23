@@ -45,6 +45,10 @@ function LoginInner({ googleEnabled }: { googleEnabled: boolean }) {
         setError(t(body.error || "登入失敗"));
         return;
       }
+      if (body.redirect) {
+        window.location.href = body.redirect;
+        return;
+      }
       router.replace("/");
     } catch {
       setError(t("連線失敗，請確認伺服器是否啟動"));

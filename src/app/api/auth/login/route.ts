@@ -3,6 +3,7 @@ import { sql } from "@/lib/pg";
 import { verifyPassword } from "@/lib/password";
 import { createSession, sessionCookieOptions } from "@/lib/auth";
 import { SESSION_COOKIE } from "@/lib/session";
+import { getOrCreateDisplayToken } from "@/lib/db";
 
 const MAX_FAILS = 5;
 const BLOCK_MINUTES = 15;
@@ -74,6 +75,10 @@ export async function POST(req: NextRequest) {
       password_changed_at: user.password_changed_at,
       must_change_password: !user.password_changed_at,
     },
+    // 看板專用帳號：登入後直跳看板（深色＋英文）
+    ...(user.username === "dashboard"
+      ? { redirect: `/display?token=${await getOrCreateDisplayToken()}&theme=dark&lang=en` }
+      : {}),
   });
   res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions(isHttps));
   return res;

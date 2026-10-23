@@ -66,7 +66,7 @@ export default function CyclesPage() {
   const myRole = me.role;
   const meId = me.id;
   // 示範帳號（leader/member/teacher）與所有老師帳號：不進週期邀請名單與成員統計
-  const DEMO_USERNAMES = ["leader", "member", "teacher"];
+  const DEMO_USERNAMES = ["leader", "member", "teacher", "dashboard"];
   const invitableMembers = members.filter(
     (m) => m.role !== "teacher" && !DEMO_USERNAMES.includes(m.username)
   );
