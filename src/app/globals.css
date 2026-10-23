@@ -287,10 +287,10 @@ summary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0 9px;
-  height: 30px;
+  padding: 0 7px;
+  height: 26px;
   white-space: nowrap;
-  border-radius: 8px;
+  border-radius: 6px;
   color: var(--b-text-3);
   transition: background 0.15s, color 0.15s;
 }

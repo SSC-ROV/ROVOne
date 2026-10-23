@@ -22,10 +22,8 @@ function fixTitle(s: string): string {
   return s.replace(/medhanical/gi, "mechanical").replace(/mon rack/gi, "monitor rack");
 }
 
-
 const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const DAYS_LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 function fmtDayMon(dateStr: string): string {
   const d = new Date(dateStr + "T00:00:00+08:00");
@@ -36,18 +34,18 @@ function weekdayShort(dateStr: string): string {
   return DAYS_SHORT[new Date(dateStr + "T00:00:00+08:00").getDay()];
 }
 
-/* ── 主題分段切換 ── */
+/* ── 主題切換（小） ── */
 function ThemeSeg({ mode, setMode }: { mode: "dark" | "light"; setMode: (m: "dark" | "light") => void }) {
   return (
     <div className="b-seg" role="group" aria-label="Theme">
       <button aria-pressed={mode === "light"} onClick={() => setMode("light")} title="Light mode">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
           <circle cx="12" cy="12" r="4" />
           <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
         </svg>
       </button>
       <button aria-pressed={mode === "dark"} onClick={() => setMode("dark")} title="Dark mode">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
         </svg>
       </button>
@@ -55,16 +53,13 @@ function ThemeSeg({ mode, setMode }: { mode: "dark" | "light"; setMode: (m: "dar
   );
 }
 
-/* ── 全屏按鈕（含 F 快捷鍵與 Esc 同步） ── */
+/* ── 全屏切換（小） ── */
 function FullscreenButton() {
   const [on, setOn] = useState(false);
-  const [supported, setSupported] = useState(true);
 
   useEffect(() => {
     const doc = document as FsDoc;
-    const ok = !!(document.fullscreenEnabled || doc.webkitFullscreenEnabled);
-    setSupported(ok);
-    if (!ok) return;
+    if (!(document.fullscreenEnabled || doc.webkitFullscreenEnabled)) return;
     const sync = () => setOn(!!(document.fullscreenElement || doc.webkitFullscreenElement));
     ["fullscreenchange", "webkitfullscreenchange"].forEach((ev) => document.addEventListener(ev, sync));
     const onKey = (e: KeyboardEvent) => {
@@ -90,6 +85,9 @@ function FullscreenButton() {
     }
   }
 
+  const doc = document as FsDoc;
+  const supported = !!(document.fullscreenEnabled || doc.webkitFullscreenEnabled);
+
   return (
     <button
       id="fs"
@@ -98,37 +96,18 @@ function FullscreenButton() {
       aria-pressed={on}
       title={on ? "Exit full screen (F)" : "Enter full screen (F)"}
       hidden={!supported}
-      className="flex h-[38px] w-[38px] items-center justify-center rounded-xl border border-[var(--b-line)] bg-[var(--b-surface)] text-[var(--b-text-3)] shadow-[var(--b-card-shadow)] transition-colors duration-150 hover:text-[var(--b-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--b-accent)]"
+      className="flex h-8 w-8 items-center justify-center rounded-md border border-[var(--b-line)] bg-[var(--b-surface)] text-sm text-[var(--b-text-3)] transition-colors duration-150 hover:text-[var(--b-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--b-accent)]"
     >
       {on ? (
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" />
         </svg>
       ) : (
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
         </svg>
       )}
     </button>
-  );
-}
-
-/* ── 主題分段切換（頂欄用） ── */
-function ThemeSegTop({ mode, setMode }: { mode: "dark" | "light"; setMode: (m: "dark" | "light") => void }) {
-  return (
-    <div className="b-seg" role="group" aria-label="Theme">
-      <button aria-pressed={mode === "light"} onClick={() => setMode("light")} title="Light mode">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-          <circle cx="12" cy="12" r="4" />
-          <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
-        </svg>
-      </button>
-      <button aria-pressed={mode === "dark"} onClick={() => setMode("dark")} title="Dark mode">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
-        </svg>
-      </button>
-    </div>
   );
 }
 
@@ -226,6 +205,10 @@ export default function DisplayBoard({
   }
   const compDays = compDate ? daysBetween(today, compDate) : null;
 
+  // 最近的三個進行中任務（依截止日排序）
+  const recentTasks = [...active]
+    .sort((a, b) => a.end_date.localeCompare(b.end_date))
+    .slice(0, 3);
 
   const cycleCard = (c: (typeof data.cycles)[number]) => {
     const totalDays = Math.max(1, daysBetween(c.start_date, c.end_date));
@@ -274,35 +257,20 @@ export default function DisplayBoard({
         </div>
 
         <div className="mt-3 flex items-center justify-end">
-          {c.total > 0 && (
-            <span className="text-[14.5px] text-[var(--b-text-2)]">
-              Subtasks {c.done}/{c.total}
-            </span>
-          )}
+          <span className="text-[14.5px] text-[var(--b-text-2)]">
+            {c.total > 0 ? `Subtasks ${c.done}/${c.total}` : "No subtasks"}
+          </span>
         </div>
       </div>
     );
   };
 
   return (
-    <div data-mode={mode} className="board-root min-h-screen transition-colors duration-300 min-[1100px]:flex min-[1100px]:h-screen min-[1100px]:flex-col min-[1100px]:overflow-hidden" style={{ padding: "28px 32px" }}>
-      {/* Header */}
-      <header className="flex shrink-0 flex-wrap items-start justify-between gap-x-6 gap-y-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <span className="b-eyebrow">ROV Mission Control</span>
-            <span className="flex items-center gap-1.5">
-              <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--b-green)]" />
-              <span className="text-[13px] italic text-[var(--b-green)]">LIVE</span>
-            </span>
-          </div>
-          <h1 className="mt-1 text-[60px] leading-tight text-[var(--b-text)]">
-            {data.teamName}
-            <span className="italic text-[var(--b-text-3)]"> Overview</span>
-          </h1>
-        </div>
-        <div className="flex items-start gap-3">
-          <div className="text-right leading-none">
+    <div data-mode={mode} className="board-root min-h-screen transition-colors duration-300 min-[1100px]:flex min-[1100px]:h-screen min-[1100px]:flex-col min-[1100px]:overflow-hidden" style={{ padding: "24px 28px" }}>
+      {/* Header：時間靠最左，隊名居次 */}
+      <header className="flex shrink-0 items-end justify-between gap-x-6 gap-y-4">
+        <div className="flex items-end gap-8">
+          <div className="leading-none">
             <div className="text-[64px] tabular-nums text-[var(--b-text)]">
               {hh}
               <span className="clock-colon">:</span>
@@ -311,54 +279,69 @@ export default function DisplayBoard({
             </div>
             <div className="mt-1 text-[15px] text-[var(--b-text-2)]">{longDate}</div>
           </div>
-          <ThemeSegTop mode={mode} setMode={setMode} />
-          <FullscreenButton />
+          <div>
+            <div className="flex items-center gap-3">
+              <span className="b-eyebrow">ROV Mission Control</span>
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--b-green)]" />
+                <span className="text-[13px] italic text-[var(--b-green)]">LIVE</span>
+              </span>
+            </div>
+            <h1 className="mt-1 text-[60px] leading-tight text-[var(--b-text)]">
+              {data.teamName}
+              <span className="italic text-[var(--b-text-3)]"> Overview</span>
+            </h1>
+          </div>
         </div>
       </header>
 
-      {/* 頂排：比賽倒數＋下次水測 */}
-      <section className="mt-6 grid shrink-0 grid-cols-1 gap-4 min-[1100px]:grid-cols-2">
-        <div className="b-card p-5">
-          <span className="b-eyebrow">Days to competition</span>
-          <div className="mt-1 text-[52px] leading-none tabular-nums text-[var(--b-text)]">
-            {compDays ?? "—"}
-            <span className="text-[18px] italic text-[var(--b-text-3)]"> days</span>
-          </div>
-          <p className="mt-2 text-[13px] text-[var(--b-text-3)]">
-            {compDate ? `${fmtDayMon(compDate)} ${compDate.slice(0, 4)}` : ""}
-          </p>
-        </div>
-
-        <div className="b-card p-5">
-          <span className="b-eyebrow">Next water test</span>
-          {nextWater ? (
-            <>
-              <div className="mt-1 text-[52px] leading-none text-[var(--b-text)]">
-                {Number(nextWater.date.slice(8, 10))}{" "}
-                <span className="text-[24px]">{MONTHS_SHORT[Number(nextWater.date.slice(5, 7)) - 1]}</span>
-              </div>
-              <p className="mt-2 text-[13px] text-[var(--b-text-3)]">
-                {weekdayShort(nextWater.date)}
-                <span className="ml-2 italic text-[var(--b-text-2)]">
-                  In {daysBetween(today, nextWater.date)} day{daysBetween(today, nextWater.date) === 1 ? "" : "s"}
-                </span>
-              </p>
-            </>
-          ) : (
-            <p className="mt-3 text-[15.5px] text-[var(--b-text-3)]">Not scheduled</p>
-          )}
-        </div>
-      </section>
-
-      {/* 主體兩欄：左月曆＋兩週，右任務 */}
-      <div className="mt-6 grid min-h-0 flex-1 grid-cols-1 gap-6 min-[1100px]:grid-cols-[11fr_13fr] min-[1100px]:overflow-hidden">
+      {/* 主體：左＝兩張濃縮卡＋滿版月曆；右＝Active tasks 頂到上方 */}
+      <div className="mt-6 grid min-h-0 flex-1 grid-cols-1 gap-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:overflow-hidden">
         {/* 左欄 */}
-        <div className="min-h-0 space-y-6 min-[1100px]:overflow-y-auto min-[1100px]:pr-1">
-          <MonthCalendar events={data.events} tasks={data.tasksDue} today={today} />
+        <div className="flex min-h-0 flex-col gap-4 lg:overflow-hidden">
+          <div className="grid shrink-0 grid-cols-2 gap-4">
+            <div className="b-card p-4">
+              <span className="b-eyebrow">Days to competition</span>
+              <div className="mt-1 text-[42px] leading-none tabular-nums text-[var(--b-text)]">
+                {compDays ?? "—"}
+                <span className="text-[16px] italic text-[var(--b-text-3)]"> days</span>
+              </div>
+              <div className="mt-2 h-[3px] rounded-full bg-[var(--b-surface-2)]">
+                <div className="h-full rounded-full bg-[var(--b-accent)]" style={{ width: `${seasonPct}%` }} />
+              </div>
+              <p className="mt-2 text-[12.5px] text-[var(--b-text-3)]">
+                Season start · 1 Sep {seasonStartYear}
+                <span className="ml-1 italic text-[var(--b-text-2)]">{seasonPct}% elapsed</span>
+              </p>
+            </div>
 
+            <div className="b-card p-4">
+              <span className="b-eyebrow">Next water test</span>
+              {nextWater ? (
+                <>
+                  <div className="mt-1 text-[42px] leading-none text-[var(--b-text)]">
+                    {Number(nextWater.date.slice(8, 10))}{" "}
+                    <span className="text-[22px]">{MONTHS_SHORT[Number(nextWater.date.slice(5, 7)) - 1]}</span>
+                  </div>
+                  <p className="mt-2 text-[12.5px] text-[var(--b-text-3)]">
+                    {weekdayShort(nextWater.date)}
+                    <span className="ml-2 italic text-[var(--b-text-2)]">
+                      In {daysBetween(today, nextWater.date)} day{daysBetween(today, nextWater.date) === 1 ? "" : "s"}
+                    </span>
+                  </p>
+                </>
+              ) : (
+                <p className="mt-3 text-[15.5px] text-[var(--b-text-3)]">Not scheduled</p>
+              )}
+            </div>
+          </div>
+
+          <div className="min-h-0 flex-1">
+            <MonthCalendar events={data.events} tasks={data.tasksDue} today={today} />
+          </div>
         </div>
 
-        {/* 右欄：進行中任務 */}
+        {/* 右欄：Active tasks 佔滿 */}
         <section className="b-card flex min-h-0 flex-col p-5">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-[26px] leading-tight text-[var(--b-text)]">Active tasks</h2>
@@ -380,6 +363,12 @@ export default function DisplayBoard({
           </div>
         </section>
       </div>
+
+      {/* 底部：主題切換＋全屏（縮小、不影響佈局） */}
+      <footer className="flex shrink-0 items-center justify-end gap-2 pt-3">
+        <ThemeSeg mode={mode} setMode={setMode} />
+        <FullscreenButton />
+      </footer>
     </div>
   );
 }
