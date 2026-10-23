@@ -256,11 +256,13 @@ export default function DisplayBoard({
           <div className="h-full rounded-full" style={{ width: `${elapsedPct}%`, background: bar }} />
         </div>
 
-        <div className="mt-3 flex items-center justify-end">
-          <span className="text-[14.5px] text-[var(--b-text-2)]">
-            {c.total > 0 ? `Subtasks ${c.done}/${c.total}` : "No subtasks"}
-          </span>
-        </div>
+        {c.total > 0 && (
+          <div className="mt-3 flex items-center justify-end">
+            <span className="text-[14.5px] text-[var(--b-text-2)]">
+              Subtasks {c.done}/{c.total}
+            </span>
+          </div>
+        )}
       </div>
     );
   };
