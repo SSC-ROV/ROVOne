@@ -320,8 +320,7 @@ export default function DisplayBoard({
               {nextWater ? (
                 <>
                   <div className="mt-1 text-[42px] leading-none text-[var(--b-text)]">
-                    {Number(nextWater.date.slice(8, 10))}{" "}
-                    <span className="text-[22px]">{MONTHS_SHORT[Number(nextWater.date.slice(5, 7)) - 1]}</span>
+                    {Number(nextWater.date.slice(8, 10))} {MONTHS_SHORT[Number(nextWater.date.slice(5, 7)) - 1]}
                   </div>
                   <p className="mt-2 text-[12.5px] text-[var(--b-text-3)]">
                     {weekdayShort(nextWater.date)}
