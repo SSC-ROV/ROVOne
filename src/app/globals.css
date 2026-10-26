@@ -360,15 +360,6 @@ summary {
     animation: none;
   }
 }
-  55% {
-    filter: blur(2px);
-  }
-  100% {
-    transform: translateY(0);
-    opacity: 1;
-    filter: blur(0);
-  }
-}
 
 /* 全屏 */
 .board-root:fullscreen {
