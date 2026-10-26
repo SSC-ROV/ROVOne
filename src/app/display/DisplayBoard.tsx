@@ -85,9 +85,6 @@ function FullscreenButton() {
     }
   }
 
-  const doc = document as FsDoc;
-  const supported = !!(document.fullscreenEnabled || doc.webkitFullscreenEnabled);
-
   return (
     <button
       id="fs"
@@ -95,7 +92,6 @@ function FullscreenButton() {
       aria-label={on ? "Exit full screen" : "Enter full screen"}
       aria-pressed={on}
       title={on ? "Exit full screen (F)" : "Enter full screen (F)"}
-      hidden={!supported}
       className="flex h-8 w-8 items-center justify-center rounded-md border border-[var(--b-line)] bg-[var(--b-surface)] text-sm text-[var(--b-text-3)] transition-colors duration-150 hover:text-[var(--b-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--b-accent)]"
     >
       {on ? (
