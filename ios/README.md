@@ -1,56 +1,63 @@
-# ROV Team Hub — iPad App（TestFlight 發佈）
+# ROV Team Hub — iPad App (TestFlight)
 
-原生殼 App（SwiftUI + WKWebView），載入 https://rov.sscrov.com ，鎖定橫屏、下拉重新整理、登入狀態持久化。**伺服器就是網站本身**——以後網站更新，App 內容自動跟上，不用重新發版。
+Native shell app (SwiftUI + WKWebView) that loads https://rov.sscrov.com
+full-screen. Landscape-locked, pull-to-refresh, persistent login.
+**The server IS the website** — site updates reach the app automatically,
+no re-release needed.
 
-## 前置要求
+## Requirements
 
-1. **Xcode 15+**（App Store 安裝，約 12GB）
-2. **Apple Developer Program 帳號**（每年 US$99，[developer.apple.com](https://developer.apple.com/programs/) 註冊；TestFlight 必須付費帳號，免費帳號只能直接裝到自己機器、7 天過期）
+1. **Xcode 15+** (from the App Store, ~12GB)
+2. **Apple Developer Program account** (US$99/year,
+   [developer.apple.com](https://developer.apple.com/programs/); TestFlight
+   requires the paid account — free accounts can only side-load to your own
+   devices and expire after 7 days)
 
-## 建置步驟
+## Build & release
 
-1. `git pull` 後用 Xcode 打開 `ios/ROVTeamHub.xcodeproj`
-2. 選左側藍色專案圖示 → TARGETS `ROVTeamHub` → **Signing & Capabilities**：
-   - Team 選你的 Apple Developer 帳號（會員名或 Individual Team）
-   - Bundle Identifier 建議改成自己的，例如 `hk.ssc.rov.hub`（預設 `com.sscrov.rovteamhub`，若與他人衝突必須改）
-3. 選裝置列的 **Any iOS Device (arm64)** → 選單 **Product → Archive**
-4. Archive 完成跳出視窗 → **Distribute App** → **TestFlight & App Store** → Upload
-5. 到 [App Store Connect](https://appstoreconnect.apple.com) → 我的 App（首次要新增 App：名稱、語言、Bundle ID）→ **TestFlight** 分頁
-6. 第一次上傳後要處理一個合規問題：收到「Missing Compliance」郵件 → 回覆 App 使用標準 HTTPS 加密即可（Info.plist 已帶 `ITSAppUsesNonExemptEncryption=false`，通常自動免答）
-7. **TestFlight → 內部測試**：加自己為測試員，即刻可裝；**外部測試**：加隊員 email 或開連結，需 Apple 審核（通常 1–2 天，之後每次更新都很快）
-8. 測試員在手機安裝 **TestFlight App** → 接受邀請 → 安裝 ROV Team Hub
+1. `git pull`, then open `ios/ROVTeamHub.xcodeproj` in Xcode
+2. Select the blue project icon → TARGETS `ROVTeamHub` → **Signing &
+   Capabilities**:
+   - Team: pick your Apple Developer account
+   - Bundle Identifier: change to your own, e.g. `hk.ssc.rov.hub`
+     (default `com.sscrov.rovteamhub`; must be unique)
+3. Select **Any iOS Device (arm64)** in the device bar → **Product → Archive**
+4. When the Archive window opens → **Distribute App** →
+   **TestFlight & App Store** → Upload
+5. In [App Store Connect](https://appstoreconnect.apple.com) → My Apps
+   (first time: create the app — name, language, Bundle ID) → **TestFlight** tab
+6. First upload: answer the "Missing Compliance" email — the app uses standard
+   HTTPS encryption only (Info.plist already sets
+   `ITSAppUsesNonExemptEncryption=false`, usually auto-exempt)
+7. **TestFlight → Internal Testing**: add yourself as a tester, install
+   immediately; **External Testing**: add teammates' emails or open a public
+   link (Apple review 1–2 days once, then fast)
+8. Testers install the **TestFlight** app → accept the invite → install
 
-## 修改後更新版本
+## Push notifications (APNs)
 
-改任何東西後：把 `MARKETING_VERSION`（目前 1.0.0）遞增 → 重新 Archive → Upload。TestFlight 舊版會自動提示更新。
+The app registers for web push; tokens are reported per signed-in user and
+events (cycle approvals, part requests…) are pushed to members' devices.
 
-## 個人化推送通知（APNs）
+1. [developer.apple.com](https://developer.apple.com/account/resources/authkeys/list)
+   → Keys → **+** → enable **Apple Push Notifications service (APNs)** →
+   download the `.p8` key (one-time download) and note the **Key ID**
+2. Note your **Team ID** from the Membership page
+3. Vercel → Settings → Environment Variables, add:
+   - `APNS_KEY_ID` = Key ID
+   - `APNS_TEAM_ID` = Team ID
+   - `APNS_KEY_B64` = Base64 of the .p8 file
+     (`base64 -i AuthKey_XXXXXXXXXX.p8 | pbcopy`)
+4. Redeploy. Test on a real device (simulators don't receive remote push)
 
-App 會請求通知權限並註冊設備令牌；令牌以登入者身分上報到 `push_tokens` 表。事件發生時伺服器按用戶定向推送：
+## Updating
 
-| 事件 | 誰收到 |
-|---|---|
-| 有新的週期提案待審批 | 隊長（或老師，視層級） |
-| 你的週期已被隊長批准 | 提案人 |
-| 有週期待你最終審批 | 老師 |
-| 你的週期已獲老師核准 / 被駁回 | 提案人 |
-| 有一份新的零件需求待批准 | 老師 |
-| 你的零件申請已被批准 / 被駁回 | 申請人 |
+Bump `MARKETING_VERSION`, Archive, Upload. TestFlight prompts testers to
+update automatically.
 
-**啟用推送只需一次設定（需要付費開發者帳號）**：
+## Files
 
-1. [developer.apple.com](https://developer.apple.com/account/resources/authkeys/list) → Keys → **+** → 勾選 **Apple Push Notifications service (APNs)** → 下載 `.p8` 金鑰（只能下載一次，妥善保存），記下頁面上的 **Key ID**
-2. Membership 頁面記下 **Team ID**（10 碼）
-3. Vercel 專案 → Settings → Environment Variables，加入三個值後 **Redeploy**：
-   - `APNS_KEY_ID` = 金鑰的 Key ID
-   - `APNS_TEAM_ID` = 你的 Team ID
-   - `APNS_KEY_B64` = .p8 檔案內容的 Base64（終端機執行 `base64 -i AuthKey_XXXXXXXXXX.p8 | pbcopy` 直接複製）
-4. 測試：真機（模擬器收不到遠端推送）登入 App → 同意通知權限 → 用另一個帳號觸發事件（例如成員提案）
-
-未設定金鑰時一切正常運作，只是不會有推送（伺服器靜默跳過）。
-
-## 目錄
-
-- `ROVTeamHub/ContentView.swift` — WKWebView 殼（進度條、下拉刷新、外鏈交給 Safari）
-- `ROVTeamHub/Info.plist` — 鎖橫屏、全螢幕、免加密合規申報
-- `ROVTeamHub/Assets.xcassets` — App 圖標
+- `ROVTeamHub/ContentView.swift` — WKWebView shell (progress bar,
+  pull-to-refresh, external links open in Safari)
+- `ROVTeamHub/Info.plist` — landscape lock, fullscreen, encryption exemption
+- `ROVTeamHub/Assets.xcassets` — app icon

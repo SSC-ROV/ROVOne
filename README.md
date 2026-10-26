@@ -1,227 +1,292 @@
-# ROV 隊伍任務平台
+# ROV Team Hub
 
-給學校 ROV 團隊的開發週期、任務追蹤、日曆與裝備管理網站。
-前後端完整、單機可跑，不需要註冊任何外部服務。
+A mission-control web app for a school ROV team: development cycles, task
+tracking, calendar, parts purchasing, equipment loans and dive logs.
+Full-stack, single repo, no external services required to run locally.
 
-## 功能總覽
+The UI is bilingual (Traditional Chinese / English — switch with the
+language button, top right). The wall display board at `/display` is
+English-only.
 
-| 頁面 | 內容 |
+## Features
+
+| Page | What it does |
 |---|---|
-| 首頁 | 比賽日倒數、進行中／已逾期／本週截止統計、我的任務、近期活動 |
-| 日曆 | 月曆同時顯示任務截止與活動（例會／水測／比賽），點日期看詳情，隊長可直接新增活動 |
-| 開發週期 | 成員提案開發週期（起訖日期＋合作成員）→ 隊長審批 → 老師審批 → 進行中；任務可歸屬週期，幹部頁看每人週期統計與任務完成度 |
-| 零件採買 | 需求 → **老師審批** → 下單 → 到貨全程追蹤，含預估／實際花費統計 |
-| 設備 | 設備借用登記（誰借走、應還日、逾期變紅）、維修狀態 |
-| 水測日誌 | 每次下水的測試內容、問題、修正、待驗證事項，一鍵轉成追蹤任務 |
-| 管理（隊長） | 隊名、比賽日期、成員開戶／重設密碼、Discord 通知、iCal 訂閱 |
+| Home | Competition countdown, active / overdue / due-this-week stats, my tasks, upcoming events |
+| Calendar | Month view showing task deadlines and events (meetings / water tests / competitions); click a date for details; leaders can add events |
+| Development Cycles | Members propose cycles (date range + collaborators) → leader approval → teacher approval → active; tasks can belong to cycles; staff see per-member cycle stats and completion |
+| Parts Purchasing | Request → **teacher approval** → ordered → arrived, with estimated / actual spend stats |
+| Equipment | Loan register (who took it, due back, overdue turns red), maintenance status |
+| Dive Logs | What was tested, issues found, fixes applied, items to re-verify — one click to convert into a tracked task |
+| Admin (leader) | Team name, competition date, member accounts / password resets, notifications, iCal subscription |
+| Display board | Full-screen wall dashboard (`/display`) — dark HUD style, live clock, cycle progress, month calendar |
 
-### 開發週期的審批鏈
+### Development cycle approval chain
 
 ```
-成員提案（名稱、起訖日期、合作成員、目標）
-  → 【待隊長審批】→ 隊長核准 →【待老師審批】→ 老師核准 →【進行中】→ 標記完成 →【已完成】
-  → 隊長或老師駁回 →【已駁回】→ 提案人修改後可重新提交
-隊長自己提案：自動跳過隊長層級，直接待老師審批
-老師自己提案：直接開始
-老師也可以直接核准「待隊長審批」的提案（最終審批權）
+Member proposal (name, date range, collaborators, goal)
+  → [PENDING LEADER] → leader approves → [PENDING TEACHER] → teacher approves → [ACTIVE] → mark complete → [COMPLETED]
+  → leader or teacher rejects → [REJECTED] → proposer can edit and resubmit
+Leader's own proposal: skips the leader level, goes straight to the teacher
+Teacher's own proposal: goes live immediately
+Teachers can also directly approve anything pending leader approval (final say)
 ```
 
-任務在週期卡片內直接新增與勾選，每個週期顯示任務完成度；
-隊長與老師在週期頁底部能看到每位成員參與的週期數量統計。
+Tasks are created and ticked inside the cycle card; each cycle shows task
+completion. Leaders and teachers see per-member participation stats at the
+bottom of the cycles page.
 
-### 老師審批怎麼運作？（零件採買）
+### Claimable cycles
 
-不需要給老師帳號。零件送出後，隊長在「零件採買」頁按 **複製老師審批連結**，
-把連結用 LINE / Messenger 傳給老師；老師打開網頁就能看到申請內容，
-按「核准」或「駁回」（可留備註），結果自動寫回系統並推播到 Discord。
-每筆申請的連結都是一次性隨機 token，審完即失效。
+Leaders can post a cycle as **open for members to claim** (toggle in the
+proposal form). Claimable cycles appear in a "Claimable cycles" section for
+members, who can claim one with a single click — it then appears under their
+name and the leader gets a push notification. Leaders can choose whether a
+posted cycle counts toward their own cycle statistics.
 
-### 通知與訂閱
+### How teacher approval works (parts purchasing)
 
-- **Discord Webhook**（管理頁貼上網址 → 儲存 → 發送測試通知）：任務指派、
-  老師審批結果會自動推到頻道
-- **iCal 日曆訂閱**（管理頁複製連結）：隊員在手機／電腦日曆 App「訂閱日曆」
-  貼上，例會、水測、任務截止自動同步，不用開網站
+No teacher account needed. Once a part request is submitted, the leader clicks
+**Copy teacher approval link** on the Parts page and sends it via LINE /
+Messenger. The teacher opens the page, sees the request, and presses Approve
+or Reject (with optional note) — the result is written back automatically.
+Each request link carries a one-time random token that expires in 72 hours.
+Staff can also approve directly inside the app.
 
-## 快速開始
+### Notifications
+
+- **Microsoft Teams dashboards** (Admin → paste webhook URLs): cycle approvals,
+  parts requests, claims and member changes are pushed to Teams channels
+- **Discord webhook** (optional, Admin): task assignments and teacher
+  approval results pushed to a Discord channel
+- **Push notifications**: cycles, approvals and claims send web push to
+  team members' devices (works with the iPad app)
+- **iCal calendar subscription** (Admin → copy link): members subscribe in
+  their phone / desktop calendar app; meetings, water tests and task
+  deadlines sync automatically — no need to open the site
+
+## Display board account
+
+A dedicated kiosk account for the wall display PC:
+
+| Account | Password | Notes |
+|---|---|---|
+| `dashboard` | `123` | Logging in redirects straight to the dark English display board |
+
+Change the password on the Account page if the PC is in a shared space.
+
+## Quick start
 
 ```bash
-npm install   # 第一次才需要
-npm run dev   # 開發模式，開 http://localhost:3000
+npm install   # first time only
+npm run dev   # dev mode, opens on http://localhost:3000
 ```
 
-正式使用：
+Production:
 
 ```bash
 npm run build
-npm start     # 開 http://localhost:3000
+npm start     # serves on http://localhost:3000
 ```
 
-## 預設帳號
+## Default accounts
 
-| 帳號 | 密碼 | 角色 |
+| Account | Password | Role |
 |---|---|---|
-| `leader` | `rov2026` | 隊長 |
-| `teacher` | `rov2026` | 老師（與隊長同級最高權限） |
-| `member` | `rov2026` | 隊員（示範） |
+| `leader` | `rov2026` | Leader |
+| `teacher` | `rov2026` | Teacher (same top-level permissions as leader) |
+| `member` | `rov2026` | Member (demo) |
+| `dashboard` | `123` | Wall display — login redirects to the board |
 
-> ⚠️ 第一次登入後請立刻到「帳號」頁改密碼，並在「管理」頁替隊員開帳號、
-> 把比賽日期改成實際日期。示範任務、零件、設備可以直接刪掉。
+> ⚠️ Change these passwords immediately after first login (Accounts page),
+> create real member accounts in Admin, and set the real competition date.
+> The demo tasks, parts and equipment can be deleted.
 
-## 權限一覽
+## Permissions
 
-老師與隊長同級（皆為最高權限），差別只在定位：老師不例外地也可以免登入使用審批連結。
+Teachers and leaders share the same top-level permissions; the difference is
+positioning only. Teachers can always use the no-login approval links too.
 
-| 操作 | 隊長／老師 | 隊員 |
+| Action | Leader / Teacher | Member |
 |---|---|---|
-| 建立任務、改狀態、勾子任務、借用設備、寫日誌、申請零件 | ✅ | ✅ |
-| 編輯任務內容 | 任何任務 | 自己負責或建立的 |
-| **在系統內直接批准零件**、審批連結 | ✅ | ❌（僅連結可由老師按） |
-| 刪除任務／活動／設備、零件採買進度、修改日曆、隊伍設定、成員管理 | ✅ | ❌ |
+| Create tasks, update status, tick subtasks, borrow equipment, write dive logs, request parts | ✅ | ✅ |
+| Edit task content | Any task | Own assigned / created |
+| **Approve parts in-app**, approval links | ✅ | ❌ (link may be pressed by teacher only) |
+| Delete tasks / events / equipment, parts progress, edit calendar, team settings, member management | ✅ | ❌ |
 
-## 資料與備份（線上：Supabase）
+## Data & backup (live: Supabase)
 
-- **所有資料都在 Supabase Postgres**（不會在任何 Vercel / 瀏覽器 / 原始碼裡）
-- 備份方式（三選一）：
-  1. **開始每日自動備份**：Supabase 控制台 → 專案 → Database → Backups（Free 方案啟用後為每日，需先在後台設定；建議每週手動確認一次）
-  2. **手動備份**：控制台 Database → 下載備份（Download backup）
-  3. **命令行進階**（可寫入排程）：`pg_dump "$DATABASE_URL" > backup_$(date +%F).sql`
-- 恢復：控制台 Restore；或 `psql "$DATABASE_URL" < backup.sql`
-- ⚠️ `data/rov.db` 只是遷移前 SQLite 的舊檔，**僅適用於完全離線的舊版（階段一）部署**，與線上無關
-- 交接事項：Supabase 登入權限至少兩人知道（不要只有一個人記得）；若帳密遺失，帳號可能無法找回
+- **All data lives in Supabase Postgres** (not on Vercel, not in the browser,
+  not in the repo)
+- Backup options (any of):
+  1. **Daily automatic backups**: Supabase console → Project → Database →
+     Backups (daily once enabled; verify weekly)
+  2. **Manual**: console → Database → Download backup
+  3. **CLI**: `pg_dump "$DATABASE_URL" > backup_$(date +%F).sql`
+- Restore: console Restore; or `psql "$DATABASE_URL" < backup.sql`
+- ⚠️ Supabase Free projects **pause after 7 days of inactivity**; after 90
+  days paused the Restore button stops working. Before long holidays set up a
+  keep-alive ping (any Vercel Cron hitting the site counts as activity)
+- Handover: at least two people should hold the Supabase credentials
 
-## 平台限制與運維（重要，正式營運期間）
+## Platform limits & ops (production)
 
-| 限制 | 影響與對策 |
+| Limit | Impact & mitigation |
 |---|---|
-| Vercel Hobby 函數超時 **10 秒**（未開 Fluid Compute） | 目前 CRUD 遠低於此；**未來加檔案上傳／圖片處理／批量匯出前，務必先壓測**，否則會被 504 殺掉 |
-| Vercel Hobby Cron **每天最多 1 次** | 「截止日自動提醒」若要每小時級粒度，須升級 Pro 或改用外部免費 cron 服務打 webhook |
-| Supabase Free 專案 **7 天無活動自動暫停**；暫停超過 90 天後 Restore 按鈕失效（需手動重建新專案、URL/Key 都會變） | 假期（暑假／CNY）前先建 **keep-alive**：Vercel Cron 每日打一次網站（`/api/ical?token=...` 也算活動）；交接文件第一行寫「網站打不開 → 先去 Supabase 控制台看是否 paused → 按 Restore」 |
-| Cloudflare 目前 DNS only（灰雲，無 CDN／WAF） | Vercel 已自帶 TLS，風險低；若未來遭遇針對性濫用（如審批連結被重放），可改開橘雲代理並加規則 |
+| Vercel Hobby function timeout **10s** | Current CRUD is far below this; **load-test before adding file uploads / image processing / bulk exports** or requests will be killed at 504 |
+| Vercel Hobby cron **1 run per day** | Hourly-granularity deadline reminders need Pro or an external cron hitting a webhook |
+| Supabase Free **pauses after 7 days idle**; past 90 days paused, Restore stops working | Before holidays create a keep-alive (daily Vercel Cron hitting `/api/ical?token=...`); first line of handover doc: "site down → check Supabase console for paused → Restore" |
+| Cloudflare currently DNS only (grey cloud, no CDN/WAF) | Vercel already provides TLS; if the approval links are ever abused, switch on the orange cloud proxy with rules |
 
-## 安全備忘（已實作並驗證）
+## Security notes (implemented & verified)
 
-- 登入限流：同帳號＋IP 5 次失敗鎖 15 分鐘（`login_attempts` 表）
-- 首次登入／密碼被重設 → **強制先改密碼**才能使用（服務端攔截＋跳轉「帳號」頁）
-- 改密碼後：其他所有 session 立即失效
-- 審批連結：128-bit 隨機 token、72 小時過期、審核一次即失效（資料庫層標記）
-- 審計日誌：關鍵操作（刪除、審批、改密、重設密碼、設定變更）寫入 `audit_log`，隊長／老師可在 `/api/admin/audit-log` 查看
-- 任務樂觀鎖（`version`）：兩人同時編輯同一任務時，後寫者收到 409 提示重新整理
-- 密碼雜湊：scrypt（Node 官方參數 N=16384, r=8, p=1）＋每位使用者獨立 16-byte salt
-- 靜態檢查已通過：無 `dangerouslySetInnerHTML`（XSS 靠 React 默認轉義）、全部 SQL 參數化、Google Client Secret 與 Discord Webhook 不出現在前端 bundle／非幹部 API 回應
+- Login rate limiting: 5 failed attempts per account+IP locks 15 minutes
+  (`login_attempts` table)
+- First login / password reset → **forced password change** before use
+  (server-side intercept + redirect to the Account page)
+- Changing a password invalidates all other sessions immediately
+- Approval links: 128-bit random token, 72-hour expiry, single-use
+  (flagged at the database level)
+- Audit log: critical operations (deletes, approvals, password changes,
+  resets, settings changes) written to `audit_log`, viewable by leader /
+  teacher at `/api/admin/audit-log`
+- Optimistic locking on tasks (`version`): concurrent editors get a 409 and
+  are asked to refresh
+- Password hashing: scrypt (Node defaults N=16384, r=8, p=1) + per-user
+  16-byte salt
+- Static checks passed: no `dangerouslySetInnerHTML` (XSS escaped by React),
+  all SQL parameterised, Google Client Secret and webhook URLs never appear
+  in the client bundle or non-staff API responses
 
-
-## 部署架構（目前線上：2026-09-07）
+## Deployment architecture (current live: 2026-09-07)
 
 ```
-隊員/老師 ──> https://rov.sscrov.com（Cloudflare DNS 直連）
+Members / teachers ──> https://rov.sscrov.com (Cloudflare DNS, direct)
                   │
                   ▼
-              Vercel（Next.js 無伺服器，Hobby 免費層）
+              Vercel (Next.js serverless, Hobby free tier)
                   │
                   ▼
-   Supabase（PostgreSQL，新加坡 ap-southeast-1，Free 專案）
+   Supabase (PostgreSQL, Singapore ap-southeast-1, Free plan)
 ```
 
-- 程式碼：`github.com/lyunnamed/rov-team-hub`（private）→ push 即自動部署
-- 環境變數（Vercel Project Settings → Environment Variables）：`DATABASE_URL`
-  用 Supabase 的 **Transaction pooler** 連線（`...pooler.supabase.com:6543`，
-  必須 `prepare: false`，見 `src/lib/pg.ts`）
-- 資料與備份：全部在 Supabase（Free 方案一週無活動會暫停，控制台按一下 Restore 即恢復）；
-  `data/rov.db` 只是遷移前的舊檔，可刪
-- 本機（Mac）已不再承載網站；`com.rov.next`／`com.rov.tunnel` 兩個 LaunchAgent 與
-  Cloudflare Tunnel `rov-hub` 均已移除
+- Code: `github.com/lyunnamed/rov-team-hub` (private) → push auto-deploys
+- Environment variable (Vercel Project Settings → Environment Variables):
+  `DATABASE_URL` using Supabase's **Transaction pooler**
+  (`...pooler.supabase.com:6543`, requires `prepare: false`, see
+  `src/lib/pg.ts`)
+- Data & backup: everything in Supabase (Free plan pauses after a week of
+  inactivity — Restore in the console brings it back); `data/rov.db` is a
+  pre-migration leftover and can be deleted
+- The Mac no longer hosts the site; the `com.rov.next` / `com.rov.tunnel`
+  LaunchAgents and the Cloudflare Tunnel `rov-hub` have been removed
 
-### 首次架設步驟（供未來複製）
+### Fresh setup steps (for future reference)
 
-Supabase：建 Free 專案（新加坡）→ 用 `npm run migrate` 建表與搬資料
-（本地需 `DATABASE_URL` 環境變數）。Vercel：GitHub 匯入 repo →
-設定 `DATABASE_URL` → Deploy → 在 Cloudflare 新增 CNAME
-`rov → <vercel-dns-xxx>.vercel-dns.com`（DNS only，不要開橘雲代理）。
+Supabase: create a Free project (Singapore) → `npm run migrate` to create
+tables and move data (needs `DATABASE_URL` locally). Vercel: import the repo
+from GitHub → set `DATABASE_URL` → Deploy → add a Cloudflare CNAME
+`rov → <vercel-dns-xxx>.vercel-dns.com` (DNS only, no orange-cloud proxy).
 
-### 階段一：只在學校／隊內使用（最簡單，建議先這樣）
+### Phase 1: school / team-only (simplest, do this first)
 
-1. 找一台可以 24 小時開著的電腦（舊筆電、社辦電腦、Raspberry Pi 都行）
-2. 裝 [Node.js LTS](https://nodejs.org)（一直按下一步就好）
-3. 把整個 `rov-team-hub` 資料夾複製過去，在資料夾開終端機執行：
+1. Find a computer that can stay on 24/7 (old laptop, club room PC,
+   Raspberry Pi)
+2. Install [Node.js LTS](https://nodejs.org)
+3. Copy the whole `rov-team-hub` folder over, open a terminal in it and run:
    ```bash
    npm install
    npm run build
-   npx pm2 start "npm start" --name rov-hub   # pm2 讓它掛在背景不會關
+   npx pm2 start "npm start" --name rov-hub   # pm2 keeps it in the background
    ```
-   （pm2 第一次用要先 `npm install -g pm2`）
-4. 查這台電腦的內網 IP（macOS：系統設定→Wi-Fi→詳細資訊；Windows：`ipconfig`）
-5. 隊友連 `http://<那台電腦的IP>:3000` 就能用了
-- 注意：學校 Wi-Fi 有可能阻擋設備互連（AP 隔離），測一下隊友手機開不開得了；
-  不行的話改用手機熱點或找資訊組開通
+   (pm2 needs `npm install -g pm2` first)
+4. Find the machine's LAN IP (macOS: System Settings → Wi-Fi → Details;
+   Windows: `ipconfig`)
+5. Teammates open `http://<that-ip>:3000`
+- Note: school Wi-Fi may block device-to-device traffic (AP isolation) — test
+  with a teammate's phone; if blocked use a phone hotspot or ask IT
 
-### 階段二：校外也能連（需要「隧道」工具，免動網路設定）
+### Phase 2: access from outside school (tunnel tool)
 
-宿舍或家裡想連學校電腦，用 Cloudflare Tunnel（免費、不用申請公網 IP）：
+To reach the school PC from home, use Cloudflare Tunnel (free, no public IP
+needed):
 
 ```bash
-brew install cloudflared          # 或從官網下載 Windows 版
+brew install cloudflared          # or the Windows build from the site
 cloudflared tunnel --url http://localhost:3000
 ```
 
-會給你一個 `https://xxxx.trycloudflare.com` 網址，丟給隊友即可。
-缺點：每次重開網址會換。要固定網址，需花約 US$10/年買網域
-（Namecheap / Cloudflare Registrar）+ 設定 named tunnel（照 Cloudflare 官網教學點一點）。
+You get a `https://xxxx.trycloudflare.com` URL to share. Downside: the URL
+changes on every restart. For a fixed URL you need a domain (~US$10/year) +
+a named tunnel.
 
-ngrok 也是類似工具，免費版網址同樣會換，二選一即可。
+### Phase 3: proper hosting (when needed)
 
-### 階段三：正規部署（之後有需求再說）
+Rent a cloud VM (DigitalOcean / Hetzner / AWS Lightsail, ~US$4–6/month) +
+domain + HTTPS. The code needs no changes — it is the same commands on a
+machine that is always on.
 
-租雲端主機（DigitalOcean / Hetzner / AWS Lightsail，每月約 US$4–6）+
-綁網域 + HTTPS。程式完全不用改，只是換台永遠開機的機器跑同樣的指令。
-**不建議 Vercel / Netlify**：這個專案用 SQLite 檔案資料庫，那類平台沒有
-永久磁碟，要改成 Turso/Supabase 才行（未來想改再找我）。
+### Production checklist (long-running)
 
-### 上線檢查清單（長期營運版）
+- [x] Default passwords changed (system forces a change on first login;
+      admin resets force it too)
+- [x] Every member on their own account (Google login auto-provisions; or
+      created manually in Admin)
+- [x] Microsoft Teams dashboards configured and tested (Admin → Notifications)
+- [x] iCal subscription link sent to members (rotate anytime via Admin →
+      "Regenerate")
+- [x] Display board account (`dashboard`) for the wall PC
+- [ ] Supabase credentials known by at least two people (handover)
+- [ ] Supabase "Backups" enabled; download a backup to cloud storage monthly
+- [ ] Keep-alive: daily Vercel Cron hitting a health endpoint
+      (e.g. `/api/ical?token=...`)
 
-- [x] 預設密碼已改（系統已強制首次登入改密碼；管理員重設後同樣強制）
-- [x] 每位隊員都用自己帳號（Google 登入自動開戶；或管理頁手動開戶）
-- [x] Discord Webhook 設定並測試（管理頁 → 通知與整合）
-- [x] iCal 訂閱連結發給隊員（可隨時在管理頁「重新產生」輪換）
-- [ ] Supabase 帳號密碼至少兩人知道（交接）
-- [ ] 設定 Supabase「Backups」；每月手動下載備份一次到雲端硬碟
-- [ ] 建立 keep-alive：Vercel Cron 每日一次打健康檢查（如 `/api/ical?token=...`）
+## Tech stack
 
-## 技術棧
+Next.js 16 (App Router) · React 19 · Tailwind CSS 4 ·
+Supabase Postgres (postgres.js) · Web Push ·
+cookie session (no external auth dependency) · Vercel
 
-Next.js 16（App Router）· React 19 · Tailwind CSS 4 · better-sqlite3 ·
-原生 HTML5 拖曳 · cookie session（無外部依賴）
+## API reference (for a future native app)
 
-## API 接口文件（給未來 iPad / iPhone App）
+Everything is a JSON REST API (`/api/...`) called with the cookie session
+(iOS URLSession / WKWebView attach cookies automatically):
 
-所有功能都是 JSON REST API（`/api/...`），登入後憑 cookie session 呼叫
-（iOS 的 URLSession / WKWebView 會自動帶 cookie），未來做原生 App 直接對接即可：
-
-| 端點 | 方法 | 說明 |
+| Endpoint | Methods | Purpose |
 |---|---|---|
-| `/api/auth/login` `/logout` `/me` `/password` | POST/GET | 登入、登出、當前使用者、改密碼 |
-| `/api/auth/google/start` `/auth/google/callback` `/google/status` | GET | Google 帳號登入（OAuth）+ 是否已設定 |
-| `/api/tasks` `/api/tasks/[id]` `/api/tasks/[id]/items` `/api/items/[id]` | CRUD | 任務與子任務（可帶 `mission_id`、`cycle_id`） |
-| `/api/events` `/api/events/[id]` | CRUD | 日曆活動 |
-| `/api/cycles` `/api/cycles/[id]` | CRUD | 開發週期（`action: approve/reject/complete/resubmit`） |
-| `/api/parts` `/api/parts/[id]` | CRUD | 零件採買 |
-| `/api/approve/[token]` | GET/POST | 老師免登入審批 |
-| `/api/equipment` `/api/equipment/[id]` | CRUD | 設備借用（`action: borrow/return/maintenance`） |
-| `/api/divelogs` `/api/divelogs/[id]` | CRUD | 水測日誌 |
-| `/api/members` `/api/settings` `/api/ical?token=` | GET | 成員、設定、日曆訂閱 |
+| `/api/auth/login` `/logout` `/me` `/password` | POST/GET | Login, logout, current user, change password |
+| `/api/auth/google/start` `/auth/google/callback` `/google/status` | GET | Google (OAuth) sign-in + configured flag |
+| `/api/tasks` `/api/tasks/[id]` `/api/tasks/[id]/items` `/api/items/[id]` | CRUD | Tasks and subtasks (optional `mission_id`, `cycle_id`) |
+| `/api/events` `/api/events/[id]` | CRUD | Calendar events |
+| `/api/cycles` `/api/cycles/[id]` | CRUD | Development cycles (`action: approve/reject/complete/resubmit/claim`) |
+| `/api/parts` `/api/parts/[id]` | CRUD | Parts purchasing |
+| `/api/approve/[token]` | GET/POST | Teacher no-login approval |
+| `/api/equipment` `/api/equipment/[id]` | CRUD | Equipment loans (`action: borrow/return/maintenance`) |
+| `/api/divelogs` `/api/divelogs/[id]` | CRUD | Dive logs |
+| `/api/members` `/api/settings` `/api/ical?token=` `/api/display?token=` | GET | Members, settings, calendar feed, display board data |
+| `/api/push/...` | — | Web push subscriptions |
 
-### 登入方式
+### Sign-in methods
 
-- **Google 帳號登入（主要）**：管理頁「Google 登入」區設定
-  （Client ID／Secret／允許網域／幹部 email 清單，回呼網址複製到
-  Google Cloud Console OAuth 設定）。只允許白名單網域（如 `stu.ssc.edu.hk`），
-  首次登入自動開帳號（角色依 email 清單：leader／teacher／member）；
-  Google 應用未驗證時會出現警告畫面，按「進階 → 繼續」即可
-- **帳號密碼登入（後備）**：隊員由隊長開戶，密碼 scrypt 雜湊儲存
+- **Google account (primary)**: configured in Admin → "Google login"
+  (Client ID / Secret / allowed domains / staff email list; copy the callback
+  URL into Google Cloud Console OAuth settings). Only whitelisted domains
+  (e.g. `stu.ssc.edu.hk`) can sign in; accounts are auto-provisioned on
+  first login with the role derived from the email list. The unverified-app
+  warning screen: Advanced → Continue.
+- **Username + password (fallback)**: accounts created by the leader,
+  scrypt-hashed passwords
 
-## 之後可以加的
+## iPad / wall display app
 
-1. 截止日自動提醒（需要排程器，例如 Vercel Cron 打 API）
-2. 檔案附件上傳（接線圖、3D 列印檔）
-3. 多隊／多屆資料切換
-4. iOS / iPadOS 原生 App（直接吃上面的 API）
+`ios/` contains a SwiftUI + WKWebView shell that loads the site full-screen
+(landscape-locked, pull-to-refresh, persistent login) plus TestFlight
+instructions — see `ios/README.md`.
+
+## Ideas for later
+
+1. Automatic deadline reminders (needs a scheduler, e.g. Vercel Cron hitting
+   an API)
+2. File attachments (wiring diagrams, 3D print files)
+3. Multi-team / multi-season data switch
+4. Native iOS / iPadOS app (consuming the API above)
