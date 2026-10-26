@@ -111,11 +111,30 @@ function FullscreenButton() {
   );
 }
 
-/** 數字翻頁：字元變動時重新掛載，帶運動模糊滾入（key 變化觸發動畫） */
+/** 數字翻頁：字元變動時，舊字模糊下墜、新字滾入（Split-flap 風格） */
 function FlipDigit({ char }: { char: string }) {
+  const [shown, setShown] = useState(char);
+  const [leaving, setLeaving] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (char !== shown) {
+      setLeaving(shown);
+      setShown(char);
+      const t = setTimeout(() => setLeaving(null), 300);
+      return () => clearTimeout(t);
+    }
+  }, [char, shown]);
+
   return (
-    <span className="digit-flip inline-block" key={char}>
-      {char}
+    <span className="digit-box">
+      {leaving !== null && (
+        <span key={`l${leaving}`} className="digit-leave">
+          {leaving}
+        </span>
+      )}
+      <span key={shown} className="digit-enter">
+        {shown}
+      </span>
     </span>
   );
 }

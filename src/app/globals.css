@@ -310,16 +310,56 @@ summary {
 }
 
 /* 時鐘數字翻頁：變動時新數字帶運動模糊滾入（Split-flap 風格） */
-.board-root .digit-flip {
+/* 時鐘數字翻頁：舊字模糊下墜、新字滾入（Split-flap 風格） */
+.board-root .digit-box {
+  position: relative;
   display: inline-block;
-  animation: digit-flip 0.26s cubic-bezier(0.2, 0.7, 0.3, 1);
+  width: 0.6em;
+  height: 1em;
+  text-align: center;
 }
-@keyframes digit-flip {
+.board-root .digit-enter {
+  position: absolute;
+  inset: 0;
+  animation: digit-in 0.28s cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+.board-root .digit-leave {
+  position: absolute;
+  inset: 0;
+  animation: digit-out 0.28s ease-in forwards;
+}
+@keyframes digit-in {
   0% {
-    transform: translateY(-0.3em);
+    transform: translateY(-36%);
     opacity: 0;
-    filter: blur(9px);
+    filter: blur(8px);
   }
+  60% {
+    filter: blur(1.5px);
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+@keyframes digit-out {
+  0% {
+    transform: none;
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(34%);
+    opacity: 0;
+    filter: blur(6px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .board-root .digit-enter,
+  .board-root .digit-leave {
+    animation: none;
+  }
+}
   55% {
     filter: blur(2px);
   }
