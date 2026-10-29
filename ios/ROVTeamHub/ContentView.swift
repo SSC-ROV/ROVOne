@@ -4,7 +4,7 @@ import WebKit
 /// 網站狀態：載入進度
 final class WebViewModel: ObservableObject {
     @Published var progress: Double = 1
-    let home = URL(string: "https://rov.sscrov.com")!
+    let home = URL(string: "https://iengineer.cc.cd")!
 }
 
 /// 原生 ↔ 網頁橋：把 APNs 設備令牌交給頁面（頁面再以登入者身分上報伺服器）

@@ -4,6 +4,7 @@ import I18nProvider from "@/lib/i18n";
 import SubteamsProvider from "@/lib/subteams";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://iengineer.cc.cd"),
   title: "ROV 隊伍任務平台",
   description: "ROV 團隊的開發週期、任務追蹤、時間規劃與裝備管理",
   appleWebApp: {

@@ -1,6 +1,6 @@
 # ROV Team Hub — iPad App (TestFlight)
 
-Native shell app (SwiftUI + WKWebView) that loads https://rov.sscrov.com
+Native shell app (SwiftUI + WKWebView) that loads https://iengineer.cc.cd
 full-screen. Landscape-locked, pull-to-refresh, persistent login.
 **The server IS the website** — site updates reach the app automatically,
 no re-release needed.

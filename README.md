@@ -161,7 +161,7 @@ positioning only. Teachers can always use the no-login approval links too.
 ## Deployment architecture (current live: 2026-09-07)
 
 ```
-Members / teachers ──> https://rov.sscrov.com (Cloudflare DNS, direct)
+Members / teachers ──> https://iengineer.cc.cd (Cloudflare DNS, direct)
                   │
                   ▼
               Vercel (Next.js serverless, Hobby free tier)

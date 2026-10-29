@@ -117,7 +117,7 @@ export async function testWebhook(
         adaptiveCardMessage(
           "🔔 ROV 任務平台測試通知",
           "設定成功，之後審批事件會以卡片形式推到這裡。",
-          "https://rov.sscrov.com"
+          "https://iengineer.cc.cd"
         ),
       ],
       15000
