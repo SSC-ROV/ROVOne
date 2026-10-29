@@ -2,6 +2,7 @@
 import { useI18n } from "@/lib/i18n";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 
 export default function ApproveActions({ token }: { token: string }) {
   const { t } = useI18n();
@@ -43,20 +44,12 @@ export default function ApproveActions({ token }: { token: string }) {
         <p className="rounded-lg border border-rose-500/30 bg-red-50 px-3 py-2 text-sm text-[#eb5757]">{error}</p>
       )}
       <div className="grid grid-cols-2 gap-3">
-        <button
-          onClick={() => decide("approved")}
-          disabled={busy !== null}
-          className="rounded-lg bg-[#0f7b6c] py-2.5 text-sm font-semibold text-white transition-colors duration-150 hover:bg-[#0c685b] disabled:opacity-50"
-        >
+        <Button type="button" onClick={() => decide("approved")} disabled={busy !== null} className="bg-[#00c875] text-white hover:bg-[#00a861]">
           {busy === "approved" ? t("送出中…") : t("✓ 核准")}
-        </button>
-        <button
-          onClick={() => decide("rejected")}
-          disabled={busy !== null}
-          className="rounded-lg border border-rose-500/50 py-2.5 text-sm font-semibold text-[#eb5757] transition hover:bg-red-50 disabled:opacity-50"
-        >
+        </Button>
+        <Button type="button" variant="destructive" onClick={() => decide("rejected")} disabled={busy !== null}>
           {busy === "rejected" ? t("送出中…") : t("✕ 駁回")}
-        </button>
+        </Button>
       </div>
     </div>
   );

@@ -5,16 +5,21 @@ import { isStaff } from "@/lib/roles";
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
-import { BTN, EQUIPMENT_CATEGORIES, INPUT_CLS } from "@/lib/ui";
+import { BTN, EQUIPMENT_CATEGORIES, INPUT_CLS, SELECT_CLS } from "@/lib/ui";
 import { fmtMD, todayStr } from "@/lib/date";
 import { useDialogs } from "@/components/ui/Dialogs";
+import { PageEmpty, PageError, PageLoading } from "@/components/PageState";
+import { BoardGroup } from "@/components/board/BoardGroup";
+import { StatusCell } from "@/components/board/ColorCell";
+import { PersonCell } from "@/components/board/PersonCell";
+import { tt } from "@/lib/i18n-core";
 import type { Equipment, Me } from "@/lib/types";
 
-const STATUS_STYLE: Record<string, { label: string; chip: string }> = {
-  available: { label: "可借用", chip: "bg-green-50 text-[#0f7b6c] border-emerald-200" },
-  borrowed: { label: "借出中", chip: "bg-yellow-50 text-amber-700 border-amber-200" },
-  maintenance: { label: "維修中", chip: "bg-red-50 text-[#eb5757] border-rose-200" },
-};
+const STATUS_OPTIONS = [
+  { value: "available", label: "可借用", color: "#00c875" },
+  { value: "borrowed", label: "借出中", color: "#fdab3d" },
+  { value: "maintenance", label: "維修中", color: "#df2f4a" },
+] as const;
 
 export default function EquipmentPage() {
   const { t } = useI18n();
@@ -25,6 +30,8 @@ export default function EquipmentPage() {
   const [category, setCategory] = useState("其他");
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
+  const [fStatus, setFStatus] = useState("all");
+  const [fCategory, setFCategory] = useState("all");
 
   async function load() {
     const [e, u] = await Promise.all([
@@ -40,51 +47,52 @@ export default function EquipmentPage() {
     load().catch((err: Error) => setError(err.message));
   }, []);
 
-  if (error) {
-    return (
-      <p className="rounded-xl border border-rose-500/30 bg-red-50 p-4 text-sm text-[#eb5757]">{error}</p>
-    );
-  }
-  if (!equipment || !me) {
-    return <p className="py-20 text-center text-sm text-ink-tertiary">{t("載入中…")}</p>;
-  }
+  if (error) return <PageError message={error} />;
+  if (!equipment || !me) return <PageLoading label={t("載入中…")} />;
   const meId = me.id;
   const meName = me.display_name;
+  const staff = isStaff(me.role);
 
-  async function act(e: Equipment, action: string) {
-    const apply = (patch: Partial<Equipment>) =>
-      setEquipment((prev) => prev!.map((x) => (x.id === e.id ? { ...x, ...patch } : x)));
-    // 樂觀：先改畫面
-    if (action === "borrow") apply({ status: "borrowed", borrower_id: meId, borrower_name: meName, borrowed_at: null, due_return: null });
-    if (action === "return") apply({ status: "available", borrower_id: null, borrower_name: null, borrowed_at: null, due_return: null });
-    if (action === "maintenance") apply({ status: e.status === "maintenance" ? "available" : "maintenance", borrower_id: null, borrower_name: null, borrowed_at: null, due_return: null });
+  async function act(item: Equipment, action: string) {
+    const snapshot = equipment;
+    const patchRow = (patch: Partial<Equipment>) =>
+      setEquipment((prev) => prev!.map((x) => (x.id === item.id ? { ...x, ...patch } : x)));
     try {
       if (action === "borrow") {
         const due = await prompt({
-          title: `${t("借用「")}${e.name}${t("」")}`,
+          title: `${t("借用「")}${item.name}${t("」")}`,
           label: t("預計歸還日（留空表示未定）"),
           type: "date",
         });
         if (due === null) return;
-        await api(`/api/equipment/${e.id}`, {
+        patchRow({ status: "borrowed", borrower_id: meId, borrower_name: meName, borrowed_at: null, due_return: due || null });
+        await api(`/api/equipment/${item.id}`, {
           method: "PATCH",
           body: JSON.stringify({ action: "borrow", due_return: due || undefined }),
         });
-        toast(t("已登記借用") + `「${e.name}」` + t("，記得按時歸還！"));
+        toast(t("已登記借用") + `「${item.name}」` + t("，記得按時歸還！"));
       } else if (action === "return") {
         const ok = await confirm({
-          title: `${t("歸還「")}${e.name}${t("」？")}`,
+          title: `${t("歸還「")}${item.name}${t("」？")}`,
           confirmText: t("歸還"),
         });
         if (!ok) return;
-        await api(`/api/equipment/${e.id}`, {
+        patchRow({ status: "available", borrower_id: null, borrower_name: null, borrowed_at: null, due_return: null });
+        await api(`/api/equipment/${item.id}`, {
           method: "PATCH",
           body: JSON.stringify({ action: "return" }),
         });
         toast(t("已歸還，謝謝！"));
       } else if (action === "maintenance") {
-        const goingFix = e.status === "maintenance";
-        await api(`/api/equipment/${e.id}`, {
+        const goingFix = item.status === "maintenance";
+        patchRow({
+          status: goingFix ? "available" : "maintenance",
+          borrower_id: null,
+          borrower_name: null,
+          borrowed_at: null,
+          due_return: null,
+        });
+        await api(`/api/equipment/${item.id}`, {
           method: "PATCH",
           body: JSON.stringify({ action: "maintenance" }),
         });
@@ -92,6 +100,7 @@ export default function EquipmentPage() {
       }
       await load();
     } catch (err) {
+      setEquipment(snapshot);
       toast(t((err as Error).message), "err");
     }
   }
@@ -127,69 +136,126 @@ export default function EquipmentPage() {
     }
   }
 
+  function onEquipmentStatus(item: Equipment, next: string) {
+    if (next === item.status) return;
+    if (next === "borrowed") {
+      if (item.status === "available") {
+        act(item, "borrow");
+        return;
+      }
+      toast(tt("設備目前無法借用", "This item can't be borrowed right now"), "err");
+      return;
+    }
+    if (next === "available" && item.status === "borrowed") {
+      act(item, "return");
+      return;
+    }
+    if (next === "maintenance" || (next === "available" && item.status === "maintenance")) {
+      if (!staff) {
+        toast(tt("只有隊長或老師可以調整維修狀態", "Only a leader or teacher can change repair status"), "err");
+        return;
+      }
+      if (item.status === "borrowed") {
+        toast(tt("先歸還再標記維修", "Return it before sending it for repair"), "err");
+        return;
+      }
+      act(item, "maintenance");
+      return;
+    }
+    toast(tt("這個狀態現在不能改", "That status can't be set from here"), "err");
+  }
+
+  function canEditStatus(item: Equipment) {
+    if (item.status === "available") return true;
+    if (item.status === "borrowed") return staff || item.borrower_id === meId;
+    return staff;
+  }
+
   const borrowed = equipment.filter((e) => e.status === "borrowed");
+  const statusOptions = STATUS_OPTIONS.map((item) => ({ ...item, label: t(item.label) }));
+  const visible = equipment.filter(
+    (e) => (fStatus === "all" || e.status === fStatus) && (fCategory === "all" || e.category === fCategory)
+  );
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-lg font-bold">{t("設備借用")}</h1>
+        <h1 className="board-title">{t("設備借用")}</h1>
         <span className="text-sm text-ink-tertiary">
           {t("目前借出")} {borrowed.length} {t("項；借用請登記，歸還請按「歸還」")}
         </span>
+        <select className={`${SELECT_CLS} ml-auto w-32`} value={fStatus} onChange={(e) => setFStatus(e.target.value)}>
+          <option value="all">{t("全部狀態")}</option>
+          <option value="available">{t("可借用")}</option>
+          <option value="borrowed">{t("借出中")}</option>
+          <option value="maintenance">{t("維修中")}</option>
+        </select>
+        <select className={`${SELECT_CLS} w-32`} value={fCategory} onChange={(e) => setFCategory(e.target.value)}>
+          <option value="all">{t("全部分類")}</option>
+          {EQUIPMENT_CATEGORIES.map((c) => (
+            <option key={c} value={c}>{t(c)}</option>
+          ))}
+        </select>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-hairline bg-surface-1">
-        <table className="w-full text-sm">
+      <BoardGroup title={t("設備")} color="#579bfc" count={visible.length}>
+        <table className="board-table">
           <thead>
-            <tr className="text-left text-xs text-ink-tertiary">
-              <th className="px-4 py-3 font-medium">{t("設備")}</th>
-              <th className="px-4 py-3 font-medium">{t("分類")}</th>
-              <th className="px-4 py-3 font-medium">{t("狀態")}</th>
-              <th className="px-4 py-3 font-medium">{t("借用人")}</th>
-              <th className="px-4 py-3 font-medium">{t("應還日")}</th>
-              <th className="px-4 py-3 font-medium">{t("操作")}</th>
+            <tr>
+              <th>{t("設備")}</th>
+              <th>{t("分類")}</th>
+              <th className="color-cell">{t("狀態")}</th>
+              <th>{t("借用人")}</th>
+              <th>{t("應還日")}</th>
+              <th>{t("操作")}</th>
             </tr>
           </thead>
           <tbody>
-            {equipment.map((e) => {
-              const st = STATUS_STYLE[e.status];
+            {visible.map((e) => {
               const overdue =
                 e.status === "borrowed" && e.due_return && e.due_return < todayStr();
               return (
-                <tr key={e.id} className="border-t border-hairline/60">
-                  <td className="px-4 py-3">
-                    {e.name}
-                    {e.note && <p className="text-xs text-ink-tertiary">{e.note}</p>}
+                <tr key={e.id}>
+                  <td>
+                    <div className="whitespace-normal py-1">
+                      <div>{e.name}</div>
+                      {e.note && <p className="text-xs text-muted-foreground">{e.note}</p>}
+                    </div>
                   </td>
-                  <td className="px-4 py-3 text-ink-subtle">{t(e.category)}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs ${st.chip}`}>
-                      {t(st.label)}
-                    </span>
+                  <td>{t(e.category)}</td>
+                  <td className="color-cell">
+                    <StatusCell
+                      value={e.status}
+                      options={statusOptions}
+                      disabled={!canEditStatus(e)}
+                      onChange={(value) => onEquipmentStatus(e, value)}
+                    />
                   </td>
-                  <td className="px-4 py-3">{e.borrower_name ?? <span className="text-ink-tertiary">—</span>}</td>
-                  <td className={`px-4 py-3 tabular-nums ${overdue ? "text-rose-400" : "text-ink-subtle"}`}>
+                  <td>
+                    <PersonCell name={e.borrower_name} />
+                  </td>
+                  <td className={`tabular-nums ${overdue ? "text-rose-400" : ""}`}>
                     {e.due_return ? (overdue ? t("逾期 ") : "") + fmtMD(e.due_return) : "—"}
                   </td>
-                  <td className="px-4 py-3">
+                  <td>
                     <div className="flex gap-3 text-xs">
                       {e.status === "available" && (
-                        <button className="text-[#2383a5] hover:underline" onClick={() => act(e, "borrow")}>
+                        <button type="button" className="text-primary hover:underline" onClick={() => act(e, "borrow")}>
                           {t("借用")}
                         </button>
                       )}
                       {e.status === "borrowed" && (isStaff(me.role) || e.borrower_id === me.id) && (
-                        <button className="text-emerald-600 hover:underline" onClick={() => act(e, "return")}>
+                        <button type="button" className="text-emerald-600 hover:underline" onClick={() => act(e, "return")}>
                           {t("歸還")}
                         </button>
                       )}
                       {isStaff(me.role) && e.status !== "borrowed" && (
-                        <button className="text-ink-subtle hover:underline" onClick={() => act(e, "maintenance")}>
+                        <button type="button" className="text-muted-foreground hover:underline" onClick={() => act(e, "maintenance")}>
                           {e.status === "maintenance" ? t("修好了") : t("送修")}
                         </button>
                       )}
                       {isStaff(me.role) && (
-                        <button className="text-ink-tertiary hover:text-rose-400" onClick={() => remove(e)}>
+                        <button type="button" className="text-muted-foreground hover:text-rose-400" onClick={() => remove(e)}>
                           {t("刪除")}
                         </button>
                       )}
@@ -198,16 +264,18 @@ export default function EquipmentPage() {
                 </tr>
               );
             })}
-            {equipment.length === 0 && (
+            {visible.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-12 text-center text-ink-tertiary">
-                  {t("還沒有登記設備")}
+                <td colSpan={6} className="px-4 py-4">
+                  <PageEmpty>
+                    {equipment.length === 0 ? t("還沒有登記設備") : t("沒有符合的結果")}
+                  </PageEmpty>
                 </td>
               </tr>
             )}
           </tbody>
         </table>
-      </div>
+      </BoardGroup>
 
       {isStaff(me.role) && (
         <form onSubmit={addEquipment} className="grid gap-3 rounded-xl border border-hairline bg-surface-1 p-5 sm:grid-cols-[1fr_10rem_1fr_auto]">

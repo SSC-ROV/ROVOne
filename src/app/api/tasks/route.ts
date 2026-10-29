@@ -11,7 +11,7 @@ export async function GET() {
   const rows = await sql`
     SELECT t.*, u.display_name AS assignee_name
     FROM tasks t LEFT JOIN users u ON u.id = t.assignee_id
-    ORDER BY t.id`;
+    ORDER BY t.sort_order, t.id`;
   const items = await sql`
     SELECT * FROM checklist_items ORDER BY sort_order, id`;
   const byTask = new Map<number, ChecklistItem[]>();

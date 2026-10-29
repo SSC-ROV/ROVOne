@@ -5,6 +5,7 @@ import Navbar from "@/components/Navbar";
 import type { Me } from "@/lib/types";
 import DialogProvider from "@/components/ui/Dialogs";
 import PasswordChangedGuard from "@/components/PasswordChangedGuard";
+import CommandPalette from "@/components/CommandPalette";
 
 export default async function AppLayout({
   children,
@@ -17,12 +18,10 @@ export default async function AppLayout({
   return (
     <DialogProvider>
       <PasswordChangedGuard />
-      <div className="flex min-h-screen flex-col">
-        <Navbar user={user as Me} teamName={settings.team_name} />
-        <main className="app-main mx-auto w-full max-w-7xl flex-1 px-4 py-6">
-          {children}
-        </main>
-      </div>
+      <CommandPalette />
+      <Navbar user={user as Me} teamName={settings.team_name}>
+        {children}
+      </Navbar>
     </DialogProvider>
   );
 }

@@ -9,7 +9,9 @@ import {
   useRef,
   useState,
 } from "react";
-import { BTN, BTN_GHOST, INPUT_CLS } from "@/lib/ui";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 
 export type ConfirmOpts = {
   title: string;
@@ -95,20 +97,17 @@ export default function DialogProvider({
             </p>
           )}
           <div className="mt-5 flex justify-end gap-2">
-            <button className={BTN_GHOST} onClick={() => closeConfirm(false)}>
+            <Button type="button" variant="ghost" onClick={() => closeConfirm(false)}>
               {confirmState.cancelText ?? t("取消")}
-            </button>
-            <button
-              className={
-                confirmState.danger
-                  ? "rounded-lg bg-[#eb5757] px-4 py-2 text-sm font-medium text-white transition-colors duration-150 hover:bg-[#d94a4a]"
-                  : BTN
-              }
+            </Button>
+            <Button
+              type="button"
+              variant={confirmState.danger ? "destructive" : "default"}
               onClick={() => closeConfirm(true)}
-              autoFocus
+              data-autofocus=""
             >
               {confirmState.confirmText ?? t("確定")}
-            </button>
+            </Button>
           </div>
         </Modal>
       )}
@@ -117,24 +116,33 @@ export default function DialogProvider({
         <PromptModal opts={promptState} onClose={closePrompt} />
       )}
 
-      <div className="pointer-events-none fixed bottom-5 right-5 z-[70] flex w-80 flex-col gap-2">
-        {toasts.map((t) => (
+      <div className="pointer-events-none fixed right-5 bottom-24 z-[70] flex w-80 flex-col gap-2 sm:bottom-5">
+        {toasts.map((item) => (
           <div
-            key={t.id}
+            key={item.id}
+            role="status"
             className={`pointer-events-auto rounded-xl border px-4 py-3 text-sm shadow-xl ${
-              t.kind === "ok"
-                ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-200"
-                : t.kind === "err"
-                  ? "border-rose-500/30 bg-rose-500/15 text-rose-200"
+              item.kind === "ok"
+                ? "border-success/30 bg-success/10 text-success"
+                : item.kind === "err"
+                  ? "border-danger/30 bg-danger/10 text-danger"
                   : "border-hairline bg-surface-1 shadow-md text-ink"
             }`}
           >
-            {t.msg}
+            {item.msg}
           </div>
         ))}
       </div>
     </DialogCtx.Provider>
   );
+}
+
+function focusableIn(root: HTMLElement) {
+  return Array.from(
+    root.querySelectorAll<HTMLElement>(
+      'button, input, select, textarea, a[href], [tabindex]:not([tabindex="-1"])'
+    )
+  ).filter((el) => !el.hasAttribute("disabled"));
 }
 
 function Modal({
@@ -144,24 +152,53 @@ function Modal({
   children: React.ReactNode;
   onClose: () => void;
 }) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const previous = useRef<HTMLElement | null>(null);
+
   useEffect(() => {
+    previous.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const panel = panelRef.current;
+    const items = panel ? focusableIn(panel) : [];
+    const preferred = panel?.querySelector<HTMLElement>("[data-autofocus]") ?? items[0];
+    preferred?.focus();
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
+      if (e.key !== "Tab" || !panel) return;
+      const list = focusableIn(panel);
+      if (list.length === 0) {
+        e.preventDefault();
+        return;
+      }
+      const first = list[0];
+      const last = list[list.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     }
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      previous.current?.focus();
+    };
   }, [onClose]);
   return (
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4"
       onClick={onClose}
     >
-      <div
-        className="w-full max-w-sm rounded-lg border border-hairline bg-surface-1 p-6 shadow-lg"
+      <Card
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        className="w-full max-w-sm shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
-        {children}
-      </div>
+        <CardContent>{children}</CardContent>
+      </Card>
     </div>
   );
 }
@@ -179,8 +216,8 @@ function PromptModal({
     <Modal onClose={() => onClose(null)}>
       <h3 className="text-lg font-bold">{opts.title}</h3>
       {opts.label && <p className="mt-2 text-sm text-ink-subtle">{opts.label}</p>}
-      <input
-        className={`${INPUT_CLS} mt-3`}
+      <Input
+        className="mt-3"
         type={opts.type ?? "text"}
         value={value}
         placeholder={opts.placeholder}
@@ -188,15 +225,15 @@ function PromptModal({
         onKeyDown={(e) => {
           if (e.key === "Enter") onClose(value);
         }}
-        autoFocus
+        data-autofocus=""
       />
       <div className="mt-5 flex justify-end gap-2">
-        <button className={BTN_GHOST} onClick={() => onClose(null)}>
+        <Button type="button" variant="ghost" onClick={() => onClose(null)}>
           {t("取消")}
-        </button>
-        <button className={BTN} onClick={() => onClose(value)}>
+        </Button>
+        <Button type="button" onClick={() => onClose(value)}>
           {t("確定")}
-        </button>
+        </Button>
       </div>
     </Modal>
   );

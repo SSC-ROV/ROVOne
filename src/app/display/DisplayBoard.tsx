@@ -169,6 +169,15 @@ export default function DisplayBoard({
   const [sortBy, setSortBy] = useState<"due" | "progress">("due");
   const [now, setNow] = useState<Date | null>(null);
 
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("rov_theme");
+      if (saved === "light" || saved === "dark") setMode(saved);
+    } catch {
+      /* keep the dark default */
+    }
+  }, []);
+
   // 時鐘每秒
   useEffect(() => {
     setNow(new Date());
@@ -243,68 +252,6 @@ export default function DisplayBoard({
     seasonPct = Math.min(100, Math.max(0, Math.round((daysBetween(start, today) / total) * 100)));
   }
   const compDays = compDate ? daysBetween(today, compDate) : null;
-
-  // 最近的三個進行中任務（依截止日排序）
-  const recentTasks = [...active]
-    .sort((a, b) => a.end_date.localeCompare(b.end_date))
-    .slice(0, 3);
-
-  const cycleCard = (c: (typeof data.cycles)[number]) => {
-    const totalDays = Math.max(1, daysBetween(c.start_date, c.end_date));
-    const elapsed = Math.min(totalDays, Math.max(0, daysBetween(c.start_date, today)));
-    const elapsedPct = Math.round((elapsed / totalDays) * 100);
-    const endDays = daysBetween(today, c.end_date);
-    const statusColor =
-      endDays < 0 || endDays === 0 ? "var(--b-red)" : endDays <= 3 ? "var(--b-amber)" : "var(--b-green)";
-    const statusText =
-      endDays < 0 ? "Overdue" : endDays === 0 ? "Due today" : endDays <= 3 ? "Due soon" : "On track";
-    const rel =
-      endDays < 0
-        ? `${Math.abs(endDays)}d overdue`
-        : endDays === 0
-          ? "Due today"
-          : `${endDays} day${endDays === 1 ? "" : "s"} to deadline`;
-    const taskPct = c.total > 0 ? Math.round((c.done / c.total) * 100) : 0;
-    const bar = endDays < 0 ? "var(--b-red)" : endDays <= 3 ? "var(--b-amber)" : "var(--b-green)";
-    return (
-      <div key={c.id} className="b-task rounded-lg border border-[var(--b-line)] bg-[var(--b-surface)] p-5 transition-all duration-200">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <h3 className="text-[19.5px] leading-snug text-[var(--b-text)]">{fixTitle(c.title)}</h3>
-            <p className="mt-1 text-[14.5px] text-[var(--b-text-2)]">
-              {fmtDayMon(c.start_date)} → {fmtDayMon(c.end_date)} · {c.members.length} member
-              {c.members.length === 1 ? "" : "s"}
-            </p>
-            {c.members.length > 0 && (
-              <p className="text-[14.5px] text-[var(--b-text-2)]">
-                {c.members.map((m) => m.replace(/\([^)]*\)\s*/g, "").trim()).join(" · ")}
-              </p>
-            )}
-          </div>
-          <div className="shrink-0 text-right">
-            <span className="b-chip" style={{ "--ev-color": statusColor } as React.CSSProperties}>
-              {statusText}
-            </span>
-            <div className={`mt-1 text-[26px] leading-tight ${endDays === 0 || endDays < 0 ? "italic text-[var(--b-red)]" : "text-[var(--b-text)]"}`}>
-              {rel}
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-3 h-[3px] rounded-full bg-[var(--b-surface-2)]">
-          <div className="h-full rounded-full" style={{ width: `${elapsedPct}%`, background: bar }} />
-        </div>
-
-        {c.total > 0 && (
-          <div className="mt-3 flex items-center justify-end">
-            <span className="text-[14.5px] text-[var(--b-text-2)]">
-              Subtasks {c.done}/{c.total}
-            </span>
-          </div>
-        )}
-      </div>
-    );
-  };
 
   return (
     <div data-mode={mode} className="board-root min-h-screen transition-colors duration-300 min-[1100px]:flex min-[1100px]:h-screen min-[1100px]:flex-col min-[1100px]:overflow-hidden" style={{ padding: "24px 28px" }}>
@@ -398,7 +345,33 @@ export default function DisplayBoard({
             {taskCards.length === 0 && (
               <p className="py-10 text-center text-[15.5px] text-[var(--b-text-3)]">No active tasks</p>
             )}
-            {taskCards.map(cycleCard)}
+            <table className="board-table">
+              <thead>
+                <tr>
+                  <th>Task</th>
+                  <th className="color-cell">Status</th>
+                  <th>Due</th>
+                  <th>Progress</th>
+                </tr>
+              </thead>
+              <tbody>
+                {taskCards.map((c) => {
+                  const endDays = daysBetween(today, c.end_date);
+                  const color = endDays < 0 ? "#df2f4a" : endDays <= 3 ? "#fdab3d" : "#00c875";
+                  const label = endDays < 0 ? "Overdue" : endDays === 0 ? "Due today" : endDays <= 3 ? "Due soon" : "On track";
+                  return (
+                    <tr key={c.id}>
+                      <td>{fixTitle(c.title)}</td>
+                      <td className="color-cell">
+                        <span className="flex h-9 items-center justify-center text-sm text-white" style={{ background: color }}>{label}</span>
+                      </td>
+                      <td>{fmtDayMon(c.end_date)}</td>
+                      <td>{c.done}/{c.total}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </section>
       </div>

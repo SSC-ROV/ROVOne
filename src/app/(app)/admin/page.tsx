@@ -6,9 +6,22 @@ import { isStaff } from "@/lib/roles";
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
-import { BTN, BTN_GHOST, INPUT_CLS, subteamLabel } from "@/lib/ui";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useDialogs } from "@/components/ui/Dialogs";
+import { PageEmpty, PageError, PageLoading } from "@/components/PageState";
 import type { Me, Member, Settings } from "@/lib/types";
+
+type AuditRow = {
+  id: number;
+  at: string;
+  user_name: string | null;
+  action: string;
+  target: string | null;
+  detail: string | null;
+};
 
 type AdminSettings = Settings & {
   discord_webhook: string;
@@ -57,12 +70,14 @@ export default function AdminPage() {
 
   const [resetId, setResetId] = useState<number | null>(null);
   const [resetPw, setResetPw] = useState("");
+  const [logs, setLogs] = useState<AuditRow[]>([]);
 
   async function load() {
-    const [u, s, m] = await Promise.all([
+    const [u, s, m, a] = await Promise.all([
       api<{ user: Me | null }>("/api/auth/me"),
       api<AdminSettings>("/api/admin/settings"),
       api<{ members: Member[] }>("/api/members"),
+      api<{ logs: AuditRow[] }>("/api/admin/audit-log").catch(() => ({ logs: [] as AuditRow[] })),
     ]);
     setMe(u.user);
     setSettings(s);
@@ -79,6 +94,7 @@ export default function AdminPage() {
     setGoogleLeaderEmails(s.google_leader_emails ?? "");
     setGoogleTeacherEmails(s.google_teacher_emails ?? "");
     setMembers(m.members);
+    setLogs(a.logs ?? []);
     setStList(JSON.parse(JSON.stringify(s.subteams ?? [])));
   }
 
@@ -86,19 +102,11 @@ export default function AdminPage() {
     load().catch((err: Error) => setError(err.message));
   }, []);
 
-  if (error) {
-    return (
-      <p className="rounded-xl border border-rose-500/30 bg-red-50 p-4 text-sm text-[#eb5757]">
-        {error}
-      </p>
-    );
-  }
-  if (!me || !settings) {
-    return <p className="py-20 text-center text-sm text-ink-tertiary">{t("載入中…")}</p>;
-  }
+  if (error) return <PageError message={error} />;
+  if (!me || !settings) return <PageLoading label={t("載入中…")} />;
   if (!isStaff(me.role)) {
     return (
-      <div className="rounded-xl border border-hairline bg-surface-1 p-10 text-center">
+      <div className="rounded-[16px] border border-border bg-card p-10 text-center">
         <p className="text-lg font-bold">{t("此頁面僅限隊長與老師使用")}</p>
         <p className="mt-2 text-sm text-ink-subtle">
           {t("需要調整隊伍設定或成員時，請聯絡隊長。")}
@@ -151,7 +159,7 @@ export default function AdminPage() {
     try {
       const r = await api<{ sent: boolean; reason?: string; status?: number | null }>("/api/admin/settings/test-notify", {
         method: "POST",
-        body: JSON.stringify({ webhook }),
+        body: JSON.stringify({ webhook: wcTeacherCycle }),
       });
       if (r.sent) {
         toast(t("✔ 測試成功！查看 Teams 頻道是否有訊息（Power Automate 可能需等 5–15 秒）"), "ok");
@@ -194,6 +202,26 @@ export default function AdminPage() {
       toast(t("看板連結已複製！貼到 Raspberry Pi 的瀏覽器即可長期顯示"));
     } catch {
       await prompt({ title: "複製這個看板連結", initial: url });
+    }
+  }
+
+  async function rotateIcal() {
+    const ok = await confirm({
+      title: t("重新產生訂閱連結"),
+      message: t("舊的訂閱連結會立刻失效。"),
+      confirmText: t("確定"),
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await api("/api/admin/settings", {
+        method: "PUT",
+        body: JSON.stringify({ rotate_ical: true }),
+      });
+      toast(t("已重新產生"));
+      load();
+    } catch (err) {
+      toast(t((err as Error).message), "err");
     }
   }
 
@@ -303,20 +331,19 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-lg font-bold">{t("管理")}（{t("隊長與老師")}）</h1>
+      <h1 className="board-title">{t("管理")}（{t("隊長與老師")}）</h1>
       {msg && (
         <p className="rounded-lg border border-emerald-500/30 bg-green-50 px-3 py-2 text-sm text-emerald-600">
           {msg}
         </p>
       )}
 
-      <section className="rounded-xl border border-hairline bg-surface-1 p-5">
+      <Card><CardContent>
         <h2 className="mb-3 font-bold">{t("隊伍設定")}</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <label className="mb-1 block text-sm text-ink-subtle">{t("隊伍名稱")}</label>
-            <input
-              className={INPUT_CLS}
+            <Input
               value={teamName}
               onChange={(e) => setTeamName(e.target.value)}
             />
@@ -325,24 +352,29 @@ export default function AdminPage() {
             <label className="mb-1 block text-sm text-ink-subtle">
               {t("比賽日期（首頁倒數用）")}
             </label>
-            <input
+            <Input
               type="date"
-              className={INPUT_CLS}
               value={compDate}
               onChange={(e) => setCompDate(e.target.value)}
             />
           </div>
         </div>
-        <button className={`${BTN} mt-3`} onClick={saveSettings}>{t("儲存設定")}</button>
-      </section>
+        <Button type="button" className="mt-3" onClick={saveSettings}>{t("儲存設定")}</Button>
+      </CardContent></Card>
 
-      <section className="rounded-xl border border-hairline bg-surface-1 p-5">
+      <Card><CardContent>
         <h2 className="mb-1 font-bold">{t("通知與整合")}</h2>
         <p className="mb-3 text-xs text-ink-tertiary">
           {t("設定 Discord Webhook 後，各類事件會自動推到對應的頻道")}（{t("Discord 頻道設定 → 整合 → Webhook → 建立並複製網址）")}）。
           
         </p>
         <div className="space-y-2">
+          <WebhookRow
+            label={t("Discord Webhook（任務指派）")}
+            value={webhook}
+            onChange={setWebhook}
+            placeholder="https://discord.com/api/webhooks/…"
+          />
           <WebhookRow
             label={t("週期審批頻道（老師收到）")}
             value={wcTeacherCycle}
@@ -360,32 +392,33 @@ export default function AdminPage() {
           />
         </div>
         <div className="mt-3">
-          <button className={BTN_GHOST} onClick={testNotify}>{t("發送測試通知（測試第一個頻道）")}</button>
+          <Button type="button" variant="ghost" onClick={testNotify}>{t("發送測試通知（測試第一個頻道）")}</Button>
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <span className="text-sm text-ink-subtle">{t("日曆訂閱（iCal）")}：</span>
-          <button className={BTN_GHOST} onClick={copyIcalUrl}>{t("複製訂閱連結")}</button>
+          <Button type="button" variant="ghost" onClick={copyIcalUrl}>{t("複製訂閱連結")}</Button>
+          <Button type="button" variant="ghost" onClick={rotateIcal}>{t("重新產生訂閱連結")}</Button>
           <span className="text-xs text-ink-tertiary">
             {t("隊員在手機日曆 App「訂閱日曆」貼上，例會、水測自動同步")}
           </span>
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <span className="text-sm text-ink-subtle">{t("團隊看板（Raspberry Pi）")}：</span>
-          <button className={BTN_GHOST} onClick={copyDisplayUrl}>{t("複製看板連結")}</button>
-          <button className={BTN_GHOST} onClick={rotateDisplay}>{t("重新產生")}</button>
+          <Button type="button" variant="ghost" onClick={copyDisplayUrl}>{t("複製看板連結")}</Button>
+          <Button type="button" variant="ghost" onClick={rotateDisplay}>{t("重新產生")}</Button>
           <span className="text-xs text-ink-tertiary">
             {t("全屏顯示進行中週期與近兩週日程，每分鐘自動更新，免登入")}
           </span>
         </div>
-      </section>
+      </CardContent></Card>
 
-      <section className="rounded-xl border border-hairline bg-surface-1 p-5">
+      <Card><CardContent>
         <h2 className="mb-1 font-bold">{t("組別管理")}</h2>
         <p className="mb-3 text-xs text-ink-tertiary">{t("自訂全站使用的組別（任務、成員、活動都會跟著）；刪除組別時，原屬成員與任務會自動改到第一個剩餘組別")}</p>
         <div className="space-y-2">
           {stList.map((row, i) => (
             <div key={row.key || "new" + i} className="flex flex-wrap items-center gap-2">
-              <input
+              <Input
                 className="w-40 rounded-lg border border-hairline-strong bg-surface-1 px-3 py-2 text-sm text-ink"
                 placeholder={t("中文名稱")}
                 value={row.zh}
@@ -395,7 +428,7 @@ export default function AdminPage() {
                   setStList(next);
                 }}
               />
-              <input
+              <Input
                 className="w-40 rounded-lg border border-hairline-strong bg-surface-1 px-3 py-2 text-sm text-ink"
                 placeholder={t("英文名稱")}
                 value={row.en}
@@ -405,27 +438,29 @@ export default function AdminPage() {
                   setStList(next);
                 }}
               />
-              <button
-                className="text-sm text-ink-tertiary transition hover:text-rose-400"
+              <Button
+                type="button"
+                variant="link"
+                className="h-auto px-0 text-muted-foreground hover:text-destructive"
                 onClick={() => setStList(stList.filter((_, j) => j !== i))}
                 disabled={stList.length <= 1}
               >
                 {t("刪除")}
-              </button>
+              </Button>
             </div>
           ))}
         </div>
         <div className="mt-3 flex gap-2">
-          <button className={BTN_GHOST} onClick={() => setStList([...stList, { key: "", zh: "", en: "" }])}>
+          <Button type="button" variant="ghost" onClick={() => setStList([...stList, { key: "", zh: "", en: "" }])}>
             ＋ {t("新增組別")}
-          </button>
-          <button className={BTN} onClick={saveSubteams}>
+          </Button>
+          <Button type="button" onClick={saveSubteams}>
             {t("儲存組別")}
-          </button>
+          </Button>
         </div>
-      </section>
+      </CardContent></Card>
 
-      <section className="rounded-xl border border-hairline bg-surface-1 p-5">
+      <Card><CardContent>
         <h2 className="mb-1 font-bold">{t("Google 登入")}</h2>
         <p className="mb-3 text-xs text-ink-tertiary">
           {t("設定後隊員可在登入頁用學校 Google 帳號登入（首次自動建立帳號）。")} {t("回呼網址（複製到 Google Cloud OAuth 設定）")}：
@@ -434,13 +469,12 @@ export default function AdminPage() {
           <code className="rounded-lg bg-surface-2 px-3 py-1.5 text-xs text-[#2383a5]">
             {typeof window !== "undefined" ? `${location.origin}/api/auth/google/callback` : "/api/auth/google/callback"}
           </code>
-          <button className={BTN_GHOST} onClick={copyGoogleCallback}>{t("複製")}</button>
+          <Button type="button" variant="ghost" onClick={copyGoogleCallback}>{t("複製")}</Button>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <label className="mb-1 block text-sm text-ink-subtle">{t("Google 用戶端 ID（Client ID）")}</label>
-            <input
-              className={INPUT_CLS}
+            <Input
               placeholder="xxx.apps.googleusercontent.com"
               value={googleClientId}
               onChange={(e) => setGoogleClientId(e.target.value)}
@@ -448,8 +482,7 @@ export default function AdminPage() {
           </div>
           <div className="sm:col-span-2">
             <label className="mb-1 block text-sm text-ink-subtle">{t("Google 用戶端密鑰（Client Secret）")}</label>
-            <input
-              className={INPUT_CLS}
+            <Input
               type="password"
               placeholder={t("（從 Google Cloud 複製的 Client Secret）")}
               value={googleClientSecret}
@@ -460,8 +493,7 @@ export default function AdminPage() {
             <label className="mb-1 block text-sm text-ink-subtle">
               {t("允許登入的網域（以逗號分隔，只限這些網域的 email）")}
             </label>
-            <input
-              className={INPUT_CLS}
+            <Input
               placeholder="stu.ssc.edu.hk, ssc.edu.hk"
               value={googleDomains}
               onChange={(e) => setGoogleDomains(e.target.value)}
@@ -471,8 +503,7 @@ export default function AdminPage() {
             <label className="mb-1 block text-sm text-ink-subtle">
               {t("隊長 email（這些 Google 帳號登入＝隊長）")}
             </label>
-            <input
-              className={INPUT_CLS}
+            <Input
               placeholder="leader@ssc.edu.hk"
               value={googleLeaderEmails}
               onChange={(e) => setGoogleLeaderEmails(e.target.value)}
@@ -482,8 +513,7 @@ export default function AdminPage() {
             <label className="mb-1 block text-sm text-ink-subtle">
               {t("老師 email（這些 Google 帳號登入＝老師）")}
             </label>
-            <input
-              className={INPUT_CLS}
+            <Input
               placeholder="teacher@ssc.edu.hk"
               value={googleTeacherEmails}
               onChange={(e) => setGoogleTeacherEmails(e.target.value)}
@@ -493,16 +523,16 @@ export default function AdminPage() {
         <p className="mt-2 text-xs text-ink-tertiary">
           {t("組別一律為「全隊」，日後可在「帳號」由老師／隊長調整。密碼登入不受影響，仍可作為後備。")}
         </p>
-      </section>
+      </CardContent></Card>
 
-      <section className="rounded-xl border border-hairline bg-surface-1 p-5">
+      <Card><CardContent>
         <h2 className="mb-3 font-bold">{t("成員")}（{members.length}）</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-ink-tertiary">
                 <th className="px-2 py-2 font-medium">{t("名稱")}</th>
-                <th className="px-2 py-2 font-medium">{t("帳號")}</th>
+                <th className="px-2 py-2 font-medium">{t("使用者名稱")}</th>
                 <th className="px-2 py-2 font-medium">{t("組別")}</th>
                 <th className="px-2 py-2 font-medium">{t("角色")}</th>
                 <th className="px-2 py-2 font-medium"></th>
@@ -514,56 +544,63 @@ export default function AdminPage() {
                   <td className="px-2 py-2.5">{m.display_name}</td>
                   <td className="px-2 py-2.5 text-ink-subtle">{m.username}</td>
                   <td className="px-2 py-2.5">
-                    <select
-                      className="rounded-lg border border-hairline-strong bg-surface-1 px-2 py-1 text-sm text-ink"
-                      value={m.subteam}
-                      onChange={(e) => updateMember(m, { subteam: e.target.value })}
-                    >
-                      {subteams.map((x) => (
-                        <option key={x.key} value={x.key}>{x.label}</option>
-                      ))}
-                    </select>
+                    <Select value={m.subteam} onValueChange={(value) => value && updateMember(m, { subteam: value })}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {subteams.map((x) => (
+                          <SelectItem key={x.key} value={x.key}>{x.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </td>
                   <td className="px-2 py-2.5">
-                    <select
-                      className="rounded-lg border border-hairline-strong bg-surface-1 px-2 py-1 text-sm text-ink"
-                      value={m.role}
-                      onChange={(e) => updateMember(m, { role: e.target.value })}
-                    >
-                      <option value="member">{t("隊員")}</option>
-                      <option value="teacher">{t("老師")}</option>
-                      <option value="leader">{t("隊長")}</option>
-                    </select>
+                    <Select value={m.role} onValueChange={(value) => value && updateMember(m, { role: value })}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="member">{t("隊員")}</SelectItem>
+                        <SelectItem value="teacher">{t("老師")}</SelectItem>
+                        <SelectItem value="leader">{t("隊長")}</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </td>
                   <td className="px-2 py-2.5 text-right">
                     {resetId === m.id ? (
                       <span className="inline-flex gap-1">
-                        <input
+                        <Input
                           className="w-28 rounded-lg border border-hairline-strong bg-surface-2 px-2 py-1 text-xs"
                           placeholder={t("新密碼")}
                           value={resetPw}
                           onChange={(e) => setResetPw(e.target.value)}
                         />
-                        <button className={BTN_GHOST} onClick={() => resetPassword(m)}>{t("確定")}</button>
-                        <button
-                          className={BTN_GHOST}
+                        <Button type="button" variant="ghost" onClick={() => resetPassword(m)}>{t("確定")}</Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
                           onClick={() => {
                             setResetId(null);
                             setResetPw("");
                           }}
-                        >{t("取消")}</button>
+                        >{t("取消")}</Button>
                       </span>
                     ) : (
                       <span className="inline-flex gap-3">
-                        <button
-                          className="text-ink-subtle transition hover:text-[#2383a5]"
+                        <Button
+                          type="button"
+                          variant="link"
+                          className="h-auto px-0 text-muted-foreground"
                           onClick={() => setResetId(m.id)}
-                        >{t("重設密碼")}</button>
+                        >{t("重設密碼")}</Button>
                         {m.id !== me.id && (
-                          <button
-                            className="text-ink-subtle transition hover:text-rose-400"
+                          <Button
+                            type="button"
+                            variant="link"
+                            className="h-auto px-0 text-muted-foreground hover:text-destructive"
                             onClick={() => removeMember(m)}
-                          >{t("刪除")}</button>
+                          >{t("刪除")}</Button>
                         )}
                       </span>
                     )}
@@ -573,58 +610,95 @@ export default function AdminPage() {
             </tbody>
           </table>
         </div>
-      </section>
+      </CardContent></Card>
 
-      <section className="rounded-xl border border-hairline bg-surface-1 p-5">
+      <Card><CardContent>
         <h2 className="mb-3 font-bold">{t("新增成員")}</h2>
         <div className="grid gap-3 sm:grid-cols-3">
-          <input
-            className={INPUT_CLS}
+          <Input
             placeholder={t("顯示名稱，例如：王小明")}
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
           />
-          <input
-            className={INPUT_CLS}
+          <Input
             placeholder={t("帳號（英數字）")}
             value={newUsername}
             onChange={(e) => setNewUsername(e.target.value)}
           />
-          <input
-            className={INPUT_CLS}
+          <Input
             placeholder={t("初始密碼（至少 6 字）")}
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
           />
-          <select
-            className={INPUT_CLS}
-            value={newSubteam}
-            onChange={(e) => setNewSubteam(e.target.value)}
-          >
-            {subteams.map((s) => (
-              <option key={s.key} value={s.key}>
-                {t("組別")}：{s.label}
-              </option>
-            ))}
-          </select>
-          <select
-            className={INPUT_CLS}
-            value={newRole}
-            onChange={(e) => setNewRole(e.target.value)}
-          >
-            <option value="member">{t("角色")}：{t("隊員")}</option>
-            <option value="teacher">{t("角色")}：{t("老師")}</option>
-            <option value="leader">{t("角色")}：{t("隊長")}</option>
-          </select>
-          <button
-            className={BTN}
+          <Select value={newSubteam} onValueChange={(value) => value && setNewSubteam(value)}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {subteams.map((s) => (
+                <SelectItem key={s.key} value={s.key}>
+                  {t("組別")}：{s.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={newRole} onValueChange={(value) => value && setNewRole(value)}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="member">{t("角色")}：{t("隊員")}</SelectItem>
+              <SelectItem value="teacher">{t("角色")}：{t("老師")}</SelectItem>
+              <SelectItem value="leader">{t("角色")}：{t("隊長")}</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button
+            type="button"
             disabled={!newName || !newUsername || newPassword.length < 6}
             onClick={addMember}
-          >{t("新增")}</button>
+          >{t("新增")}</Button>
         </div>
-      </section>
+      </CardContent></Card>
+
+      <Card><CardContent>
+        <h2 className="mb-3 font-bold">{t("審計紀錄")}</h2>
+        {logs.length === 0 ? (
+          <PageEmpty>{t("沒有審計紀錄")}</PageEmpty>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs text-ink-tertiary">
+                  <th className="px-2 py-2 font-medium">{t("時間")}</th>
+                  <th className="px-2 py-2 font-medium">{t("操作者")}</th>
+                  <th className="px-2 py-2 font-medium">{t("動作")}</th>
+                  <th className="px-2 py-2 font-medium">{t("對象")}</th>
+                  <th className="px-2 py-2 font-medium">{t("內容")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {logs.map((row) => (
+                  <tr key={row.id} className="border-t border-hairline/60">
+                    <td className="px-2 py-2 whitespace-nowrap text-ink-subtle">{fmtAt(row.at)}</td>
+                    <td className="px-2 py-2">{row.user_name ?? "—"}</td>
+                    <td className="px-2 py-2">{row.action}</td>
+                    <td className="px-2 py-2 text-ink-subtle">{row.target ?? "—"}</td>
+                    <td className="px-2 py-2 text-ink-subtle">{row.detail ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent></Card>
     </div>
   );
+}
+
+function fmtAt(at: string) {
+  const d = new Date(at);
+  if (Number.isNaN(d.getTime())) return String(at);
+  return d.toLocaleString();
 }
 
 
@@ -632,18 +706,20 @@ function WebhookRow({
   label,
   value,
   onChange,
+  placeholder,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
+  placeholder?: string;
 }) {
   const { t } = useI18n();
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span className="w-64 shrink-0 text-sm text-ink-subtle">{label}</span>
-      <input
+      <Input
         className="min-w-64 flex-1 rounded-lg border border-hairline-strong bg-surface-1 px-3 py-2 text-sm text-ink placeholder:text-ink-tertiary focus:border-primary focus:outline-none"
-        placeholder={`https://…（${t("Teams 或 Power Automate 的 Webhook 網址")}）`}
+        placeholder={placeholder ?? `https://…（${t("Teams 或 Power Automate 的 Webhook 網址")}）`}
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />

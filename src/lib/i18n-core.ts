@@ -3,7 +3,7 @@
 export type Lang = "zh" | "en";
 
 // 目前語言（客戶端由 Provider 同步；元件藉 useI18n 訂閱重新渲染）
-let _lang: Lang = "zh";
+let _lang: Lang = "en";
 export function setLangProxy(l: Lang) {
   _lang = l;
 }

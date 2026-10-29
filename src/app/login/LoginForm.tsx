@@ -3,6 +3,9 @@ import { useI18n } from "@/lib/i18n";
 
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 
 const ERRORS: Record<string, string> = {
   google_not_configured: "Google 登入尚未設定完成，請先使用帳號密碼登入，聯絡隊長設定。",
@@ -12,15 +15,15 @@ const ERRORS: Record<string, string> = {
   domain_not_allowed: "這個 Google 帳號不屬於學校網域，無法登入（只允許學校的 @stu.ssc.edu.hk / @ssc.edu.hk 帳號）。",
 };
 
-export default function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
+export default function LoginForm() {
   return (
     <Suspense fallback={null}>
-      <LoginInner googleEnabled={googleEnabled} />
+      <LoginInner />
     </Suspense>
   );
 }
 
-function LoginInner({ googleEnabled }: { googleEnabled: boolean }) {
+function LoginInner() {
   const { t } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -64,79 +67,55 @@ function LoginInner({ googleEnabled }: { googleEnabled: boolean }) {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-canvas px-4">
-      <div className="w-full max-w-sm">
-        <div className="mb-6 flex flex-col items-center gap-3">
-          <span className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary text-base font-black text-white shadow-sm">
-            ROV
-          </span>
-          <h1 className="text-2xl font-bold">{t("ROV 隊伍任務平台")}</h1>
-          <p className="text-sm text-ink-subtle">{t("任務看板 · 時間規劃 · 任務日曆")}</p>
-        </div>
-
-        {error && (
-          <p className="mb-4 rounded-xl border border-rose-200 bg-red-50 px-4 py-3 text-sm leading-6 text-[#eb5757]">
-            {t(error)}
-          </p>
-        )}
-
-        <div className="space-y-4">
-          {googleEnabled && (
-            <>
-              <button
-                onClick={googleLogin}
-                disabled={googleBusy}
-                className="flex w-full items-center justify-center gap-3 rounded-xl border border-hairline-strong bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100 disabled:opacity-50"
-              >
-                <GoogleIcon />
-                {googleBusy ? t("前往 Google…") : t("使用 Google 帳號登入")}
-              </button>
-              <div className="flex items-center gap-3 text-xs text-ink-tertiary">
-                <div className="h-px flex-1 bg-surface-2" />
-                {t("或使用帳號密碼")}
-                <div className="h-px flex-1 bg-surface-2" />
-              </div>
-            </>
+    <main className="flex min-h-svh items-center justify-center bg-background px-4">
+      <Card className="w-full max-w-sm rounded-[16px]">
+        <CardHeader>
+          <CardTitle className="board-title">{t("ROV 隊伍任務平台")}</CardTitle>
+          <CardDescription>{t("任務看板 · 時間規劃 · 任務日曆")}</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          {error && (
+            <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {t(error)}
+            </p>
           )}
-          <form
-            onSubmit={submit}
-            className="space-y-4 rounded-xl border border-hairline bg-surface-1/80 p-6 shadow-xl"
-          >
-            <div>
-              <label className="mb-1 block text-sm text-ink-subtle">{t("帳號")}</label>
-              <input
-                className="w-full rounded-lg border border-hairline-strong bg-surface-1 px-3 py-2 text-sm text-ink placeholder:text-ink-tertiary focus:border-primary focus:outline-none"
+          <Button variant="outline" className="w-full" onClick={googleLogin} disabled={googleBusy}>
+            <GoogleIcon />
+            {googleBusy ? t("前往 Google…") : t("使用 Google 帳號登入")}
+          </Button>
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <div className="h-px flex-1 bg-border" />
+            {t("或使用帳號密碼")}
+            <div className="h-px flex-1 bg-border" />
+          </div>
+          <form onSubmit={submit} className="flex flex-col gap-4">
+            <label className="flex flex-col gap-1.5 text-sm">
+              <span className="text-muted-foreground">{t("使用者名稱")}</span>
+              <Input
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 autoComplete="username"
                 autoFocus
               />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm text-ink-subtle">{t("密碼")}</label>
-              <input
+            </label>
+            <label className="flex flex-col gap-1.5 text-sm">
+              <span className="text-muted-foreground">{t("密碼")}</span>
+              <Input
                 type="password"
-                className="w-full rounded-lg border border-hairline-strong bg-surface-1 px-3 py-2 text-sm text-ink placeholder:text-ink-tertiary focus:border-primary focus:outline-none"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="current-password"
               />
-            </div>
-            <button
-              type="submit"
-              disabled={busy || !username || !password}
-              className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
-            >
+            </label>
+            <Button type="submit" disabled={busy || !username || !password}>
               {busy ? t("登入中…") : t("登入")}
-            </button>
+            </Button>
           </form>
-          {!googleEnabled && (
-            <p className="rounded-lg bg-surface-2 px-3 py-2 text-xs leading-5 text-ink-tertiary">
-              {t("帳號由隊長在「管理」頁開立；忘記密碼請找隊長重置。")}
-            </p>
-          )}
-        </div>
-      </div>
+          <p className="text-xs leading-5 text-muted-foreground">
+            {t("帳號由隊長在「管理」頁開立；忘記密碼請找隊長重置。")}
+          </p>
+        </CardContent>
+      </Card>
     </main>
   );
 }

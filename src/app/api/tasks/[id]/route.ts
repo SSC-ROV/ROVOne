@@ -49,6 +49,32 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     );
   }
 
+  if (body.reorder === "up" || body.reorder === "down") {
+    if (!current.cycle_id) {
+      return NextResponse.json({ error: "任務必須歸屬一個開發週期" }, { status: 400 });
+    }
+    const siblings = await sql`
+      SELECT id, sort_order FROM tasks
+      WHERE cycle_id = ${current.cycle_id}
+      ORDER BY sort_order, id`;
+    const list = (siblings as unknown as { id: number; sort_order: number }[]).map((row, i) => ({
+      id: Number(row.id),
+      sort_order: i,
+    }));
+    const idx = list.findIndex((row) => row.id === taskId);
+    const swapWith = body.reorder === "up" ? idx - 1 : idx + 1;
+    if (idx >= 0 && swapWith >= 0 && swapWith < list.length) {
+      const tmp = list[idx].sort_order;
+      list[idx].sort_order = list[swapWith].sort_order;
+      list[swapWith].sort_order = tmp;
+      for (const row of list) {
+        await sql`UPDATE tasks SET sort_order = ${row.sort_order} WHERE id = ${row.id}`;
+      }
+      await sql`UPDATE tasks SET version = version + 1 WHERE id = ${taskId}`;
+    }
+    return NextResponse.json({ task: await getTaskWithItems(taskId) });
+  }
+
   const title = body.title !== undefined ? String(body.title).trim() : current.title;
   if (!title) return NextResponse.json({ error: "標題不可空白" }, { status: 400 });
   const status = body.status !== undefined ? String(body.status) : current.status;

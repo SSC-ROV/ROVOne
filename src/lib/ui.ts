@@ -22,17 +22,21 @@ export const subteamLabel = (k: string) => {
 };
 
 export const SUBTEAM_CLS: Record<string, string> = {
-  mech: "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-500/40 dark:bg-orange-500/15 dark:text-orange-300",
-  elec: "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-300",
-  sw: "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-500/40 dark:bg-sky-500/15 dark:text-sky-300",
-  pilot: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-300",
-  general: "border-gray-200 bg-gray-100 text-gray-600",
+  mech: "border-transparent bg-transparent text-foreground",
+  elec: "border-transparent bg-transparent text-foreground",
+  sw: "border-transparent bg-transparent text-foreground",
+  pilot: "border-transparent bg-transparent text-foreground",
+  general: "border-transparent bg-transparent text-foreground",
 };
 
-export const PRIORITIES: { key: Priority; zh: string; en: string; dot: string; label: string }[] = [
-  { key: "high", zh: "高", en: "High", dot: "bg-rose-500", get label() { return tt(this.zh, this.en); } },
-  { key: "medium", zh: "中", en: "Med", dot: "bg-amber-400", get label() { return tt(this.zh, this.en); } },
-  { key: "low", zh: "低", en: "Low", dot: "bg-gray-400", get label() { return tt(this.zh, this.en); } },
+export const GROUP_COLORS = ["#579bfc", "#00c875", "#a25ddc", "#ff642e", "#ffcb00"] as const;
+
+export const groupColor = (index: number) => GROUP_COLORS[index % GROUP_COLORS.length];
+
+export const PRIORITIES: { key: Priority; zh: string; en: string; dot: string; color: string; label: string }[] = [
+  { key: "high", zh: "高", en: "High", dot: "bg-[#401694]", color: "#401694", get label() { return tt(this.zh, this.en); } },
+  { key: "medium", zh: "中", en: "Med", dot: "bg-[#5559df]", color: "#5559df", get label() { return tt(this.zh, this.en); } },
+  { key: "low", zh: "低", en: "Low", dot: "bg-[#579bfc]", color: "#579bfc", get label() { return tt(this.zh, this.en); } },
 ];
 
 export const priorityLabel = (k: string) => {
@@ -43,10 +47,10 @@ export const priorityLabel = (k: string) => {
 export const priorityDot = (k: string) =>
   PRIORITIES.find((p) => p.key === k)?.dot ?? "bg-gray-400";
 
-export const STATUSES: { key: TaskStatus; zh: string; en: string; label: string }[] = [
-  { key: "todo", zh: "待辦", en: "To Do", get label() { return tt(this.zh, this.en); } },
-  { key: "doing", zh: "進行中", en: "In Progress", get label() { return tt(this.zh, this.en); } },
-  { key: "done", zh: "已完成", en: "Done", get label() { return tt(this.zh, this.en); } },
+export const STATUSES: { key: TaskStatus; zh: string; en: string; color: string; label: string }[] = [
+  { key: "todo", zh: "待辦", en: "To Do", color: "#c4c4c4", get label() { return tt(this.zh, this.en); } },
+  { key: "doing", zh: "進行中", en: "In Progress", color: "#fdab3d", get label() { return tt(this.zh, this.en); } },
+  { key: "done", zh: "已完成", en: "Done", color: "#00c875", get label() { return tt(this.zh, this.en); } },
 ];
 
 export const statusLabel = (k: string) => {
@@ -62,10 +66,10 @@ export const EVENT_TYPES: {
   chip: string;
   label: string;
 }[] = [
-  { key: "meeting", zh: "例會", en: "Meeting", dot: "bg-[#2eaadc]", chip: "bg-blue-50 text-[#2383a5] dark:bg-cyan-500/15 dark:text-cyan-300", get label() { return tt(this.zh, this.en); } },
-  { key: "watertest", zh: "水測", en: "Water Test", dot: "bg-sky-400", chip: "bg-sky-50 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300", get label() { return tt(this.zh, this.en); } },
-  { key: "competition", zh: "比賽", en: "Competition", dot: "bg-[#eb5757]", chip: "bg-red-50 text-[#eb5757] dark:bg-rose-500/15 dark:text-rose-300", get label() { return tt(this.zh, this.en); } },
-  { key: "other", zh: "其他", en: "Other", dot: "bg-gray-400", chip: "bg-gray-100 text-gray-600 dark:bg-surface-2 dark:text-ink-muted", get label() { return tt(this.zh, this.en); } },
+  { key: "meeting", zh: "例會", en: "Meeting", dot: "bg-[#0073ea]", chip: "border-transparent bg-[#0073ea] text-white", get label() { return tt(this.zh, this.en); } },
+  { key: "watertest", zh: "水測", en: "Water Test", dot: "bg-[#579bfc]", chip: "border-transparent bg-[#579bfc] text-white", get label() { return tt(this.zh, this.en); } },
+  { key: "competition", zh: "比賽", en: "Competition", dot: "bg-[#df2f4a]", chip: "border-transparent bg-[#df2f4a] text-white", get label() { return tt(this.zh, this.en); } },
+  { key: "other", zh: "其他", en: "Other", dot: "bg-[#c4c4c4]", chip: "border-transparent bg-[#c4c4c4] text-[#323338]", get label() { return tt(this.zh, this.en); } },
 ];
 
 export const eventType = (k: string) =>
@@ -80,14 +84,15 @@ export const PART_STATUSES: {
   key: PartStatus;
   zh: string;
   en: string;
+  color: string;
   chip: string;
   label: string;
 }[] = [
-  { key: "pending", zh: "待老師審批", en: "Awaiting Teacher", chip: "bg-yellow-50 text-amber-700 border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/40", get label() { return tt(this.zh, this.en); } },
-  { key: "approved", zh: "已核准", en: "Approved", chip: "bg-blue-50 text-[#2383a5] border-blue-200 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-500/40", get label() { return tt(this.zh, this.en); } },
-  { key: "ordered", zh: "已下單", en: "Ordered", chip: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-500/40", get label() { return tt(this.zh, this.en); } },
-  { key: "arrived", zh: "已到貨", en: "Arrived", chip: "bg-green-50 text-[#0f7b6c] border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/40", get label() { return tt(this.zh, this.en); } },
-  { key: "rejected", zh: "已駁回", en: "Rejected", chip: "bg-red-50 text-[#eb5757] border-rose-200 dark:bg-rose-500/15 dark:text-rose-300 dark:border-rose-500/40", get label() { return tt(this.zh, this.en); } },
+  { key: "pending", zh: "待老師審批", en: "Awaiting Teacher", color: "#fdab3d", chip: "border-transparent bg-[#fdab3d] text-white", get label() { return tt(this.zh, this.en); } },
+  { key: "approved", zh: "已核准", en: "Approved", color: "#579bfc", chip: "border-transparent bg-[#579bfc] text-white", get label() { return tt(this.zh, this.en); } },
+  { key: "ordered", zh: "已下單", en: "Ordered", color: "#5559df", chip: "border-transparent bg-[#5559df] text-white", get label() { return tt(this.zh, this.en); } },
+  { key: "arrived", zh: "已到貨", en: "Arrived", color: "#00c875", chip: "border-transparent bg-[#00c875] text-white", get label() { return tt(this.zh, this.en); } },
+  { key: "rejected", zh: "已駁回", en: "Rejected", color: "#df2f4a", chip: "border-transparent bg-[#df2f4a] text-white", get label() { return tt(this.zh, this.en); } },
 ];
 
 export const partStatus = (k: string) =>
@@ -102,16 +107,17 @@ export const CYCLE_STATUSES: {
   key: CycleStatus;
   zh: string;
   en: string;
+  color: string;
   chip: string;
   label: string;
 }[] = [
-  { key: "pending_leader", zh: "待隊長審批", en: "Leader Review", chip: "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-300", get label() { return tt(this.zh, this.en); } },
-  { key: "pending_teacher", zh: "待老師審批", en: "Teacher Review", chip: "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-500/40 dark:bg-violet-500/15 dark:text-violet-300", get label() { return tt(this.zh, this.en); } },
-  { key: "active", zh: "進行中", en: "Active", chip: "border-blue-200 bg-blue-50 text-[#2383a5] dark:border-primary/40 dark:bg-primary/15 dark:text-primary-hover", get label() { return tt(this.zh, this.en); } },
-  { key: "approved", zh: "已核准", en: "Approved", chip: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-300", get label() { return tt(this.zh, this.en); } },
-  { key: "late", zh: "遲交", en: "Late", chip: "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-500/40 dark:bg-orange-500/15 dark:text-orange-300", get label() { return tt(this.zh, this.en); } },
-  { key: "completed", zh: "已完成", en: "Completed", chip: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-300", get label() { return tt(this.zh, this.en); } },
-  { key: "rejected", zh: "已駁回", en: "Rejected", chip: "border-rose-200 bg-red-50 text-[#eb5757] dark:border-rose-500/40 dark:bg-rose-500/15 dark:text-rose-300", get label() { return tt(this.zh, this.en); } },
+  { key: "pending_leader", zh: "待隊長審批", en: "Leader Review", color: "#fdab3d", chip: "border-transparent bg-[#fdab3d] text-white", get label() { return tt(this.zh, this.en); } },
+  { key: "pending_teacher", zh: "待老師審批", en: "Teacher Review", color: "#a25ddc", chip: "border-transparent bg-[#a25ddc] text-white", get label() { return tt(this.zh, this.en); } },
+  { key: "active", zh: "進行中", en: "Active", color: "#fdab3d", chip: "border-transparent bg-[#fdab3d] text-white", get label() { return tt(this.zh, this.en); } },
+  { key: "approved", zh: "已核准", en: "Approved", color: "#579bfc", chip: "border-transparent bg-[#579bfc] text-white", get label() { return tt(this.zh, this.en); } },
+  { key: "late", zh: "遲交", en: "Late", color: "#df2f4a", chip: "border-transparent bg-[#df2f4a] text-white", get label() { return tt(this.zh, this.en); } },
+  { key: "completed", zh: "已完成", en: "Completed", color: "#00c875", chip: "border-transparent bg-[#00c875] text-white", get label() { return tt(this.zh, this.en); } },
+  { key: "rejected", zh: "已駁回", en: "Rejected", color: "#df2f4a", chip: "border-transparent bg-[#df2f4a] text-white", get label() { return tt(this.zh, this.en); } },
 ];
 
 export const cycleStatus = (k: string) =>
@@ -133,20 +139,22 @@ export const EQUIPMENT_CATEGORIES = [
 ];
 
 export const INPUT_CLS =
-  "w-full rounded-md border border-hairline bg-surface-1 px-3 py-2 text-sm text-ink placeholder:text-ink-tertiary transition-all focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-transparent";
+  "h-8 w-full min-w-0 rounded-[4px] border border-input bg-card px-2.5 text-sm text-foreground transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
 
-/** 不強制滿寬的 select 樣式（工具列用） */
 export const SELECT_CLS =
-  "rounded-md border border-hairline bg-surface-1 px-3 py-2 text-sm text-ink transition-all focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-transparent";
+  "h-8 rounded-[4px] border border-input bg-card px-2.5 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
 
 export const BTN =
-  "rounded-md bg-primary px-3.5 py-2 text-sm font-medium text-white transition-colors duration-150 hover:bg-primary-hover active:bg-primary-focus disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex h-8 items-center justify-center rounded-[4px] bg-primary px-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-[#0060b9] disabled:pointer-events-none disabled:opacity-50";
 
 export const BTN_GHOST =
-  "rounded-md bg-transparent px-3 py-1.5 text-sm font-medium text-ink transition-colors duration-150 hover:bg-surface-2 active:bg-surface-3";
+  "inline-flex h-8 items-center justify-center rounded-[4px] px-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50";
+
+export const PANEL =
+  "rounded-[16px] border border-border bg-card";
 
 export const CHIP =
-  "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs";
+  "inline-flex h-5 items-center gap-1 rounded-4xl border border-border bg-secondary px-2 text-xs font-medium text-secondary-foreground";
 
 /** 各駝峰式輔助函數給元件直接用：subteamLabel/partStatus/cycleStatus/eventType/statusLabel/priorityLabel/partStatusLabel/cycleStatusLabel/eventTypeLabel/priorityDot/subteamLabel */
 export const labelFns = true;

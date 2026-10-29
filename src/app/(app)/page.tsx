@@ -5,11 +5,17 @@ import { isStaff } from "@/lib/roles";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api-client";
-import { daysBetween, fmtMD, todayStr, weekdayCn } from "@/lib/date";
-import { CHIP, cycleStatusLabel, cycleStatus } from "@/lib/ui";
+import { addDaysStr, daysBetween, fmtMD, todayStr, weekdayCn } from "@/lib/date";
+import { STATUSES, cycleStatus, groupColor } from "@/lib/ui";
 import { useI18n } from "@/lib/i18n";
 import CycleTimeline from "@/components/CycleTimeline";
-import type { Cycle, Me, Settings, TeamEvent } from "@/lib/types";
+import { PageEmpty, PageError, PageLoading } from "@/components/PageState";
+import { BoardGroup } from "@/components/board/BoardGroup";
+import { BoardHeader } from "@/components/board/BoardHeader";
+import { StatusCell } from "@/components/board/ColorCell";
+import { PersonCell } from "@/components/board/PersonCell";
+import { Button } from "@/components/ui/button";
+import type { Cycle, Me, Part, Settings, Task, TeamEvent } from "@/lib/types";
 
 export default function DashboardPage() {
   const { t } = useI18n();
@@ -17,15 +23,19 @@ export default function DashboardPage() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [cycles, setCycles] = useState<Cycle[] | null>(null);
   const [events, setEvents] = useState<TeamEvent[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [parts, setParts] = useState<Part[]>([]);
   const [error, setError] = useState("");
 
   useEffect(() => {
     (async () => {
-      const [u, s, c, e] = await Promise.all([
+      const [u, s, c, e, taskRes, partRes] = await Promise.all([
         api<{ user: Me | null }>("/api/auth/me"),
         api<Settings>("/api/settings"),
         api<{ cycles: Cycle[] }>("/api/cycles"),
         api<{ events: TeamEvent[] }>("/api/events"),
+        api<{ tasks: Task[] }>("/api/tasks"),
+        api<{ parts: Part[] }>("/api/parts"),
       ]);
       if (!u.user) {
         window.location.href = "/login";
@@ -35,19 +45,13 @@ export default function DashboardPage() {
       setSettings(s);
       setCycles(c.cycles);
       setEvents(e.events);
+      setTasks(taskRes.tasks);
+      setParts(partRes.parts);
     })().catch((err: Error) => setError(err.message));
   }, []);
 
-  if (error) {
-    return (
-      <p className="rounded-xl border border-rose-500/30 bg-red-50 p-4 text-sm text-[#eb5757]">
-        {t(error)}
-      </p>
-    );
-  }
-  if (!cycles || !me || !settings) {
-    return <p className="py-20 text-center text-sm text-ink-tertiary">{t("載入中…")}</p>;
-  }
+  if (error) return <PageError message={t(error)} />;
+  if (!cycles || !me || !settings) return <PageLoading label={t("載入中…")} />;
 
   const today = todayStr();
   const isTeacher = me.role === "teacher";
@@ -57,13 +61,24 @@ export default function DashboardPage() {
     : cycles.filter(
         (c) => c.proposer_id === me.id || c.members.some((m) => m.id === me.id)
       );
-  const myActive = mine.filter((c) => c.status === "active");
-  const myApproved = mine.filter((c) => c.status === "approved");
-  const myLate = mine.filter((c) => c.status === "late");
   const upcoming = events
     .filter((e) => e.date >= today)
     .sort((a, b) => (a.date < b.date ? -1 : 1))
     .slice(0, 4);
+  const weekEnd = addDaysStr(today, 6);
+  const openTasks = tasks.filter((task) => task.status !== "done");
+  const overdue = openTasks.filter((task) => task.due_date && task.due_date < today);
+  const dueWeek = openTasks.filter(
+    (task) => task.due_date && task.due_date >= today && task.due_date <= weekEnd
+  );
+  const later = openTasks.filter((task) => !overdue.includes(task) && !dueWeek.includes(task));
+  const statusOptions = STATUSES.map((item) => ({ value: item.key, label: item.label, color: item.color }));
+  const pendingCycles = cycles.filter((c) => {
+    if (me.role === "teacher") return c.status === "pending_leader" || c.status === "pending_teacher";
+    if (me.role === "leader") return c.status === "pending_leader";
+    return false;
+  });
+  const pendingParts = isStaff(me.role) ? parts.filter((p) => p.status === "pending") : [];
 
   let countdown: { label: string; days: number } | null = null;
   if (settings.competition_date) {
@@ -75,148 +90,158 @@ export default function DashboardPage() {
     };
   }
 
+  const buckets = [
+    { title: t("逾期"), tasks: overdue, color: "#df2f4a" },
+    { title: t("本週"), tasks: dueWeek, color: "#fdab3d" },
+    { title: t("之後"), tasks: later, color: groupColor(0) },
+  ];
+
   return (
-    <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-xl border border-hairline bg-surface-1 p-5 md:col-span-1">
-          {countdown ? (
-            <>
-              <p className="text-sm text-[#2383a5]/90">{countdown.label}</p>
-              <p className="mt-1 text-5xl font-black tabular-nums">
-                {countdown.days}
-                <span className="ml-1 text-base font-medium text-ink-subtle">{t("天")}</span>
-              </p>
-              <p className="mt-2 text-sm text-ink-subtle">
-                {fmtMD(settings.competition_date!)}（{weekdayCn(settings.competition_date!)}）
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="text-sm text-ink-subtle">{t("尚未設定比賽日期")}</p>
-              {isStaff(me.role) ? (
-                <Link
-                  href="/admin"
-                  className="mt-2 inline-block text-sm text-[#2383a5] hover:underline"
-                >
-                  {t("前往「管理」設定 →")}
-                </Link>
-              ) : (
-                <p className="mt-2 text-sm text-ink-tertiary">{t("請隊長或老師於「管理」頁設定")}</p>
-              )}
-            </>
-          )}
-        </div>
-        <div className="grid grid-cols-3 gap-4 md:col-span-2">
-          <StatCard label={t("進行中週期")} value={myActive.length} accent="text-[#2383a5]" />
-          <StatCard label={t("遲交")} value={myLate.length} accent={myLate.length ? "text-orange-600" : "text-ink-subtle"} />
-          <StatCard label={t("已核准待開始")} value={myApproved.length} accent="text-emerald-600" />
-        </div>
+    <div className="flex w-full flex-col">
+      <BoardHeader title={t("首頁")} subtitle={settings.team_name} />
+
+      <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <NumberWidget
+          label={countdown ? countdown.label : t("尚未設定比賽日期")}
+          value={countdown ? String(countdown.days) : "—"}
+          hint={
+            countdown ? (
+              <p className="text-xs text-muted-foreground">{fmtMD(settings.competition_date!)}（{weekdayCn(settings.competition_date!)}）</p>
+            ) : isStaff(me.role) ? (
+              <Button variant="link" className="h-auto px-0" nativeButton={false} render={<Link href="/admin" />}>{t("前往「管理」設定 →")}</Button>
+            ) : (
+              <p className="text-xs text-muted-foreground">{t("請隊長或老師於「管理」頁設定")}</p>
+            )
+          }
+        />
+        <NumberWidget label={t("逾期任務")} value={String(overdue.length)} />
+        <NumberWidget label={t("本週到期")} value={String(dueWeek.length)} />
+        <NumberWidget label={t("待你處理")} value={String(pendingCycles.length + pendingParts.length)} />
       </div>
+
+      {isStaff(me.role) && (pendingCycles.length > 0 || pendingParts.length > 0) && (
+        <div className="mb-4 flex flex-wrap gap-2">
+          {pendingCycles.map((c) => (
+            <Link key={c.id} href="/cycles" className="rounded-[4px] bg-[#fdab3d] px-2 py-1 text-sm text-white">
+              {t("待審週期")}：{c.title}
+            </Link>
+          ))}
+          {pendingParts.map((p) => (
+            <Link key={p.id} href="/parts" className="rounded-[4px] bg-[#fdab3d] px-2 py-1 text-sm text-white">
+              {t("待審零件")}：{p.name}
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {buckets.map((bucket) => (
+        <BoardGroup key={bucket.title} title={bucket.title} color={bucket.color} count={bucket.tasks.length}>
+          {bucket.tasks.length === 0 ? (
+            <p className="px-4 py-4 text-sm text-muted-foreground">{t("沒有任務")}</p>
+          ) : (
+            <table className="board-table">
+              <thead>
+                <tr>
+                  <th>{t("任務")}</th>
+                  <th>{t("負責人")}</th>
+                  <th className="color-cell">{t("狀態")}</th>
+                  <th>{t("截止日")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {bucket.tasks.slice(0, 8).map((task) => (
+                  <tr key={task.id}>
+                    <td>
+                      <Link href="/work" className="hover:underline">{task.title}</Link>
+                    </td>
+                    <td><PersonCell name={task.assignee_name} /></td>
+                    <td className="color-cell"><StatusCell value={task.status} options={statusOptions} /></td>
+                    <td className="tabular-nums">{task.due_date ? fmtMD(task.due_date) : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </BoardGroup>
+      ))}
 
       <CycleTimeline cycles={cycles} today={today} />
 
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="font-bold">
-            {isTeacher ? t("全隊週期進度") : t("我的開發週期進度")}
-          </h2>
-          <Link href="/cycles" className="text-sm text-[#2383a5] hover:underline">
-            {t("開發週期")} →
-          </Link>
+      <section className="mb-6">
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="group-title text-foreground">{isTeacher ? t("全隊週期進度") : t("我的開發週期進度")}</h2>
+          <Button variant="link" nativeButton={false} render={<Link href="/cycles" />}>{t("開發週期")} →</Button>
         </div>
-        {mine.length === 0 ? (
-          <p className="rounded-xl border border-hairline bg-surface-1 py-10 text-center text-sm text-ink-tertiary">
-            {t("目前沒有參與中的週期，到「開發週期」提案一個吧")}
-          </p>
-        ) : (
-          <div className="space-y-3">
-            {mine
+        <div className="flex flex-col gap-2">
+          {mine.filter((c) => c.status === "active" || c.status === "approved" || c.status === "late").length === 0 ? (
+            <PageEmpty>{t("目前沒有參與中的週期，到「開發週期」提案一個吧")}</PageEmpty>
+          ) : (
+            mine
               .filter((c) => c.status === "active" || c.status === "approved" || c.status === "late")
               .map((c) => {
-                const pct =
-                  c.task_total > 0 ? Math.round((c.task_done / c.task_total) * 100) : 0;
+                const pct = c.task_total > 0 ? Math.round((c.task_done / c.task_total) * 100) : 0;
                 const left = daysBetween(today, c.end_date);
                 return (
-                  <Link
-                    key={c.id}
-                    href="/cycles"
-                    className="block rounded-xl border border-hairline bg-surface-1 p-4 transition hover:border-hairline-strong"
-                  >
+                  <Link key={c.id} href="/cycles" className="rounded-[8px] border border-border p-3 transition-colors hover:bg-muted">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span
-                        className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-medium ${cycleStatus(c.status).chip}`}
-                      >
-                        {cycleStatusLabel(c.status)}
-                      </span>
-                      <span className="font-bold">{c.title}</span>
-                      {isTeacher && c.proposer_name && (
-                        <span className={`${CHIP} border-hairline-strong text-ink-muted`}>
-                          {c.proposer_name}
-                        </span>
-                      )}
-                      <span className="ml-auto text-xs tabular-nums text-ink-subtle">
-                        {fmtMD(c.start_date)} ~ {fmtMD(c.end_date)}
+                      <span className={`inline-flex h-6 items-center px-2 text-xs ${cycleStatus(c.status).chip}`}>{cycleStatus(c.status).label}</span>
+                      <span className="font-medium">{c.title}</span>
+                      {isTeacher && c.proposer_name && <PersonCell name={c.proposer_name} />}
+                      <span className="ml-auto text-xs text-muted-foreground tabular-nums">
+                        {fmtMD(c.start_date)} – {fmtMD(c.end_date)}
                         {c.status === "active" && (
-                          <span
-                            className={`ml-2 ${left < 0 ? "text-rose-400" : left <= 3 ? "text-amber-600" : "text-ink-tertiary"}`}
-                          >
+                          <span className="ml-2">
                             {left < 0 ? `${t("已超過結束日")} ${-left} ${t("天")}` : `${t("剩")} ${left} ${t("天")}`}
                           </span>
                         )}
                       </span>
                     </div>
                     {c.task_total > 0 && (
-                      <div className="mt-2 flex items-center gap-3 text-xs text-ink-subtle">
-                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-2">
+                      <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
+                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
                           <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
                         </div>
-                        <span className="tabular-nums">
-                          {t("任務")} {c.task_done}/{c.task_total}（{pct}%）
-                        </span>
+                        <span className="tabular-nums">{c.task_done}/{c.task_total}</span>
                       </div>
                     )}
                   </Link>
                 );
-              })}
-          </div>
-        )}
+              })
+          )}
+        </div>
       </section>
 
-      <section className="rounded-xl border border-hairline bg-surface-1 p-5">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="font-bold">{t("近期活動")}</h2>
-          <Link href="/calendar" className="text-sm text-[#2383a5] hover:underline">
-            {t("日曆 →")}
-          </Link>
+      <section>
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="group-title text-foreground">{t("近期活動")}</h2>
+          <Button variant="link" nativeButton={false} render={<Link href="/calendar" />}>{t("日曆 →")}</Button>
         </div>
-        {upcoming.length === 0 ? (
-          <p className="py-4 text-center text-sm text-ink-tertiary">{t("沒有排定的活動")}</p>
-        ) : (
-          <ul className="space-y-2">
-            {upcoming.map((e) => (
-              <li
-                key={e.id}
-                className="flex items-center gap-3 rounded-xl border border-hairline bg-surface-1 px-3 py-2.5 text-sm"
-              >
-                <span className="w-20 shrink-0 text-ink-subtle">
-                  {fmtMD(e.date)}
-                  {e.time && <span className="ml-1">{e.time}</span>}
-                </span>
-                <span className="flex-1 truncate">{e.title}</span>
-              </li>
-            ))}
-          </ul>
-        )}
+          {upcoming.length === 0 ? (
+            <p className="py-4 text-center text-sm text-muted-foreground">{t("沒有排定的活動")}</p>
+          ) : (
+            <ul className="flex flex-col gap-2">
+              {upcoming.map((e) => (
+                <li key={e.id} className="flex items-center gap-3 rounded-lg border px-3 py-2 text-sm">
+                  <span className="w-20 shrink-0 text-muted-foreground tabular-nums">
+                    {fmtMD(e.date)}
+                    {e.time && <span className="ml-1">{e.time}</span>}
+                  </span>
+                  <span className="truncate">{e.title}</span>
+                </li>
+              ))}
+            </ul>
+          )}
       </section>
     </div>
   );
 }
 
-function StatCard({ label, value, accent }: { label: string; value: number; accent: string }) {
+function NumberWidget({ label, value, hint }: { label: string; value: string; hint?: React.ReactNode }) {
   return (
-    <div className="flex flex-col justify-center rounded-xl border border-hairline bg-surface-1 p-4 text-center">
-      <p className={`text-3xl font-black tabular-nums ${accent}`}>{value}</p>
-      <p className="mt-1 text-xs text-ink-subtle">{label}</p>
+    <div className="rounded-[8px] border border-border bg-card px-4 py-3">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 text-3xl font-medium tabular-nums text-foreground">{value}</p>
+      {hint}
     </div>
   );
 }

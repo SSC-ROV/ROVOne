@@ -11,12 +11,12 @@ export default async function ApprovePage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  const lang = (await cookies()).get("rov_lang")?.value === "en" ? "en" : "zh";
+  const lang = (await cookies()).get("rov_lang")?.value === "zh" ? "zh" : "en";
   const t = (zh: string, en: string) => (lang === "en" ? en : zh);
   const part = await getPartByToken(token);
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-canvas px-4 py-10">
+    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
       <div className="w-full max-w-md">
         <div className="mb-6 flex flex-col items-center gap-2">
           <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-xs font-black text-white">
@@ -27,11 +27,11 @@ export default async function ApprovePage({
         </div>
 
         {!part ? (
-          <div className="rounded-xl border border-hairline bg-surface-1/80 p-8 text-center">
+          <div className="rounded-[16px] border border-border bg-card p-8 text-center">
             <p className="text-[#eb5757]">{t("找不到這個審批連結，請跟學生確認連結是否正確。", "Approval link not found — please check the link with the student.")}</p>
           </div>
         ) : (
-          <div className="space-y-4 rounded-xl border border-hairline bg-surface-1/80 p-6 shadow-xl">
+          <div className="space-y-4 rounded-[16px] border border-border bg-card p-6">
             <div>
               <p className="text-2xl font-bold">
                 {part.name}

@@ -5,9 +5,14 @@ import { isStaff } from "@/lib/roles";
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
-import { BTN, INPUT_CLS } from "@/lib/ui";
+import { INPUT_CLS } from "@/lib/ui";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fmtMD, todayStr, weekdayCn } from "@/lib/date";
 import { useDialogs } from "@/components/ui/Dialogs";
+import { PageEmpty, PageError, PageLoading } from "@/components/PageState";
 import type { Cycle, DiveLog, Me } from "@/lib/types";
 
 export default function DiveLogsPage() {
@@ -28,6 +33,9 @@ export default function DiveLogsPage() {
     next_steps: "",
   });
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState<DiveLog | null>(null);
+  const [filterDate, setFilterDate] = useState("");
+  const [filterAuthor, setFilterAuthor] = useState("all");
 
   async function load() {
     const [l, e, u, cy] = await Promise.all([
@@ -45,14 +53,8 @@ export default function DiveLogsPage() {
     load().catch((err: Error) => setError(err.message));
   }, []);
 
-  if (error) {
-    return (
-      <p className="rounded-xl border border-rose-500/30 bg-red-50 p-4 text-sm text-[#eb5757]">{error}</p>
-    );
-  }
-  if (!logs || !me) {
-    return <p className="py-20 text-center text-sm text-ink-tertiary">{t("載入中…")}</p>;
-  }
+  if (error) return <PageError message={error} />;
+  if (!logs || !me) return <PageLoading label={t("載入中…")} />;
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -62,10 +64,16 @@ export default function DiveLogsPage() {
     if (!form.title.trim()) return;
     setBusy(true);
     try {
-      await api("/api/divelogs", { method: "POST", body: JSON.stringify(form) });
+      if (editing) {
+        await api(`/api/divelogs/${editing.id}`, { method: "PATCH", body: JSON.stringify(form) });
+        toast(t("日誌已更新"));
+      } else {
+        await api("/api/divelogs", { method: "POST", body: JSON.stringify(form) });
+        toast(t("日誌已儲存"));
+      }
+      setEditing(null);
       setForm({ date: todayStr(), title: "", participants: "", tested: "", issues: "", fixes: "", next_steps: "" });
       setShowForm(false);
-      toast(t("日誌已儲存"));
       await load();
     } catch (err) {
       toast(t((err as Error).message), "err");
@@ -122,22 +130,61 @@ export default function DiveLogsPage() {
     }
   }
 
+  const authors = Array.from(
+    new Map(
+      logs
+        .filter((log) => log.created_by != null)
+        .map((log) => [String(log.created_by), log.created_by_name ?? String(log.created_by)])
+    ).entries()
+  );
+  const visible = logs.filter(
+    (log) =>
+      (!filterDate || log.date === filterDate) &&
+      (filterAuthor === "all" || String(log.created_by) === filterAuthor)
+  );
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-lg font-bold">{t("水測日誌")}</h1>
+        <h1 className="board-title">{t("水測日誌")}</h1>
         <span className="text-sm text-ink-tertiary">{t("每次下水的問題與修正都留下紀錄，才不會踩同樣的坑")}</span>
-        <button className={`${BTN} ml-auto`} onClick={() => setShowForm(!showForm)}>
+        <Input className="ml-auto w-40" type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} />
+        <Select value={filterAuthor} onValueChange={(value) => value && setFilterAuthor(value)}>
+          <SelectTrigger className="w-36">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("全部作者")}</SelectItem>
+            {authors.map(([id, name]) => (
+              <SelectItem key={id} value={id}>{name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          type="button"
+          onClick={() => {
+            if (showForm && !editing) {
+              setShowForm(false);
+              return;
+            }
+            setEditing(null);
+            setForm({ date: todayStr(), title: "", participants: "", tested: "", issues: "", fixes: "", next_steps: "" });
+            setShowForm(true);
+          }}
+        >
           {t("＋ 新增日誌")}
-        </button>
+        </Button>
       </div>
 
       {showForm && (
-        <form onSubmit={submit} className="space-y-3 rounded-xl border border-hairline bg-surface-1 p-5">
+        <Card>
+          <CardContent>
+        <form onSubmit={submit} className="space-y-3">
+          {editing && <h2 className="font-bold">{t("編輯日誌")}</h2>}
           <div className="grid gap-3 sm:grid-cols-3">
-            <input className={INPUT_CLS} type="date" value={form.date} onChange={set("date")} />
-            <input className={INPUT_CLS} placeholder={t("標題，例如：水測 #3 *")} value={form.title} onChange={set("title")} />
-            <input className={INPUT_CLS} placeholder={t("參與人員")} value={form.participants} onChange={set("participants")} />
+            <Input type="date" value={form.date} onChange={set("date")} />
+            <Input placeholder={t("標題，例如：水測 #3 *")} value={form.title} onChange={set("title")} />
+            <Input placeholder={t("參與人員")} value={form.participants} onChange={set("participants")} />
           </div>
           <textarea className={`${INPUT_CLS} min-h-16 resize-y`} placeholder={t("這次測了什麼？")} value={form.tested} onChange={set("tested")} />
           <div className="grid gap-3 sm:grid-cols-2">
@@ -145,20 +192,21 @@ export default function DiveLogsPage() {
             <textarea className={`${INPUT_CLS} min-h-16 resize-y`} placeholder={t("當場怎麼修正？")} value={form.fixes} onChange={set("fixes")} />
           </div>
           <textarea className={`${INPUT_CLS} min-h-16 resize-y`} placeholder={t("下次要驗證什麼？")} value={form.next_steps} onChange={set("next_steps")} />
-          <button className={BTN} disabled={busy || !form.title.trim()}>
-            {busy ? t("儲存中…") : t("儲存日誌")}
-          </button>
+          <Button type="submit" disabled={busy || !form.title.trim()}>
+            {busy ? t("儲存中…") : editing ? t("儲存變更") : t("儲存日誌")}
+          </Button>
         </form>
+          </CardContent>
+        </Card>
       )}
 
       <div className="space-y-3">
-        {logs.length === 0 && (
-          <p className="rounded-xl border border-hairline bg-surface-1 py-12 text-center text-sm text-ink-tertiary">
-            {t("還沒有水測紀錄")}
-          </p>
+        {visible.length === 0 && (
+          <PageEmpty>{logs.length === 0 ? t("還沒有水測紀錄") : t("沒有符合的結果")}</PageEmpty>
         )}
-        {logs.map((log) => (
-          <article key={log.id} className="rounded-xl border border-hairline bg-surface-1 p-4">
+        {visible.map((log) => (
+          <Card key={log.id} className="rounded-none border-l-[6px] border-l-[#579bfc] py-0">
+            <CardContent className="p-4">
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-full border border-sky-500/40 bg-sky-500/10 px-2.5 py-0.5 text-xs text-sky-600">
                 {fmtMD(log.date)}（{weekdayCn(log.date)}）
@@ -169,23 +217,46 @@ export default function DiveLogsPage() {
             </div>
             <dl className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
               <Section title={t("測試內容")} text={log.tested} />
-              <Section title={t("發現問題")} text={log.issues} tone="text-[#eb5757]" />
-              <Section title={t("當場修正")} text={log.fixes} tone="text-emerald-600" />
-              <Section title={t("下次驗證")} text={log.next_steps} tone="text-[#2383a5]" />
+              <Section title={t("發現問題")} text={log.issues} tone="text-danger" />
+              <Section title={t("當場修正")} text={log.fixes} tone="text-success" />
+              <Section title={t("下次驗證")} text={log.next_steps} tone="text-primary" />
             </dl>
             <div className="mt-2 flex gap-3 text-xs">
               {(log.next_steps || log.issues) && (
-                <button className="text-[#2383a5] hover:underline" onClick={() => toTask(log)}>
+                <Button type="button" variant="link" className="h-auto px-0" onClick={() => toTask(log)}>
                   {t("轉成追蹤任務")}
-                </button>
+                </Button>
+              )}
+              {(isStaff(me.role) || log.created_by === me.id) && (
+                <Button
+                  type="button"
+                  variant="link"
+                  className="h-auto px-0 text-muted-foreground"
+                  onClick={() => {
+                    setEditing(log);
+                    setForm({
+                      date: log.date,
+                      title: log.title,
+                      participants: log.participants,
+                      tested: log.tested,
+                      issues: log.issues,
+                      fixes: log.fixes,
+                      next_steps: log.next_steps,
+                    });
+                    setShowForm(true);
+                  }}
+                >
+                  {t("編輯")}
+                </Button>
               )}
               {isStaff(me.role) && (
-                <button className="ml-auto text-ink-tertiary transition hover:text-rose-400" onClick={() => remove(log)}>
+                <Button type="button" variant="link" className="ml-auto h-auto px-0 text-muted-foreground hover:text-destructive" onClick={() => remove(log)}>
                   {t("刪除")}
-                </button>
+                </Button>
               )}
             </div>
-          </article>
+            </CardContent>
+          </Card>
         ))}
       </div>
     </div>

@@ -6,9 +6,15 @@ import { isStaff } from "@/lib/roles";
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
-import { BTN, INPUT_CLS, SELECT_CLS, SUBTEAMS, SUBTEAM_CLS, CHIP, PART_STATUSES, partStatus, subteamLabel } from "@/lib/ui";
+import { tt } from "@/lib/i18n-core";
+import { BTN, INPUT_CLS, PART_STATUSES, SELECT_CLS, subteamLabel } from "@/lib/ui";
 import { fmtMD } from "@/lib/date";
 import { useDialogs } from "@/components/ui/Dialogs";
+import { PageEmpty, PageError, PageLoading } from "@/components/PageState";
+import { BoardGroup } from "@/components/board/BoardGroup";
+import { BoardHeader } from "@/components/board/BoardHeader";
+import { StatusCell } from "@/components/board/ColorCell";
+import { PersonCell } from "@/components/board/PersonCell";
 import type { Me, Part, PartStatus } from "@/lib/types";
 
 export default function PartsPage() {
@@ -18,6 +24,7 @@ export default function PartsPage() {
   const [parts, setParts] = useState<Part[] | null>(null);
   const [me, setMe] = useState<Me | null>(null);
   const [fStatus, setFStatus] = useState("all");
+  const [fSubteam, setFSubteam] = useState("all");
   const [showForm, setShowForm] = useState(false);
   const [ordering, setOrdering] = useState<{ part: Part; vendor: string; price: string } | null>(null);
   const [error, setError] = useState("");
@@ -46,16 +53,13 @@ export default function PartsPage() {
     load().catch((err: Error) => setError(err.message));
   }, []);
 
-  if (error) {
-    return (
-      <p className="rounded-xl border border-rose-500/30 bg-red-50 p-4 text-sm text-[#eb5757]">{error}</p>
-    );
-  }
-  if (!parts || !me) {
-    return <p className="py-20 text-center text-sm text-ink-tertiary">{t("載入中…")}</p>;
-  }
+  if (error) return <PageError message={error} />;
+  if (!parts || !me) return <PageLoading label={t("載入中…")} />;
 
-  const filtered = parts.filter((p) => fStatus === "all" || p.status === fStatus);
+  const filtered = parts.filter(
+    (p) => (fStatus === "all" || p.status === fStatus) && (fSubteam === "all" || p.subteam === fSubteam)
+  );
+  const partOptions = PART_STATUSES.map((s) => ({ value: s.key, label: s.label, color: s.color }));
   const pendingCount = parts.filter((p) => p.status === "pending").length;
   const buying = parts.filter((p) => p.status === "approved" || p.status === "ordered");
   const arrived = parts.filter((p) => p.status === "arrived");
@@ -92,6 +96,15 @@ export default function PartsPage() {
     } finally {
       setBusy(false);
     }
+  }
+
+  function onPartStatus(p: Part, next: string) {
+    if (next === p.status) return;
+    if (next === "approved" || next === "rejected") {
+      decide(p, next);
+      return;
+    }
+    setStatus(p, next as PartStatus);
   }
 
   async function setStatus(p: Part, status: PartStatus) {
@@ -192,31 +205,39 @@ export default function PartsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-lg font-bold">{t("零件採買")}</h1>
-        <span className="text-sm text-ink-tertiary">{t("需求 → 老師審批 → 下單 → 到貨，一頁追蹤")}</span>
-        <div className="ml-auto flex items-center gap-2">
+      <BoardHeader
+        title={t("零件採買")}
+        subtitle={t("需求 → 老師審批 → 下單 → 到貨，一頁追蹤")}
+        action={
+          <>
           <select className={`${SELECT_CLS} w-32`} value={fStatus} onChange={(e) => setFStatus(e.target.value)}>
             <option value="all">{t("全部狀態")}</option>
             {PART_STATUSES.map((s) => (
               <option key={s.key} value={s.key}>{s.label}</option>
             ))}
           </select>
+          <select className={`${SELECT_CLS} w-32`} value={fSubteam} onChange={(e) => setFSubteam(e.target.value)}>
+            <option value="all">{t("全部組別")}</option>
+            {subteams.map((s) => (
+              <option key={s.key} value={s.key}>{s.label}</option>
+            ))}
+          </select>
           <button className={BTN} onClick={() => setShowForm(!showForm)}>
             {t("＋ 新零件需求")}
           </button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
-      <div className="grid gap-4 sm:grid-cols-4">
-        <StatCard label={t("待老師審批")} value={String(pendingCount)} accent="text-amber-600" />
-        <StatCard label={t("核准後採買中")} value={String(buying.length)} accent="text-[#2383a5]" />
-        <StatCard label={t("已到貨")} value={String(arrived.length)} accent="text-emerald-600" />
-        <StatCard label={t("花費 / 預估")} value={`$${Math.round(totalSpent).toLocaleString()} / $${Math.round(totalEst).toLocaleString()}`} accent="text-ink" />
+      <div className="mb-4 flex flex-wrap gap-6 text-sm">
+        <span><b className="text-xl tabular-nums">{pendingCount}</b> {t("待老師審批")}</span>
+        <span><b className="text-xl tabular-nums">{buying.length}</b> {t("核准後採買中")}</span>
+        <span><b className="text-xl tabular-nums">{arrived.length}</b> {t("已到貨")}</span>
+        <span><b className="text-xl tabular-nums">${Math.round(totalSpent).toLocaleString()}</b> / ${Math.round(totalEst).toLocaleString()}</span>
       </div>
 
       {showForm && (
-        <form onSubmit={submit} className="space-y-3 rounded-xl border border-hairline bg-surface-1 p-5">
+        <form onSubmit={submit} className="mb-4 space-y-3 rounded-[16px] border border-border bg-card p-5">
           <h2 className="font-bold">{t("新增零件需求（送出後自動產生「老師審批連結」）")}</h2>
           <div className="grid gap-3 sm:grid-cols-3">
             <input className={INPUT_CLS} placeholder={t("零件名稱 *")} value={name} onChange={(e) => setName(e.target.value)} />
@@ -238,98 +259,132 @@ export default function PartsPage() {
         </form>
       )}
 
-      <div className="space-y-3">
-        {filtered.length === 0 && (
-          <p className="rounded-xl border border-hairline bg-surface-1 py-12 text-center text-sm text-ink-tertiary">
-            {t("沒有符合的零件申請")}
-          </p>
+      {ordering && (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            confirmOrder();
+          }}
+          className="mb-4 flex flex-wrap items-end gap-2 rounded-[8px] border border-border bg-card p-3"
+        >
+          <p className="w-full text-sm font-medium">{t("在哪裡下單？")} · {ordering.part.name}</p>
+          <input
+            className={INPUT_CLS}
+            placeholder={t("在哪裡下單？")}
+            value={ordering.vendor}
+            onChange={(event) => setOrdering({ ...ordering, vendor: event.target.value })}
+          />
+          <input
+            className={INPUT_CLS}
+            placeholder={t("實際金額（整筆總價，可留空）")}
+            value={ordering.price}
+            onChange={(event) => setOrdering({ ...ordering, price: event.target.value })}
+          />
+          <button className={BTN} type="submit">{t("✓ 確認下單")}</button>
+          <button type="button" className="text-sm text-muted-foreground hover:underline" onClick={() => setOrdering(null)}>
+            {t("取消")}
+          </button>
+        </form>
+      )}
+
+      <BoardGroup title={t("零件採買")} color="#579bfc" count={filtered.length}>
+        {filtered.length === 0 && <PageEmpty>{t("沒有符合的零件申請")}</PageEmpty>}
+        {filtered.length > 0 && (
+          <table className="board-table">
+            <thead>
+              <tr>
+                <th>{tt("零件", "Part")}</th>
+                <th>{t("負責人")}</th>
+                <th className="color-cell">{t("狀態")}</th>
+                <th>{tt("數量", "Qty")}</th>
+                <th>{t("組別")}</th>
+                <th>{tt("金額", "Amount")}</th>
+                <th>{t("操作")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((p) => {
+                const canDelete = isStaff(me.role) || (p.requested_by === me.id && p.status === "pending");
+                return (
+                  <tr key={p.id}>
+                    <td>
+                      <div className="max-w-sm whitespace-normal py-1">
+                        <div className="font-medium">{p.name}</div>
+                        {p.spec && <p className="text-xs text-muted-foreground">{t("規格")}：{p.spec}</p>}
+                        {p.purpose && <p className="text-xs text-muted-foreground">{t("用途")}：{p.purpose}</p>}
+                        {p.link && (
+                          <a href={p.link} target="_blank" rel="noreferrer" className="text-xs text-[#2383a5] hover:underline">
+                            {t("購買連結")} ↗
+                          </a>
+                        )}
+                        {p.decided_note && <p className="text-xs text-muted-foreground">{t("審批備註")}：{p.decided_note}</p>}
+                        {p.order_vendor && (
+                          <p className="text-xs text-muted-foreground">
+                            {t("下單")}：{p.order_vendor}{p.order_ref ? `（${p.order_ref}）` : ""}
+                          </p>
+                        )}
+                        {p.arrived_at && <p className="text-xs text-muted-foreground">{t("到貨")}：{fmtMD(p.arrived_at.slice(0, 10))}</p>}
+                      </div>
+                    </td>
+                    <td>
+                      <PersonCell name={p.requested_by_name} />
+                    </td>
+                    <td className="color-cell">
+                      <StatusCell
+                        value={p.status}
+                        options={partOptions}
+                        disabled={!isStaff(me.role)}
+                        onChange={(value) => onPartStatus(p, value)}
+                      />
+                    </td>
+                    <td className="tabular-nums">× {p.qty} {t(p.unit)}</td>
+                    <td>{subteamLabel(p.subteam)}</td>
+                    <td className="tabular-nums">
+                      {p.actual_price != null ? (
+                        <span>{t("實際")} ${p.actual_price.toLocaleString()}</span>
+                      ) : (
+                        <span className="text-muted-foreground">{t("預估")} ${(p.est_price * p.qty).toLocaleString()}</span>
+                      )}
+                    </td>
+                    <td>
+                      <div className="flex flex-wrap items-center gap-2 py-1">
+                        {p.status === "pending" && isStaff(me.role) && (
+                          <>
+                            <button
+                              type="button"
+                              className="rounded-lg bg-emerald-500 px-3 py-1.5 text-sm font-bold text-ink shadow transition hover:bg-emerald-400"
+                              onClick={() => decide(p, "approved")}
+                            >
+                              ✓ {t("批准")}
+                            </button>
+                            <button
+                              type="button"
+                              className="rounded-lg bg-rose-500 px-3 py-1.5 text-sm font-bold text-ink shadow transition hover:bg-rose-400"
+                              onClick={() => decide(p, "rejected")}
+                            >
+                              ✕ {t("駁回")}
+                            </button>
+                            {p.approve_token && (
+                              <button type="button" className="rounded-lg border border-amber-200 bg-amber-500/10 px-3 py-1.5 text-sm text-amber-600 transition hover:bg-amber-500/20" onClick={() => copyApproveLink(p)}>
+                                {t("複製老師審批連結")}
+                              </button>
+                            )}
+                          </>
+                        )}
+                        {canDelete && (
+                          <button type="button" className="text-xs text-muted-foreground transition hover:text-rose-400" onClick={() => removePart(p)}>
+                            {t("刪除")}
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         )}
-        {filtered.map((p) => {
-          const st = partStatus(p.status);
-          const canDelete = isStaff(me.role) || (p.requested_by === me.id && p.status === "pending");
-          return (
-            <div key={p.id} className="rounded-xl border border-hairline bg-surface-1 p-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-medium ${st.chip}`}>
-                  {st.label}
-                </span>
-                <span className="font-bold">{p.name}</span>
-                <span className="text-sm text-ink-subtle">× {p.qty} {t(p.unit)}</span>
-                <span className={`${CHIP} ${SUBTEAM_CLS[p.subteam] ?? ""}`}>{subteamLabel(p.subteam)}</span>
-                <span className="ml-auto text-sm tabular-nums">
-                  {p.actual_price != null ? (
-                    <span className="text-emerald-600">{t("實際")} ${p.actual_price.toLocaleString()}</span>
-                  ) : (
-                    <span className="text-ink-muted">{t("預估")} ${(p.est_price * p.qty).toLocaleString()}</span>
-                  )}
-                </span>
-              </div>
-              {p.spec && <p className="mt-1 text-sm text-ink-subtle">{t("規格")}：{p.spec}</p>}
-              {p.purpose && <p className="mt-1 text-sm text-ink-subtle">{t("用途")}：{p.purpose}</p>}
-              {p.link && (
-                <a href={p.link} target="_blank" rel="noreferrer" className="mt-1 inline-block text-sm text-[#2383a5] hover:underline">
-                  {t("購買連結")} ↗
-                </a>
-              )}
-              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-tertiary">
-                <span>{t("申請人")}：{p.requested_by_name ?? "—"}</span>
-                {p.decided_note && <span className="text-ink-subtle">{t("審批備註")}：{p.decided_note}</span>}
-                {p.order_vendor && <span>{t("下單")}：{p.order_vendor}{p.order_ref ? `（${p.order_ref}）` : ""}</span>}
-                {p.arrived_at && <span>{t("到貨")}：{fmtMD(p.arrived_at.slice(0, 10))}</span>}
-              </div>
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                {p.status === "pending" && isStaff(me.role) && (
-                  <>
-                    <button
-                      className="rounded-lg bg-emerald-500 px-5 py-2 text-sm font-bold text-ink shadow transition hover:bg-emerald-400"
-                      onClick={() => decide(p, "approved")}
-                    >
-                      ✓ {t("批准")}
-                    </button>
-                    <button
-                      className="rounded-lg bg-rose-500 px-5 py-2 text-sm font-bold text-ink shadow transition hover:bg-rose-400"
-                      onClick={() => decide(p, "rejected")}
-                    >
-                      ✕ {t("駁回")}
-                    </button>
-                    {p.approve_token && (
-                      <button className="rounded-lg border border-amber-200 bg-amber-500/10 px-3 py-1.5 text-sm text-amber-600 transition hover:bg-amber-500/20" onClick={() => copyApproveLink(p)}>
-                        {t("複製老師審批連結")}
-                      </button>
-                    )}
-                  </>
-                )}
-                {isStaff(me.role) && p.status !== "pending" && (
-                  <select
-                    className={`${SELECT_CLS} w-28 text-xs`}
-                    value={p.status}
-                    onChange={(e) => setStatus(p, e.target.value as PartStatus)}
-                  >
-                    {PART_STATUSES.map((s) => (
-                      <option key={s.key} value={s.key}>{s.label}</option>
-                    ))}
-                  </select>
-                )}
-
-                {canDelete && (
-                  <button className="ml-auto text-xs text-ink-tertiary transition hover:text-rose-400" onClick={() => removePart(p)}>
-                    {t("刪除")}
-                  </button>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function StatCard({ label, value, accent }: { label: string; value: string; accent: string }) {
-  return (
-    <div className="rounded-xl border border-hairline bg-surface-1 p-4">
-      <p className={`text-xl font-black tabular-nums ${accent}`}>{value}</p>
-      <p className="mt-1 text-xs text-ink-subtle">{label}</p>
+      </BoardGroup>
     </div>
   );
 }

@@ -5,7 +5,11 @@ import { isStaff, roleLabelCn } from "@/lib/roles";
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
-import { BTN, INPUT_CLS, subteamLabel } from "@/lib/ui";
+import { PageLoading } from "@/components/PageState";
+import { subteamLabel } from "@/lib/ui";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import type { Me } from "@/lib/types";
 
 export default function AccountPage() {
@@ -32,7 +36,7 @@ export default function AccountPage() {
     );
   }
   if (!me) {
-    return <p className="py-20 text-center text-sm text-ink-tertiary">{t("載入中…")}</p>;
+    return <PageLoading label={t("載入中…")} />;
   }
   const forceChange = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("force") === "1" || !me.password_changed_at;
 
@@ -63,20 +67,21 @@ export default function AccountPage() {
 
   return (
     <div className="mx-auto max-w-md space-y-6">
-      <h1 className="text-lg font-bold">{t("帳號")}</h1>
+      <h1 className="board-title">{t("帳號")}</h1>
       {forceChange && (
         <div className="rounded-xl border border-amber-200 bg-amber-500/10 px-4 py-3 text-sm text-amber-600">
           {t("請先設定新密碼再開始使用（首次登入或密碼已被重設）")}
         </div>
       )}
-      <section className="rounded-xl border border-hairline bg-surface-1 p-5 text-sm">
+      <Card size="sm">
+        <CardContent className="text-sm">
         <dl className="space-y-2">
           <div className="flex justify-between">
             <dt className="text-ink-subtle">{t("顯示名稱")}</dt>
             <dd>{me.display_name}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-ink-subtle">{t("帳號")}</dt>
+            <dt className="text-ink-subtle">{t("使用者名稱")}</dt>
             <dd className="text-ink-muted">{me.username}</dd>
           </div>
           <div className="flex justify-between">
@@ -91,38 +96,43 @@ export default function AccountPage() {
         <p className="mt-3 text-xs text-ink-tertiary">
           {t("名稱與組別請請隊長在「管理」頁調整。")}
         </p>
-      </section>
+        </CardContent>
+      </Card>
 
       {me.login_method === "google" ? (
-        <section className="rounded-xl border border-hairline bg-surface-1 p-5 text-sm">
-          <h2 className="mb-2 font-bold">{t("登入方式")}</h2>
+        <Card size="sm">
+          <CardHeader>
+            <CardTitle>{t("登入方式")}</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm">
           <p className="text-ink-muted">
             {t("此帳號使用學校 Google 帳號登入，無需設定密碼。")}
           </p>
-        </section>
+          </CardContent>
+        </Card>
       ) : (
-      <section className="rounded-xl border border-hairline bg-surface-1 p-5">
-        <h2 className="mb-3 font-bold">{t("修改密碼")}</h2>
+      <Card size="sm">
+        <CardHeader>
+          <CardTitle>{t("修改密碼")}</CardTitle>
+        </CardHeader>
+        <CardContent>
         <form onSubmit={changePassword} className="space-y-3">
-          <input
+          <Input
             type="password"
-            className={INPUT_CLS}
             placeholder={t("目前密碼")}
             value={current}
             onChange={(e) => setCurrent(e.target.value)}
             autoComplete="current-password"
           />
-          <input
+          <Input
             type="password"
-            className={INPUT_CLS}
             placeholder={t("新密碼（至少 6 字）")}
             value={next}
             onChange={(e) => setNext(e.target.value)}
             autoComplete="new-password"
           />
-          <input
+          <Input
             type="password"
-            className={INPUT_CLS}
             placeholder={t("再輸入一次新密碼")}
             value={confirmPw}
             onChange={(e) => setConfirmPw(e.target.value)}
@@ -138,11 +148,12 @@ export default function AccountPage() {
               {msg}
             </p>
           )}
-          <button className={BTN} disabled={busy || !current || next.length < 6}>
+          <Button type="submit" disabled={busy || !current || next.length < 6}>
             {busy ? t("處理中…") : t("更新密碼")}
-          </button>
+          </Button>
         </form>
-      </section>
+        </CardContent>
+      </Card>
       )}
     </div>
   );

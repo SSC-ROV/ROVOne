@@ -1,0 +1,14 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "instrument serif",
+        "createdAt": "2026-10-29T02:58:29.768Z",
+        "reason": "Existing wall-display typeface in globals.css; this upgrade does not change it."
+      }
+    ]
+  }
+}
