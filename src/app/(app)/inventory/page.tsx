@@ -15,7 +15,6 @@ import {
   tagLabel,
   matchesSearch,
   parseLocation,
-  restockRequestHref,
   type InventoryItem,
   type InventoryStatus,
   type InventoryTag,
@@ -450,14 +449,9 @@ export default function InventoryPage() {
                         </button>
                       </>
                     ) : (
-                      <>
-                        <Link href={restockRequestHref(i)} className="rounded-[4px] bg-primary px-2 py-1 font-medium text-primary-foreground hover:bg-[#0060b9]">
-                          {tt("申請補貨 →", "Request restock →")}
-                        </Link>
-                        <button type="button" className="text-muted-foreground hover:text-foreground hover:underline" onClick={() => report(i, "in_stock")}>
-                          {tt("已補貨", "Restocked")}
-                        </button>
-                      </>
+                      <button type="button" className="rounded-[4px] bg-primary px-2 py-1 font-medium text-primary-foreground hover:bg-[#0060b9]" onClick={() => report(i, "in_stock")}>
+                        {tt("已補貨", "Restocked")}
+                      </button>
                     )}
                     {i.status_at && (
                       <span className="w-full text-muted-foreground lg:text-right" title={new Date(i.status_at).toLocaleString()}>
