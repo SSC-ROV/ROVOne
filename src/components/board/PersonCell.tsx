@@ -59,11 +59,14 @@ export function PersonCell({
   options,
   disabled,
   onChange,
+  emptyLabel,
 }: {
   name: string | null;
   options?: { value: string; label: string }[];
   disabled?: boolean;
   onChange?: (value: string) => void;
+  /** Label for the "—" option (defaults to "Unassigned"). */
+  emptyLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
   const face = (
@@ -90,7 +93,7 @@ export function PersonCell({
             }}
           >
             <Avatar name={option.label === "—" ? null : option.label} />
-            <span className="min-w-0 flex-1 truncate">{option.label === "—" ? tt("未指派", "Unassigned") : option.label}</span>
+            <span className="min-w-0 flex-1 truncate">{option.label === "—" ? emptyLabel ?? tt("未指派", "Unassigned") : option.label}</span>
             {option.label === name && <CheckIcon className="size-4 text-muted-foreground" />}
           </button>
         ))}

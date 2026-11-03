@@ -47,7 +47,6 @@ export default function InventoryPage() {
   const listId = useId();
   const [suggestOpen, setSuggestOpen] = useState(false);
   const [active, setActive] = useState(-1);
-  const [pickedId, setPickedId] = useState<number | null>(null);
 
   async function load() {
     const res = await api<{ items: InventoryItem[] }>("/api/inventory");
@@ -104,14 +103,9 @@ export default function InventoryPage() {
   const showSuggest = suggestOpen && suggestions.length > 0;
 
   function pickSuggestion(item: InventoryItem) {
-    setQ(item.name);
     setSuggestOpen(false);
     setActive(-1);
-    setPickedId(item.id);
-    requestAnimationFrame(() => {
-      document.getElementById(`inv-item-${item.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
-    });
-    setTimeout(() => setPickedId((id) => (id === item.id ? null : id)), 2000);
+    router.push(`/inventory/${item.id}`);
   }
 
   const badges = useMemo(() => {
@@ -269,7 +263,7 @@ export default function InventoryPage() {
               className="absolute inset-x-0 top-full z-30 mt-1.5 max-h-80 overflow-y-auto rounded-[12px] border border-border bg-popover p-1 text-popover-foreground shadow-lg"
             >
               {suggestions.map((s, idx) => {
-                const sub = [s.spec, ...s.tags.map(tagLabel)].filter(Boolean).join(" · ");
+                const sub = s.tags.map(tagLabel).join(" · ");
                 return (
                   <li
                     key={s.id}
@@ -382,8 +376,8 @@ export default function InventoryPage() {
                   const editing = editingId === i.id;
                   return (
                     <Fragment key={i.id}>
-                      <tr id={`inv-item-${i.id}`} className="group/row scroll-mt-24" data-selected={pickedId === i.id || editing ? "true" : undefined}>
-                        <td><TitleCell index={index} title={i.name} sub={i.spec} href={`/inventory/${i.id}`} /></td>
+                      <tr id={`inv-item-${i.id}`} className="group/row scroll-mt-24" data-selected={editing ? "true" : undefined}>
+                        <td><TitleCell index={index} title={i.name} href={`/inventory/${i.id}`} /></td>
                         <td>
                           <button
                             type="button"

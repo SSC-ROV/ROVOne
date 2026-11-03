@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CheckIcon, PlusIcon, XIcon } from "lucide-react";
+import LocationDiagram from "./LocationDiagram";
 import { useI18n } from "@/lib/i18n";
 import { tt } from "@/lib/i18n-core";
 import { BTN, BTN_GHOST, INPUT_CLS, SELECT_CLS } from "@/lib/ui";
@@ -77,6 +78,7 @@ export function LocationPicker({
   onChange,
   onPendingChange,
   hideAddButton = false,
+  reportDefault = false,
 }: {
   value: string[];
   onChange: (next: string[]) => void;
@@ -87,12 +89,20 @@ export function LocationPicker({
   onPendingChange?: (code: string | null) => void;
   /** Hide the "+ Add" button and chip list when the parent offers its own actions. */
   hideAddButton?: boolean;
+  /** Report the default selection on mount, so it counts without touching the dropdowns. */
+  reportDefault?: boolean;
 }) {
   const [cab, setCab] = useState("1");
   const [slot, setSlot] = useState("1-1");
   const [col, setCol] = useState("A");
   const [row, setRow] = useState("1");
   const def = CABINETS.find((c) => c.id === cab)!;
+
+  useEffect(() => {
+    if (reportDefault) onPendingChange?.(codeFor({}));
+    // Only on mount: later changes are reported by the dropdown handlers.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function add(code: string | null) {
     if (!code) return;
@@ -223,6 +233,10 @@ export default function ItemForm({
   const [preview, setPreview] = useState<string | null>(initialPhoto ?? null);
   const [photoErr, setPhotoErr] = useState("");
   const [pending, setPending] = useState<string | null>(null);
+  /** Whether the dropdowns are open; their selection is saved with the form. */
+  const [picking, setPicking] = useState(initial.locations.length === 0);
+  /** Remounts the dropdowns with a fresh selection after "Add another location". */
+  const [pickerKey, setPickerKey] = useState(0);
   const [tried, setTried] = useState(false);
   const purchaseErr = purchaseInfoError({ spec: v.spec, buy_link: v.buy_link, unit_price: Number(v.unit_price) });
   const nameErr = !v.name.trim();
@@ -250,7 +264,7 @@ export default function ItemForm({
         setTried(true);
         if (nameErr || purchaseErr) return;
         // A spot picked in the dropdowns but never "+ Add"-ed still counts.
-        const locations = pending && !v.locations.includes(pending) ? [...v.locations, pending].sort(compareLocations) : v.locations;
+        const locations = picking && pending && !v.locations.includes(pending) ? [...v.locations, pending].sort(compareLocations) : v.locations;
         onSubmit({ ...v, locations });
       }}
     >
@@ -304,11 +318,61 @@ export default function ItemForm({
         </div>
       </div>
 
-      <div className="grid gap-1">
+      <div className="grid gap-2">
         <span className="text-xs font-medium text-muted-foreground">{tt("放在哪裡", "Where it's stored")}</span>
-        <LocationPicker value={v.locations} onChange={(locs) => set("locations", locs)} onPendingChange={setPending} />
-        {pending && !v.locations.includes(pending) && (
-          <p className="text-xs text-muted-foreground">{tt(`儲存時會加入 ${pending}`, `${pending} will be added when you save`)}</p>
+        {v.locations.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {v.locations.map((code) => (
+              <span key={code} className="inline-flex items-center gap-1 rounded-[4px] bg-[#cce5ff] px-2 py-0.5 text-sm text-[#0060b9] dark:bg-[#0073ea]/25 dark:text-[#cce5ff]" title={describeLocation(code)}>
+                <b className="font-mono">{code}</b>
+                <button type="button" aria-label={tt(`移除 ${code}`, `Remove ${code}`)} className="rounded hover:bg-black/10" onClick={() => set("locations", v.locations.filter((x) => x !== code))}>
+                  <XIcon className="size-3.5" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        {picking && (
+          <div className="space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <LocationPicker key={pickerKey} value={[]} onChange={() => {}} onPendingChange={setPending} hideAddButton reportDefault />
+              {v.locations.length > 0 && (
+                <button type="button" className="text-xs text-muted-foreground hover:text-foreground hover:underline" onClick={() => { setPicking(false); setPending(null); }}>
+                  {tt("不加這個位置", "Don't add this one")}
+                </button>
+              )}
+            </div>
+            {pending && (
+              <p className="text-sm">
+                <b className="font-mono">{pending}</b>{" "}
+                <span className="text-muted-foreground">
+                  · {describeLocation(pending)}
+                  {v.locations.includes(pending) ? tt("（已在清單中）", " (already listed)") : tt(" · 儲存時一起存入", " · saved when you save")}
+                </span>
+              </p>
+            )}
+          </div>
+        )}
+        <div>
+          <button
+            type="button"
+            className={`${BTN_GHOST} gap-1 border border-border`}
+            onClick={() => {
+              if (picking && pending && !v.locations.includes(pending)) set("locations", [...v.locations, pending].sort(compareLocations));
+              setPending(null);
+              setPicking(true);
+              setPickerKey((k) => k + 1);
+            }}
+          >
+            <PlusIcon className="size-4" />
+            {v.locations.length === 0 && !picking ? tt("加上位置", "Add a location") : tt("再加一個位置", "Add another location")}
+          </button>
+        </div>
+        <LocationDiagram locations={[...new Set([...v.locations, ...(picking && pending ? [pending] : [])])]} />
+        {v.locations.length + (picking && pending && !v.locations.includes(pending) ? 1 : 0) > 1 && (
+          <p className="text-xs text-[#c27c0e]">
+            {tt("⚠ 同一物品放在多個位置會被標記，建議集中放一處", "⚠ Items in more than one place get flagged. Try to keep them in one spot.")}
+          </p>
         )}
       </div>
 
