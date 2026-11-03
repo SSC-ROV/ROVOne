@@ -9,7 +9,7 @@ import { EQUIPMENT_CATEGORIES, groupColor } from "@/lib/ui";
 import { fmtMD, todayStr } from "@/lib/date";
 import { useDialogs } from "@/components/ui/Dialogs";
 import { PageError, PageLoading } from "@/components/PageState";
-import { CircleDotIcon, HandIcon, PlusIcon, TagIcon, Trash2Icon, Undo2Icon, WrenchIcon } from "lucide-react";
+import { CircleDotIcon, HandIcon, PencilIcon, PlusIcon, TagIcon, Trash2Icon, Undo2Icon, WrenchIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -42,6 +42,10 @@ export default function EquipmentPage() {
   const [fStatus, setFStatus] = useState<string[]>([]);
   const [fCategory, setFCategory] = useState<string[]>([]);
   const [adding, setAdding] = useState(false);
+  /** The item open in the edit sheet (null while adding a new one). */
+  const [editing, setEditing] = useState<Equipment | null>(null);
+  const [due, setDue] = useState("");
+  const [saving, setSaving] = useState(false);
 
   async function load() {
     const [e, u, m] = await Promise.all([
@@ -160,18 +164,53 @@ export default function EquipmentPage() {
     return null;
   }
 
-  async function addEquipment(ev: React.FormEvent) {
+  function openNew() {
+    setEditing(null);
+    setName("");
+    setCategory("其他");
+    setNote("");
+    setDue("");
+    setAdding(true);
+  }
+
+  function openEdit(item: Equipment) {
+    setEditing(item);
+    setName(item.name);
+    setCategory(item.category);
+    setNote(item.note);
+    setDue(item.due_return ?? "");
+    setAdding(true);
+  }
+
+  async function submitSheet(ev: React.FormEvent) {
     ev.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim() || saving) return;
+    setSaving(true);
     try {
-      await api("/api/equipment", { method: "POST", body: JSON.stringify({ name, category, note }) });
+      if (editing) {
+        await api(`/api/equipment/${editing.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            name,
+            category,
+            note,
+            ...(editing.status === "borrowed" ? { due_return: due || null } : {}),
+          }),
+        });
+        toast(tt("已儲存", "Saved"));
+      } else {
+        await api("/api/equipment", { method: "POST", body: JSON.stringify({ name, category, note }) });
+        toast(t("設備已新增"));
+      }
       setName("");
       setNote("");
       setAdding(false);
-      toast(t("設備已新增"));
+      setEditing(null);
       await load();
     } catch (err) {
       toast(t((err as Error).message), "err");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -247,7 +286,7 @@ export default function EquipmentPage() {
         subtitle={tt(`目前借出 ${borrowed.length} 項`, `${borrowed.length} out on loan`)}
         action={
           staff ? (
-            <Button onClick={() => setAdding(true)}>
+            <Button onClick={openNew}>
               <PlusIcon /> {tt("新設備", "New equipment")}
             </Button>
           ) : null
@@ -310,7 +349,7 @@ export default function EquipmentPage() {
                   const canReturn = e.status === "borrowed" && (staff || e.borrower_id === meId);
                   return (
                     <tr key={e.id} className="group/row">
-                      <td><TitleCell index={index} title={e.name} sub={e.note} /></td>
+                      <td><TitleCell index={index} title={e.name} sub={e.note} onOpen={staff ? () => openEdit(e) : undefined} openLabel={tt("編輯", "Edit")} /></td>
                       <td><Label color={categoryColor(e.category)}>{t(e.category)}</Label></td>
                       <td className="color-cell">
                         <StatusCell value={e.status} options={statusOptions} disabled={!canEditStatus(e)} onChange={(value) => onEquipmentStatus(e, value)} />
@@ -333,6 +372,7 @@ export default function EquipmentPage() {
                           actions={[
                             { label: t("借用"), icon: <HandIcon />, onSelect: () => act(e, "borrow"), hidden: e.status !== "available" },
                             { label: t("歸還"), icon: <Undo2Icon />, onSelect: () => act(e, "return"), hidden: !canReturn },
+                            { label: tt("編輯", "Edit"), icon: <PencilIcon />, onSelect: () => openEdit(e), hidden: !staff },
                             {
                               label: e.status === "maintenance" ? t("修好了") : t("送修"),
                               icon: <WrenchIcon />,
@@ -354,10 +394,12 @@ export default function EquipmentPage() {
 
       <Sheet open={adding} onOpenChange={setAdding}>
         <SheetContent className="w-full gap-0 sm:max-w-[520px]" style={{ width: "min(520px, 100%)", maxWidth: 520 }}>
-          <form onSubmit={addEquipment} className="flex h-full min-h-0 flex-col">
+          <form onSubmit={submitSheet} className="flex h-full min-h-0 flex-col">
             <SheetHeader className="border-b border-border px-5">
-              <SheetTitle className="text-lg">{tt("新設備", "New equipment")}</SheetTitle>
-              <SheetDescription>{tt("登記後隊員就能借用", "Once added, team members can borrow it")}</SheetDescription>
+              <SheetTitle className="text-lg">{editing ? tt("編輯設備", "Edit equipment") : tt("新設備", "New equipment")}</SheetTitle>
+              <SheetDescription>
+                {editing ? tt("修改名稱、分類、備註或應還日", "Change the name, category, note or due date") : tt("登記後隊員就能借用", "Once added, team members can borrow it")}
+              </SheetDescription>
             </SheetHeader>
             <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-4 text-sm">
               <FormField label={tt("名稱", "Name")}>
@@ -369,10 +411,15 @@ export default function EquipmentPage() {
               <FormField label={tt("備註", "Note")}>
                 <Input className="h-9" placeholder={t("備註（序號、位置…選填）")} value={note} onChange={(ev) => setNote(ev.target.value)} />
               </FormField>
+              {editing?.status === "borrowed" && (
+                <FormField label={tt("應還日", "Due back")}>
+                  <Input type="date" className="h-9" value={due} onChange={(ev) => setDue(ev.target.value)} />
+                </FormField>
+              )}
             </div>
             <div className="flex items-center gap-3 border-t border-border px-5 py-3">
               <Button type="button" variant="ghost" className="ml-auto" onClick={() => setAdding(false)}>{t("取消")}</Button>
-              <Button type="submit" disabled={!name.trim()}>{t("新增設備")}</Button>
+              <Button type="submit" disabled={!name.trim() || saving}>{editing ? tt("儲存", "Save") : t("新增設備")}</Button>
             </div>
           </form>
         </SheetContent>

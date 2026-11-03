@@ -119,6 +119,13 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   if (body?.note !== undefined) {
     await sql`UPDATE equipment SET note = ${String(body.note)} WHERE id = ${eqId}`;
   }
+  if (body?.due_return !== undefined && e.status === "borrowed") {
+    const due = body.due_return ? String(body.due_return) : null;
+    if (due && !/^\d{4}-\d{2}-\d{2}$/.test(due)) {
+      return NextResponse.json({ error: "日期格式不正確" }, { status: 400 });
+    }
+    await sql`UPDATE equipment SET due_return = ${due} WHERE id = ${eqId}`;
+  }
   return NextResponse.json({ ok: true });
 }
 
