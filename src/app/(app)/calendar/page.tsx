@@ -546,18 +546,13 @@ export default function CalendarPage() {
                       : tt("沒有安排", "Nothing scheduled")}
                 </p>
               </div>
-              {staff && (
-                <Button variant="outline" size="sm" onClick={() => openNew(sel)}>
-                  <PlusIcon /> {tt("活動", "Event")}
-                </Button>
-              )}
             </header>
 
             <div className="flex flex-col gap-1 p-2">
               {selData.events.length === 0 && selData.tasks.length === 0 && (
                 <div className="flex flex-col items-center gap-2 px-4 py-8 text-center text-sm text-muted-foreground">
                   <CalendarDaysIcon className="size-6 opacity-60" />
-                  {staff ? tt("右鍵點日曆上的日期，或按「活動」新增", "Right-click a day on the calendar or press Event to add one") : tt("這天沒有活動", "No events on this day")}
+                  {staff ? tt("右鍵或雙擊日曆上的日期即可新增活動", "Right-click or double-click a day on the calendar to add an event") : tt("這天沒有活動", "No events on this day")}
                 </div>
               )}
 
