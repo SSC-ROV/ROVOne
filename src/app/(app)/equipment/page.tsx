@@ -20,7 +20,7 @@ import { BoardGroup } from "@/components/board/BoardGroup";
 import { Label, StatusCell } from "@/components/board/ColorCell";
 import { PersonCell } from "@/components/board/PersonCell";
 import { tt } from "@/lib/i18n-core";
-import type { Equipment, Me } from "@/lib/types";
+import type { Equipment, Me, Member } from "@/lib/types";
 
 const STATUS_OPTIONS = [
   { value: "available", label: "可借用", color: "#00c875" },
@@ -33,6 +33,7 @@ export default function EquipmentPage() {
   const { confirm, prompt, toast } = useDialogs();
   const [equipment, setEquipment] = useState<Equipment[] | null>(null);
   const [me, setMe] = useState<Me | null>(null);
+  const [members, setMembers] = useState<Member[]>([]);
   const [name, setName] = useState("");
   const [category, setCategory] = useState("其他");
   const [note, setNote] = useState("");
@@ -43,12 +44,14 @@ export default function EquipmentPage() {
   const [adding, setAdding] = useState(false);
 
   async function load() {
-    const [e, u] = await Promise.all([
+    const [e, u, m] = await Promise.all([
       api<{ equipment: Equipment[] }>("/api/equipment"),
       api<{ user: Me | null }>("/api/auth/me"),
+      api<{ members: Member[] }>("/api/members").catch(() => ({ members: [] as Member[] })),
     ]);
     setEquipment(e.equipment);
     setMe(u.user);
+    setMembers(m.members);
   }
 
   const bgReload = () => { load().catch(() => {}); };
@@ -112,6 +115,49 @@ export default function EquipmentPage() {
       setEquipment(snapshot);
       toast(t((err as Error).message), "err");
     }
+  }
+
+  /** Set, change or clear the borrower straight from the table, like a task's assignee. */
+  async function assignBorrower(item: Equipment, value: string) {
+    const nextId = value === "none" ? null : Number(value);
+    if (nextId === item.borrower_id) return;
+    const snapshot = equipment;
+    const person = members.find((member) => member.id === nextId);
+    setEquipment((prev) =>
+      prev!.map((x) =>
+        x.id !== item.id
+          ? x
+          : nextId === null
+            ? { ...x, status: "available", borrower_id: null, borrower_name: null, borrowed_at: null, due_return: null }
+            : { ...x, status: "borrowed", borrower_id: nextId, borrower_name: person?.display_name ?? (nextId === meId ? meName : x.borrower_name) }
+      )
+    );
+    try {
+      await api(`/api/equipment/${item.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ action: "assign", borrower_id: nextId }),
+      });
+      toast(
+        nextId === null
+          ? tt(`「${item.name}」已歸還`, `"${item.name}" returned`)
+          : tt(`「${item.name}」借用人：${person?.display_name ?? meName}`, `"${item.name}" is now with ${person?.display_name ?? meName}`)
+      );
+      await load();
+    } catch (err) {
+      setEquipment(snapshot);
+      toast(t((err as Error).message), "err");
+    }
+  }
+
+  /** Who this viewer may pick as the borrower; null when the cell is read-only. */
+  function borrowerOptions(item: Equipment) {
+    if (item.status === "maintenance") return null;
+    const none = { value: "none", label: "—" };
+    if (staff) return [none, ...members.map((member) => ({ value: String(member.id), label: member.display_name }))];
+    const self = { value: String(meId), label: meName };
+    if (item.status === "available") return [self];
+    if (item.borrower_id === meId) return [none, self];
+    return null;
   }
 
   async function addEquipment(ev: React.FormEvent) {
@@ -269,7 +315,15 @@ export default function EquipmentPage() {
                       <td className="color-cell">
                         <StatusCell value={e.status} options={statusOptions} disabled={!canEditStatus(e)} onChange={(value) => onEquipmentStatus(e, value)} />
                       </td>
-                      <td><PersonCell name={e.borrower_name} /></td>
+                      <td>
+                        <PersonCell
+                          name={e.borrower_name}
+                          options={borrowerOptions(e) ?? undefined}
+                          disabled={!borrowerOptions(e)}
+                          emptyLabel={tt("無借用人（歸還）", "No borrower (returned)")}
+                          onChange={(value) => assignBorrower(e, value)}
+                        />
+                      </td>
                       <td className={`tabular-nums ${overdue ? "font-medium text-[var(--c-red)]" : e.due_return ? "" : "text-muted-foreground"}`}>
                         {e.due_return ? (overdue ? t("逾期 ") : "") + fmtMD(e.due_return) : "—"}
                       </td>
