@@ -83,8 +83,12 @@ export default function ItemPanel({
   async function create(v: ItemFormValue) {
     setBusy(true);
     try {
-      await api("/api/inventory", { method: "POST", body: JSON.stringify({ ...v, unit_price: Number(v.unit_price) }) });
-      toast(tt(`已新增「${v.name}」`, `Added ${v.name}`));
+      const res = await api<{ restock?: { created: boolean } | null }>("/api/inventory", { method: "POST", body: JSON.stringify({ ...v, unit_price: Number(v.unit_price) }) });
+      toast(
+        res.restock?.created
+          ? tt(`已新增「${v.name}」，並自動送出採購申請`, `Added ${v.name}. A purchase request was sent automatically.`)
+          : tt(`已新增「${v.name}」`, `Added ${v.name}`)
+      );
       await onChanged();
       reset();
     } catch (err) {

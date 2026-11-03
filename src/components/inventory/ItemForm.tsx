@@ -376,7 +376,7 @@ export default function ItemForm({
       </div>
 
       <p className="text-xs text-muted-foreground">
-        {tt("規格、購買連結和單價是必填的：有人回報「沒有了」時，會自動用這些資料送出採購申請。", "Specs, buy link and price are required: when someone reports it empty, a purchase request is sent automatically with these details.")}
+        {tt("規格、購買連結和單價是必填的：標成或回報「沒有了」時，會自動用這些資料送出採購申請。", "Specs, buy link and price are required: whenever it is marked or reported empty, a purchase request is sent automatically with these details.")}
       </p>
       {tried && (nameErr || purchaseErr) && (
         <p role="alert" className="text-sm text-danger">{nameErr ? t("請填寫物品名稱") : t(purchaseErr!)}</p>

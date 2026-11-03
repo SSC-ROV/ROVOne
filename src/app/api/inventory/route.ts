@@ -4,13 +4,18 @@ import { getSessionUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { cleanTags, isInventoryStatus, purchaseInfoError } from "@/lib/inventory";
 import {
+  autoRestockRequest,
   cleanLocations,
   cleanPhoto,
   ensureInventorySchema,
+  getInventoryItem,
   listInventory,
   recordStatus,
   replaceLocations,
 } from "@/lib/inventory-db";
+
+// 新增時就是「沒有了」會自動開採購申請，背景通知需要較長的函數壽命
+export const maxDuration = 60;
 
 export async function GET() {
   const user = await getSessionUser();
@@ -46,5 +51,16 @@ export async function POST(req: NextRequest) {
   await replaceLocations(id, locs.locations);
   await recordStatus(id, status, "", user.id);
   await logAudit(user.id, user.username, "inventory.create", `inventory:${id}`, name);
-  return NextResponse.json({ ok: true, id });
+  // 新增時就標成「沒有了」→ 跟回報沒有了一樣，自動送出採購申請
+  let restock: { created: boolean; partId: number | null } | null = null;
+  if (status === "empty") {
+    const item = await getInventoryItem(id);
+    if (item) {
+      restock = await autoRestockRequest(item, user, req.nextUrl.origin);
+      if (restock.created) {
+        await logAudit(user.id, user.username, "parts.auto_restock", `parts:${restock.partId}`, name);
+      }
+    }
+  }
+  return NextResponse.json({ ok: true, id, restock });
 }
