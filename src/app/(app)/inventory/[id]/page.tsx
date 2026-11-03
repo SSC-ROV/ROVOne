@@ -22,7 +22,7 @@ import { PageError, PageLoading } from "@/components/PageState";
 import RoomMap, { CabinetFrontView } from "@/components/inventory/RoomMap";
 import ItemForm, { type ItemFormValue } from "@/components/inventory/ItemForm";
 import LocationEditor from "@/components/inventory/LocationEditor";
-import { LocationChip, MultiLocationFlag, StatusPill, TagList, reportToast, timeAgo, type ReportResponse } from "@/components/inventory/shared";
+import { StatusPill, TagList, reportToast, timeAgo, type ReportResponse } from "@/components/inventory/shared";
 
 export default function InventoryItemPage() {
   const { id } = useParams<{ id: string }>();
@@ -132,44 +132,108 @@ export default function InventoryItemPage() {
       </Link>
 
       {/* 標題 */}
-      <header className="flex flex-wrap items-start gap-4">
-        {item.photo && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={item.photo} alt="" className="size-24 rounded-[8px] border border-border object-cover" />
-        )}
-        <div className="min-w-0 flex-1 space-y-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="board-title text-foreground">{item.name}</h1>
-            <StatusPill status={item.status} />
-          </div>
-          <p className="text-sm text-muted-foreground">
-            {item.spec || tt("沒有規格資料", "No size or spec yet")}
-          </p>
-          <TagList tags={item.tags} />
-          {(item.buy_link || item.unit_price > 0) && (
-            <p className="flex flex-wrap items-center gap-x-3 text-sm text-muted-foreground">
-              {item.unit_price > 0 && <span>{tt("預估單價", "Est. unit price")}: ${item.unit_price}</span>}
-              {item.buy_link && (
-                <a href={item.buy_link} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                  {tt("購買連結 ↗", "Buy link ↗")}
-                </a>
-              )}
-            </p>
-          )}
-          {item.note && <p className="text-sm">{item.note}</p>}
-        </div>
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start">
+        <h1 className="board-title min-w-0 flex-1 !text-3xl !leading-tight text-foreground [overflow-wrap:anywhere] sm:!text-4xl" style={{ wordBreak: "normal" }}>{item.name}</h1>
         <div className="flex flex-wrap gap-2">
           <Link href={`/inventory/qr?ids=${item.id}`} className={`${BTN_GHOST} gap-1.5 border border-border`}>
             <QrCodeIcon className="size-4" /> {tt("QR 標籤", "QR label")}
           </Link>
-          <button type="button" className={`${BTN_GHOST} border border-border`} onClick={() => setEditing((v) => !v)}>
-            {editing ? t("取消") : tt("編輯", "Edit")}
+          <button type="button" className={`${BTN_GHOST} gap-1.5 border border-border`} onClick={() => setEditing((v) => !v)}>
+            <PencilIcon className="size-4" /> {editing ? t("取消") : tt("編輯", "Edit")}
           </button>
           <button type="button" className={`${BTN_GHOST} gap-1.5 border border-[#df2f4a]/60 text-[#c0233b] hover:bg-[#df2f4a]/10 dark:text-[#ff8597]`} onClick={remove}>
             <Trash2Icon className="size-4" /> {tt("刪除", "Delete")}
           </button>
         </div>
       </header>
+
+      {/* 位置：整頁最大的字，一眼就看到 */}
+      <section className="rounded-[16px] border border-border bg-card px-5 py-8 text-center sm:py-10" aria-label={tt("位置", "Location")}>
+        <p className="text-xs font-semibold tracking-[0.18em] text-muted-foreground uppercase">{tt("放在", "Location")}</p>
+        {item.locations.length === 0 ? (
+          <p className="mt-3 text-4xl font-bold text-muted-foreground sm:text-5xl">{tt("還沒指定位置", "No location yet")}</p>
+        ) : (
+          <ul className="mt-2 flex flex-col items-center gap-5">
+            {item.locations.map((l) => (
+              <li key={l}>
+                <p
+                  className={`font-mono leading-none font-black tracking-tight text-[var(--c-blue)] ${
+                    item.locations.length > 1 ? "text-[clamp(3rem,12vw,6.5rem)]" : "text-[clamp(4.5rem,20vw,11rem)]"
+                  }`}
+                >
+                  {l}
+                </p>
+                <p className="mt-3 text-base text-muted-foreground sm:text-lg">{describeLocation(l)}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+        {item.locations.length > 1 && (
+          <p className="mx-auto mt-4 max-w-md text-sm text-[#b86e00] dark:text-[#ffc56b]">
+            {tt("這個物品分散在多個位置，整理時建議集中到一處。", "This item is stored in more than one place. Move it to a single spot when you can.")}
+          </p>
+        )}
+        {editingLoc ? (
+          <div className="mx-auto mt-6 max-w-xl text-left">
+            <LocationEditor
+              item={item}
+              onCancel={() => setEditingLoc(false)}
+              onSaved={async () => {
+                setEditingLoc(false);
+                await load();
+              }}
+            />
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="mt-6 inline-flex h-8 items-center gap-1.5 rounded-[6px] border border-border px-3 text-sm font-medium hover:bg-muted"
+            onClick={() => setEditingLoc(true)}
+          >
+            <PencilIcon className="size-3.5" />
+            {item.locations.length === 0 ? tt("加上位置", "Add location") : tt("不在這裡？編輯位置", "Not here? Edit location")}
+          </button>
+        )}
+      </section>
+
+      {/* 狀態與其他資料 */}
+      <section className="space-y-4 rounded-[16px] border border-border bg-card p-5">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="text-sm font-semibold text-muted-foreground">{tt("狀態", "Status")}</span>
+          <StatusPill status={item.status} />
+          {item.status_at && (
+            <span className="text-xs text-muted-foreground">
+              {tt("最後回報", "Last report")}: {item.status_by_name ?? "—"} · {timeAgo(item.status_at)}
+            </span>
+          )}
+        </div>
+        <div className="flex flex-wrap items-start gap-5">
+          {item.photo && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={item.photo} alt="" className="size-28 rounded-[8px] border border-border object-cover" />
+          )}
+          <dl className="grid min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)] gap-x-6 gap-y-2.5 text-sm">
+            <dt className="text-muted-foreground">{tt("規格 / 型號", "Spec / model")}</dt>
+            <dd className="break-words">{item.spec || <span className="text-muted-foreground">—</span>}</dd>
+            <dt className="text-muted-foreground">{tt("分類", "Category")}</dt>
+            <dd>{item.tags.length ? <TagList tags={item.tags} /> : <span className="text-muted-foreground">—</span>}</dd>
+            <dt className="text-muted-foreground">{tt("預估單價", "Est. unit price")}</dt>
+            <dd className="tabular-nums">{item.unit_price > 0 ? `$${item.unit_price}` : <span className="text-muted-foreground">—</span>}</dd>
+            <dt className="text-muted-foreground">{tt("購買連結", "Buy link")}</dt>
+            <dd className="min-w-0 truncate">
+              {item.buy_link ? (
+                <a href={item.buy_link} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                  {item.buy_link.replace(/^https?:\/\//, "")} ↗
+                </a>
+              ) : (
+                <span className="text-muted-foreground">—</span>
+              )}
+            </dd>
+            <dt className="text-muted-foreground">{tt("備註", "Note")}</dt>
+            <dd className="break-words whitespace-pre-wrap">{item.note || <span className="text-muted-foreground">—</span>}</dd>
+          </dl>
+        </div>
+      </section>
 
       {editing && (
         <section className="rounded-[16px] border border-border bg-card p-5">
@@ -185,57 +249,9 @@ export default function InventoryItemPage() {
       )}
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
-        {/* 位置 */}
+        {/* 地圖 */}
         <section className="min-w-0 space-y-3 rounded-[16px] border border-border bg-card p-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="font-semibold">{tt("放在哪裡", "Where to find it")}</h2>
-            <MultiLocationFlag count={item.locations.length} />
-            {!editingLoc && (
-              <span className="ml-auto flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">
-                  {item.locations.length === 0 ? tt("知道它在哪？", "Know where it is?") : tt("不在這裡？", "Not here?")}
-                </span>
-                <button
-                  type="button"
-                  className="inline-flex h-7 items-center gap-1 rounded-[4px] border border-border px-2 text-xs font-medium hover:bg-muted"
-                  onClick={() => setEditingLoc(true)}
-                >
-                  <PencilIcon className="size-3.5" />
-                  {item.locations.length === 0 ? tt("加上位置", "Add location") : tt("編輯位置", "Edit location")}
-                </button>
-              </span>
-            )}
-          </div>
-          {editingLoc && (
-            <LocationEditor
-              item={item}
-              onCancel={() => setEditingLoc(false)}
-              onSaved={async () => {
-                setEditingLoc(false);
-                await load();
-              }}
-            />
-          )}
-          {item.locations.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              {tt("還沒指定位置。", "No location set yet.")}{" "}
-              <button type="button" className="text-primary hover:underline" onClick={() => setEditingLoc(true)}>{tt("加上位置", "Add one")}</button>
-            </p>
-          ) : (
-            <ul className="space-y-1">
-              {item.locations.map((l) => (
-                <li key={l} className="flex flex-wrap items-center gap-2 text-sm">
-                  <LocationChip code={l} />
-                  <span className="text-muted-foreground">{describeLocation(l)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-          {item.locations.length > 1 && (
-            <p className="text-xs text-[#b86e00] dark:text-[#ffc56b]">
-              {tt("這個物品分散在多個位置，整理時建議集中到一處。", "This item is stored in more than one place. Move it to a single spot when you can.")}
-            </p>
-          )}
+          <h2 className="font-semibold">{tt("在地圖上", "On the map")}</h2>
           <RoomMap highlight={item.locations} />
           {cabinets.length > 0 && (
             <div className="flex flex-wrap gap-6 border-t border-border pt-3">
