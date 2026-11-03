@@ -1,34 +1,43 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, type CSSProperties } from "react";
 import { CheckIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 export type ColorOption = { value: string; label: string; color: string };
 
-/** Three signal bars; `level` of them are filled with `color`. Used for priority. */
-export function PriorityBars({ level, color }: { level: number; color: string }) {
+const STATUS_COLOR: Record<string, string> = { todo: "var(--c-green)", doing: "var(--c-yellow)", done: "var(--c-purple)" };
+
+/** Task state icon: open ring (todo), half-filled ring (in progress), filled check (done). */
+export function StatusIcon({ status, size = 16, className = "" }: { status: string; size?: number; className?: string }) {
+  const color = STATUS_COLOR[status] ?? "var(--c-gray)";
   return (
-    <span className="inline-flex h-3 shrink-0 items-end gap-[2px]" aria-hidden>
-      {[1, 2, 3].map((bar) => (
-        <span
-          key={bar}
-          className="w-[3px] rounded-[1px]"
-          style={{ height: `${bar * 4}px`, background: bar <= level ? color : "color-mix(in oklch, currentColor 22%, transparent)" }}
-        />
-      ))}
+    <svg width={size} height={size} viewBox="0 0 16 16" className={`shrink-0 ${className}`} aria-hidden style={{ color }}>
+      {status === "done" ? (
+        <>
+          <circle cx="8" cy="8" r="7" fill="currentColor" />
+          <path d="M5 8.2 7.1 10.3 11 6.2" fill="none" stroke="var(--card)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        </>
+      ) : (
+        <>
+          <circle cx="8" cy="8" r="6.25" fill="none" stroke="currentColor" strokeWidth="1.5" />
+          {status === "doing" ? <path d="M8 4a4 4 0 0 1 0 8z" fill="currentColor" /> : <circle cx="8" cy="8" r="1.6" fill="currentColor" />}
+        </>
+      )}
+    </svg>
+  );
+}
+
+/** Outlined, tinted pill coloured by `color`. */
+export function Label({ color, children, className = "" }: { color: string; children: React.ReactNode; className?: string }) {
+  return (
+    <span className={`gh-label ${className}`} style={{ "--label": color } as CSSProperties}>
+      {children}
     </span>
   );
 }
 
-const PRIORITY_LEVEL: Record<string, number> = { high: 3, medium: 2, low: 1 };
-
-function Marker({ kind, option }: { kind: "status" | "priority"; option: { value: string; color: string } }) {
-  if (kind === "priority") return <PriorityBars level={PRIORITY_LEVEL[option.value] ?? 0} color={option.color} />;
-  return <span className="size-2 shrink-0 rounded-full" style={{ background: option.color }} aria-hidden />;
-}
-
-/** A soft pill (dot or bars + label) that opens a picker. Colour marks meaning; the text stays readable. */
+/** Status or priority shown as a label pill that opens a picker. */
 export function ColorCell({
   value,
   options,
@@ -43,17 +52,8 @@ export function ColorCell({
   kind?: "status" | "priority";
 }) {
   const [open, setOpen] = useState(false);
-  const current = options.find((option) => option.value === value) ?? { value, label: value, color: "#8f94a3" };
-  const tint = kind === "status" ? `color-mix(in oklch, ${current.color} 16%, transparent)` : "transparent";
-  const face: ReactNode = (
-    <span
-      className="inline-flex h-7 max-w-full items-center gap-2 rounded-full px-2.5 text-[13px] font-medium text-foreground"
-      style={{ background: tint }}
-    >
-      <Marker kind={kind} option={current} />
-      <span className="truncate">{current.label}</span>
-    </span>
-  );
+  const current = options.find((option) => option.value === value) ?? { value, label: value, color: "var(--c-gray)" };
+  const face = <Label color={current.color}>{current.label}</Label>;
 
   if (!onChange || disabled) return face;
 
@@ -61,12 +61,12 @@ export function ColorCell({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         type="button"
-        className="inline-flex max-w-full cursor-pointer rounded-full border-0 bg-transparent p-0 transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring"
+        className="inline-flex max-w-full cursor-pointer rounded-full border-0 bg-transparent p-0 hover:brightness-125 focus-visible:ring-2 focus-visible:ring-ring"
         disabled={disabled}
       >
         {face}
       </PopoverTrigger>
-      <PopoverContent className="w-44 gap-0.5 p-1" align="start" sideOffset={4}>
+      <PopoverContent className="w-48 gap-0.5 p-1" align="start" sideOffset={4}>
         {options.map((option) => (
           <button
             key={option.value}
@@ -77,7 +77,11 @@ export function ColorCell({
               setOpen(false);
             }}
           >
-            <Marker kind={kind} option={option} />
+            {kind === "status" ? (
+              <StatusIcon status={option.value} />
+            ) : (
+              <span className="size-2.5 shrink-0 rounded-full" style={{ background: option.color }} aria-hidden />
+            )}
             <span className="flex-1">{option.label}</span>
             {option.value === value && <CheckIcon className="size-4 text-muted-foreground" />}
           </button>

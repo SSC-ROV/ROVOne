@@ -95,6 +95,7 @@ export interface TeamEvent {
   location: string;
   notes: string;
   subteam: string | null; // null = 全隊
+  task_id: number | null; // linked task, if any
   created_by: number | null;
 }
 

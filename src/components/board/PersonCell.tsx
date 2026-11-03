@@ -5,7 +5,7 @@ import { CheckIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { tt } from "@/lib/i18n-core";
 
-const COLORS = ["#6b95ee", "#4cb784", "#9b8cec", "#e38a5d", "#d4ad48", "#5fb3c4", "#d77aa6"];
+const COLORS = ["var(--c-blue)", "var(--c-green)", "var(--c-purple)", "var(--c-orange)", "var(--c-pink)", "var(--c-teal)", "var(--c-yellow)"];
 
 export function personColor(name: string) {
   let hash = 0;

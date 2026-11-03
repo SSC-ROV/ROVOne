@@ -25,17 +25,22 @@ export async function POST(req: NextRequest) {
     location?: string;
     notes?: string;
     subteam?: string;
+    task_id?: number | null;
   } | null;
   const title = String(body?.title ?? "").trim();
   const date = String(body?.date ?? "");
   if (!title || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return NextResponse.json({ error: "請填寫標題與日期" }, { status: 400 });
   }
+  const taskId = Number(body?.task_id) || null;
+  if (taskId && !(await sql`SELECT 1 FROM tasks WHERE id = ${taskId}`).length) {
+    return NextResponse.json({ error: "任務不存在" }, { status: 400 });
+  }
   const [event] = await sql`
-    INSERT INTO events (title, type, date, time, location, notes, subteam, created_by)
+    INSERT INTO events (title, type, date, time, location, notes, subteam, task_id, created_by)
     VALUES (${title}, ${String(body?.type ?? "other")}, ${date},
             ${body?.time ? String(body.time) : null}, ${String(body?.location ?? "")},
-            ${String(body?.notes ?? "")}, ${body?.subteam ? String(body.subteam) : null}, ${user.id})
+            ${String(body?.notes ?? "")}, ${body?.subteam ? String(body.subteam) : null}, ${taskId}, ${user.id})
     RETURNING *`;
   return NextResponse.json({ event });
 }

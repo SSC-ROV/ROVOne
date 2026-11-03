@@ -29,14 +29,14 @@ export const SUBTEAM_CLS: Record<string, string> = {
   general: "border-transparent bg-transparent text-foreground",
 };
 
-export const GROUP_COLORS = ["#6b95ee", "#4cb784", "#9b8cec", "#e38a5d", "#d4ad48", "#5fb3c4"] as const;
+export const GROUP_COLORS = ["var(--c-blue)", "var(--c-green)", "var(--c-purple)", "var(--c-orange)", "var(--c-pink)", "var(--c-teal)", "var(--c-yellow)"] as const;
 
 export const groupColor = (index: number) => GROUP_COLORS[index % GROUP_COLORS.length];
 
 export const PRIORITIES: { key: Priority; zh: string; en: string; dot: string; color: string; label: string }[] = [
-  { key: "high", zh: "高", en: "High", dot: "bg-[#e5704f]", color: "#e5704f", get label() { return tt(this.zh, this.en); } },
-  { key: "medium", zh: "中", en: "Medium", dot: "bg-[#8f94a3]", color: "#8f94a3", get label() { return tt(this.zh, this.en); } },
-  { key: "low", zh: "低", en: "Low", dot: "bg-[#6b95ee]", color: "#6b95ee", get label() { return tt(this.zh, this.en); } },
+  { key: "high", zh: "高", en: "High", dot: "bg-[var(--c-orange)]", color: "var(--c-orange)", get label() { return tt(this.zh, this.en); } },
+  { key: "medium", zh: "中", en: "Medium", dot: "bg-[var(--c-yellow)]", color: "var(--c-yellow)", get label() { return tt(this.zh, this.en); } },
+  { key: "low", zh: "低", en: "Low", dot: "bg-[var(--c-blue)]", color: "var(--c-blue)", get label() { return tt(this.zh, this.en); } },
 ];
 
 export const priorityLabel = (k: string) => {
@@ -48,9 +48,9 @@ export const priorityDot = (k: string) =>
   PRIORITIES.find((p) => p.key === k)?.dot ?? "bg-gray-400";
 
 export const STATUSES: { key: TaskStatus; zh: string; en: string; color: string; label: string }[] = [
-  { key: "todo", zh: "待辦", en: "To Do", color: "#8f94a3", get label() { return tt(this.zh, this.en); } },
-  { key: "doing", zh: "進行中", en: "In Progress", color: "#dba545", get label() { return tt(this.zh, this.en); } },
-  { key: "done", zh: "已完成", en: "Done", color: "#4cb784", get label() { return tt(this.zh, this.en); } },
+  { key: "todo", zh: "待辦", en: "Todo", color: "var(--c-green)", get label() { return tt(this.zh, this.en); } },
+  { key: "doing", zh: "進行中", en: "In progress", color: "var(--c-yellow)", get label() { return tt(this.zh, this.en); } },
+  { key: "done", zh: "已完成", en: "Done", color: "var(--c-purple)", get label() { return tt(this.zh, this.en); } },
 ];
 
 export const statusLabel = (k: string) => {
@@ -62,14 +62,15 @@ export const EVENT_TYPES: {
   key: EventType;
   zh: string;
   en: string;
+  color: string;
   dot: string;
   chip: string;
   label: string;
 }[] = [
-  { key: "meeting", zh: "例會", en: "Meeting", dot: "bg-[#0073ea]", chip: "border-transparent bg-[#0073ea] text-white", get label() { return tt(this.zh, this.en); } },
-  { key: "watertest", zh: "水測", en: "Water Test", dot: "bg-[#579bfc]", chip: "border-transparent bg-[#579bfc] text-white", get label() { return tt(this.zh, this.en); } },
-  { key: "competition", zh: "比賽", en: "Competition", dot: "bg-[#df2f4a]", chip: "border-transparent bg-[#df2f4a] text-white", get label() { return tt(this.zh, this.en); } },
-  { key: "other", zh: "其他", en: "Other", dot: "bg-[#c4c4c4]", chip: "border-transparent bg-[#c4c4c4] text-[#323338]", get label() { return tt(this.zh, this.en); } },
+  { key: "meeting", zh: "例會", en: "Meeting", color: "var(--c-blue)", dot: "bg-[var(--c-blue)]", chip: "border-transparent bg-[color-mix(in_srgb,var(--c-blue)_15%,transparent)] text-foreground", get label() { return tt(this.zh, this.en); } },
+  { key: "watertest", zh: "水測", en: "Water Test", color: "var(--c-teal)", dot: "bg-[var(--c-teal)]", chip: "border-transparent bg-[color-mix(in_srgb,var(--c-teal)_15%,transparent)] text-foreground", get label() { return tt(this.zh, this.en); } },
+  { key: "competition", zh: "比賽", en: "Competition", color: "var(--c-red)", dot: "bg-[var(--c-red)]", chip: "border-transparent bg-[color-mix(in_srgb,var(--c-red)_15%,transparent)] text-foreground", get label() { return tt(this.zh, this.en); } },
+  { key: "other", zh: "其他", en: "Other", color: "var(--c-gray)", dot: "bg-[var(--c-gray)]", chip: "border-transparent bg-[color-mix(in_srgb,var(--c-gray)_15%,transparent)] text-foreground", get label() { return tt(this.zh, this.en); } },
 ];
 
 export const eventType = (k: string) =>

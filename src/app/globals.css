@@ -111,16 +111,14 @@ body {
 
 .board-title {
   font-size: 24px;
-  line-height: 30px;
-  font-weight: 500;
-  letter-spacing: -0.1px;
+  line-height: 32px;
+  font-weight: 600;
 }
 
 .group-title {
-  font-size: 18px;
+  font-size: 16px;
   line-height: 24px;
-  font-weight: 500;
-  letter-spacing: -0.1px;
+  font-weight: 600;
 }
 
 .board-table {
@@ -132,10 +130,11 @@ body {
 
 .board-table th,
 .board-table td {
-  height: 40px;
-  padding: 0 10px;
+  height: 37px;
+  padding: 0 8px;
   background: var(--card);
   border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
   font-size: 14px;
   font-weight: 400;
   line-height: 20px;
@@ -143,15 +142,16 @@ body {
   white-space: nowrap;
 }
 
+.board-table th:last-child,
+.board-table td:last-child {
+  border-right: 0;
+}
+
 .board-table th {
   height: 32px;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--muted-foreground);
-}
-
-.board-table tbody tr:last-child td {
-  border-bottom: 0;
 }
 
 .board-table td.color-cell,
@@ -179,7 +179,7 @@ body {
 }
 
 .board-table.is-interactive tbody tr:hover td {
-  background: color-mix(in oklch, var(--muted) 70%, var(--card));
+  background: color-mix(in srgb, var(--muted) 80%, var(--card));
 }
 
 .board-table.is-interactive tbody tr[data-selected="true"] td {
@@ -439,84 +439,127 @@ summary {
   padding: 36px 44px;
 }
 
-/* ── Calm theme: soft neutrals, colour only for meaning (status, priority, groups). ── */
+/* ── GitHub-style theme: navy canvas, grey hairlines, colour carried by icons and outlined labels. ── */
+:root {
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, "Noto Sans TC", sans-serif;
+  --font-display: var(--font-sans);
+}
+
 :root,
 [data-theme="light"] {
-  --background: #f6f6f7;
-  --foreground: #1c1d21;
+  --background: #f6f8fa;
+  --foreground: #1f2328;
   --card: #ffffff;
-  --card-foreground: #1c1d21;
+  --card-foreground: #1f2328;
   --popover: #ffffff;
-  --popover-foreground: #1c1d21;
-  --primary: #3a6fe0;
+  --popover-foreground: #1f2328;
+  --primary: #1f883d;
   --primary-foreground: #ffffff;
-  --primary-soft: #eaf0fd;
-  --primary-soft-foreground: #2c5bc4;
-  --secondary: #f1f1f3;
-  --secondary-foreground: #1c1d21;
-  --muted: #f1f1f3;
-  --muted-foreground: #62656e;
-  --accent: #eeeef1;
-  --accent-foreground: #1c1d21;
-  --destructive: #d43f4b;
-  --success: #2f9e6a;
-  --warning: #c98a1b;
-  --border: #e7e7ea;
-  --input: #d7d8dd;
-  --ring: #3a6fe0;
-  --chart-1: #2f9e6a;
-  --chart-2: #d9982b;
-  --chart-3: #d43f4b;
-  --chart-4: #5b8be6;
-  --chart-5: #8a7be0;
+  --primary-soft: #ddf4ff;
+  --primary-soft-foreground: #0969da;
+  --secondary: #f6f8fa;
+  --secondary-foreground: #1f2328;
+  --muted: #eff2f5;
+  --muted-foreground: #59636e;
+  --accent: #eff2f5;
+  --accent-foreground: #1f2328;
+  --destructive: #d1242f;
+  --success: #1a7f37;
+  --warning: #9a6700;
+  --border: #d1d9e0;
+  --input: #d1d9e0;
+  --ring: #0969da;
+  --underline: #fd8c73;
+  /* Named colours for status, priority, labels and groups */
+  --c-green: #1a7f37;
+  --c-yellow: #9a6700;
+  --c-purple: #8250df;
+  --c-red: #d1242f;
+  --c-orange: #bc4c00;
+  --c-blue: #0969da;
+  --c-gray: #59636e;
+  --c-pink: #bf3989;
+  --c-teal: #1b7c83;
+  --chart-1: var(--c-green);
+  --chart-2: var(--c-yellow);
+  --chart-3: var(--c-red);
+  --chart-4: var(--c-blue);
+  --chart-5: var(--c-purple);
   --radius: 6px;
-  --sidebar: #fbfbfc;
-  --sidebar-foreground: #1c1d21;
-  --sidebar-primary: #3a6fe0;
+  --sidebar: #f6f8fa;
+  --sidebar-foreground: #1f2328;
+  --sidebar-primary: #0969da;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #eeeef1;
-  --sidebar-accent-foreground: #1c1d21;
-  --sidebar-border: #e7e7ea;
-  --sidebar-ring: #3a6fe0;
+  --sidebar-accent: #eff2f5;
+  --sidebar-accent-foreground: #1f2328;
+  --sidebar-border: #d1d9e0;
+  --sidebar-ring: #0969da;
 }
 
 .dark,
 [data-theme="dark"] {
-  --background: #0e0f11;
-  --foreground: #e4e5e9;
-  --card: #151619;
-  --card-foreground: #e4e5e9;
-  --popover: #1b1c20;
-  --popover-foreground: #e4e5e9;
-  --primary: #3f73dd;
+  --background: #010409;
+  --foreground: #f0f6fc;
+  --card: #0d1117;
+  --card-foreground: #f0f6fc;
+  --popover: #151b23;
+  --popover-foreground: #f0f6fc;
+  --primary: #238636;
   --primary-foreground: #ffffff;
-  --primary-soft: rgba(91, 139, 230, 0.15);
-  --primary-soft-foreground: #a9c2f5;
-  --secondary: #1d1e22;
-  --secondary-foreground: #e4e5e9;
-  --muted: #1d1e22;
-  --muted-foreground: #9396a0;
-  --accent: #222327;
-  --accent-foreground: #e4e5e9;
-  --destructive: #e5636a;
-  --success: #4cb784;
-  --warning: #dba545;
-  --border: rgba(255, 255, 255, 0.07);
-  --input: rgba(255, 255, 255, 0.12);
-  --ring: #6b95ee;
-  --chart-1: #4cb784;
-  --chart-2: #dba545;
-  --chart-3: #e5636a;
-  --chart-4: #6b95ee;
-  --chart-5: #9b8cec;
-  --sidebar: #121315;
-  --sidebar-foreground: #e4e5e9;
-  --sidebar-primary: #3f73dd;
+  --primary-soft: rgba(56, 139, 253, 0.15);
+  --primary-soft-foreground: #4493f8;
+  --secondary: #151b23;
+  --secondary-foreground: #f0f6fc;
+  --muted: #151b23;
+  --muted-foreground: #9198a1;
+  --accent: #212830;
+  --accent-foreground: #f0f6fc;
+  --destructive: #f85149;
+  --success: #3fb950;
+  --warning: #d29922;
+  --border: #3d444d;
+  --input: #3d444d;
+  --ring: #1f6feb;
+  --underline: #f78166;
+  --c-green: #3fb950;
+  --c-yellow: #d29922;
+  --c-purple: #ab7df8;
+  --c-red: #f85149;
+  --c-orange: #db6d28;
+  --c-blue: #4493f8;
+  --c-gray: #9198a1;
+  --c-pink: #db61a2;
+  --c-teal: #39c5cf;
+  --chart-1: var(--c-green);
+  --chart-2: var(--c-yellow);
+  --chart-3: var(--c-red);
+  --chart-4: var(--c-blue);
+  --chart-5: var(--c-purple);
+  --sidebar: #010409;
+  --sidebar-foreground: #f0f6fc;
+  --sidebar-primary: #1f6feb;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #1d1e22;
-  --sidebar-accent-foreground: #e4e5e9;
-  --sidebar-border: rgba(255, 255, 255, 0.07);
-  --sidebar-ring: #6b95ee;
+  --sidebar-accent: #151b23;
+  --sidebar-accent-foreground: #f0f6fc;
+  --sidebar-border: #3d444d;
+  --sidebar-ring: #1f6feb;
+}
+
+/* Outlined label pill: text, faint fill and border all from --label. */
+.gh-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, var(--label) 45%, transparent);
+  background: color-mix(in srgb, var(--label) 14%, transparent);
+  color: color-mix(in srgb, var(--label) 82%, var(--foreground));
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  white-space: nowrap;
 }
 
 @layer base {

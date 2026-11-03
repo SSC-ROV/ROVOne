@@ -10,12 +10,10 @@ import {
   CircleDotIcon,
   ClipboardListIcon,
   EyeOffIcon,
-  FileTextIcon,
   FlagIcon,
   KanbanSquareIcon,
   LayersIcon,
   LinkIcon,
-  ListChecksIcon,
   MoreHorizontalIcon,
   PanelRightOpenIcon,
   PlusIcon,
@@ -38,8 +36,8 @@ import { PageError, PageLoading } from "@/components/PageState";
 import { PRIORITIES, STATUSES, groupColor, priorityLabel, subteamLabel } from "@/lib/ui";
 import { BoardGroup } from "@/components/board/BoardGroup";
 import { BoardHeader } from "@/components/board/BoardHeader";
-import { PriorityCell, StatusCell } from "@/components/board/ColorCell";
-import { PersonCell, personColor } from "@/components/board/PersonCell";
+import { ColorCell, PriorityCell, StatusCell, StatusIcon } from "@/components/board/ColorCell";
+import { Avatar, PersonCell, personColor } from "@/components/board/PersonCell";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -57,6 +55,11 @@ import type { ChecklistItem, Cycle, Me, Member, Task } from "@/lib/types";
 
 const OPEN_STATUSES = new Set(["active", "late", "approved", "pending_leader", "pending_teacher"]);
 const PREFS_KEY = "rov-tasks-prefs-v2";
+const STATUS_HINT: Record<string, string> = {
+  get todo() { return tt("尚未開始", "This item hasn't been started"); },
+  get doing() { return tt("正在進行", "This is actively being worked on"); },
+  get done() { return tt("已經完成", "This has been completed"); },
+};
 const LEGACY_PREFS_KEY = "rov-tasks-prefs";
 
 type View = "table" | "board";
@@ -324,22 +327,22 @@ export default function TasksPage() {
             { assignee_id: member.id }
           )
         );
-        out.push(make("none", tt("未指派", "Unassigned"), "#8f94a3", filtered.filter((task) => task.assignee_id == null)));
+        out.push(make("none", tt("未指派", "Unassigned"), "var(--c-gray)", filtered.filter((task) => task.assignee_id == null)));
         return out;
       }
       case "due": {
         const buckets: { key: DueState; title: string; color: string; preset: Partial<NewTaskInput> }[] = [
-          { key: "overdue", title: tt("已逾期", "Overdue"), color: "#e5636a", preset: {} },
-          { key: "today", title: tt("今天到期", "Due today"), color: "#dba545", preset: { due_date: today } },
-          { key: "soon", title: tt("七天內", "Next 7 days"), color: "#6b95ee", preset: { due_date: addDaysStr(today, 7) } },
-          { key: "later", title: tt("之後", "Later"), color: "#9b8cec", preset: {} },
-          { key: "none", title: tt("無截止日", "No date"), color: "#8f94a3", preset: {} },
-          { key: "done", title: tt("已完成", "Done"), color: "#4cb784", preset: { status: "done" } },
+          { key: "overdue", title: tt("已逾期", "Overdue"), color: "var(--c-red)", preset: {} },
+          { key: "today", title: tt("今天到期", "Due today"), color: "var(--c-yellow)", preset: { due_date: today } },
+          { key: "soon", title: tt("七天內", "Next 7 days"), color: "var(--c-blue)", preset: { due_date: addDaysStr(today, 7) } },
+          { key: "later", title: tt("之後", "Later"), color: "var(--c-purple)", preset: {} },
+          { key: "none", title: tt("無截止日", "No date"), color: "var(--c-gray)", preset: {} },
+          { key: "done", title: tt("已完成", "Done"), color: "var(--c-green)", preset: { status: "done" } },
         ];
         return buckets.map((b) => make(b.key, b.title, b.color, filtered.filter((task) => dueState(task, today) === b.key), b.preset));
       }
       case "none":
-        return [make("all", tt("全部任務", "All tasks"), "#6b95ee", filtered)];
+        return [make("all", tt("全部任務", "All tasks"), "var(--c-blue)", filtered)];
       default: {
         const ordered = [...cycles].sort(
           (a, b) => Number(OPEN_STATUSES.has(b.status)) - Number(OPEN_STATUSES.has(a.status)) || b.start_date.localeCompare(a.start_date) || a.title.localeCompare(b.title)
@@ -355,7 +358,7 @@ export default function TasksPage() {
           )
         );
         const loose = filtered.filter((task) => task.cycle_id == null || !cycles.some((cycle) => cycle.id === task.cycle_id));
-        if (loose.length) out.push(make("none", tt("未分專案", "No project"), "#8f94a3", loose, {}, false));
+        if (loose.length) out.push(make("none", tt("未分專案", "No project"), "var(--c-gray)", loose, {}, false));
         return out;
       }
     }
@@ -492,6 +495,7 @@ export default function TasksPage() {
   const priorityOptions = PRIORITIES.map((item) => ({ value: item.key, label: item.label, color: item.color }));
   const people = [{ value: "none", label: "—" }, ...members.map((member) => ({ value: String(member.id), label: member.display_name }))];
   const subteamOptions = subteams.map((item) => ({ value: item.key, label: item.label }));
+  const subteamColorOptions = subteams.map((item, i) => ({ value: item.key, label: item.label, color: groupColor(i) }));
   const reorderable = prefs.sort === "manual" && prefs.groupBy === "cycle";
 
   // Summary numbers over every task (not just the filtered view).
@@ -564,7 +568,7 @@ export default function TasksPage() {
       />
 
       {/* Quick views double as one-click filters */}
-      <div className="mb-3 flex gap-1 overflow-x-auto pb-1" role="tablist" aria-label={tt("快速檢視", "Quick views")}>
+      <div className="mb-4 flex gap-1 overflow-x-auto border-b border-border" role="tablist" aria-label={tt("快速檢視", "Quick views")}>
         {views.map((view) => {
           const active = sameFilters(filters, view.preset);
           return (
@@ -574,20 +578,20 @@ export default function TasksPage() {
               role="tab"
               aria-selected={active}
               onClick={() => setFilters(active && view.key !== "all" ? EMPTY_FILTERS : view.preset)}
-              className={`inline-flex h-8 shrink-0 items-center gap-2 rounded-full px-3 text-sm transition-colors [&_svg]:size-4 ${
-                active ? "bg-primary-soft font-medium text-primary-soft-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              className={`relative -mb-px inline-flex h-10 shrink-0 items-center gap-2 border-b-2 px-3 text-sm transition-colors [&_svg]:size-4 [&_svg]:text-muted-foreground ${
+                active ? "border-[var(--underline)] font-semibold text-foreground" : "border-transparent text-muted-foreground hover:border-border hover:text-foreground"
               }`}
             >
               {view.icon}
               {view.label}
-              <span className={`tabular-nums text-xs ${view.alert ? "rounded-full bg-destructive/15 px-1.5 font-semibold text-destructive" : "opacity-70"}`}>{view.value}</span>
+              <span className={`rounded-full px-1.5 text-xs leading-5 font-medium tabular-nums ${view.alert ? "bg-destructive/15 text-destructive" : "bg-muted text-muted-foreground"}`}>{view.value}</span>
             </button>
           );
         })}
       </div>
 
       {/* Toolbar: view switch, search, filters, display options */}
-      <div className="mb-4 flex flex-col gap-2.5 border-b border-border pb-3">
+      <div className="mb-4 flex flex-col gap-2.5">
         <div className="flex flex-wrap items-center gap-2">
           <Tabs value={prefs.view} onValueChange={(value) => updatePrefs({ view: value as View })}>
             <TabsList>
@@ -666,11 +670,11 @@ export default function TasksPage() {
             value={filters.due}
             onChange={(due) => setFilters((prev) => ({ ...prev, due }))}
             options={[
-              { value: "overdue", label: tt("已逾期", "Overdue"), color: "#e5636a" },
-              { value: "today", label: tt("今天", "Today"), color: "#dba545" },
-              { value: "soon", label: tt("七天內", "Next 7 days"), color: "#6b95ee" },
-              { value: "later", label: tt("之後", "Later"), color: "#9b8cec" },
-              { value: "none", label: tt("無截止日", "No date"), color: "#8f94a3" },
+              { value: "overdue", label: tt("已逾期", "Overdue"), color: "var(--c-red)" },
+              { value: "today", label: tt("今天", "Today"), color: "var(--c-yellow)" },
+              { value: "soon", label: tt("七天內", "Next 7 days"), color: "var(--c-blue)" },
+              { value: "later", label: tt("之後", "Later"), color: "var(--c-purple)" },
+              { value: "none", label: tt("無截止日", "No date"), color: "var(--c-gray)" },
             ].map((option) => ({ ...option, hint: countBy((task) => dueState(task, today) === option.value) }))}
           />
           <MultiFilter
@@ -711,6 +715,8 @@ export default function TasksPage() {
                 key={`${prefs.groupBy}-${group.id}`}
                 title={group.title}
                 color={group.color}
+                icon={prefs.groupBy === "status" ? <StatusIcon status={group.id} /> : undefined}
+                description={prefs.groupBy === "status" ? STATUS_HINT[group.id] : undefined}
                 count={group.tasks.length}
                 meta={group.tasks.length > 0 ? <Progress done={groupDone} total={group.tasks.length} className="hidden w-36 sm:inline-flex" /> : null}
                 footer={group.addable ? <AddTaskRow onCreate={(title) => createTask({ ...group.preset, title })} /> : null}
@@ -722,13 +728,13 @@ export default function TasksPage() {
                     {/* Fixed column widths keep every group's columns aligned */}
                     <colgroup>
                       <col />
-                      <col style={{ width: 150 }} />
                       <col style={{ width: 140 }} />
+                      <col style={{ width: 120 }} />
+                      <col style={{ width: 96 }} />
+                      <col style={{ width: 130 }} />
                       <col style={{ width: 110 }} />
-                      <col style={{ width: 160 }} />
-                      <col style={{ width: 100 }} />
-                      {showSubteam && <col style={{ width: 130 }} />}
-                      <col style={{ width: 44 }} />
+                      {showSubteam && <col style={{ width: 120 }} />}
+                      <col style={{ width: 40 }} />
                     </colgroup>
                     <thead>
                       <tr>
@@ -736,7 +742,7 @@ export default function TasksPage() {
                           <span className="flex items-center gap-2.5">
                             <input
                               type="checkbox"
-                              className="size-4 accent-primary"
+                              className="ml-2 size-4 accent-[var(--c-blue)]"
                               checked={allChecked}
                               ref={(el) => {
                                 if (el) el.indeterminate = !allChecked && someChecked;
@@ -744,7 +750,7 @@ export default function TasksPage() {
                               onChange={() => toggleSelect(ids, !allChecked)}
                               aria-label={tt("全選", "Select all")}
                             />
-                            {t("任務")}
+                            {tt("標題", "Title")}
                           </span>
                         </th>
                         <th>{t("負責人")}</th>
@@ -765,26 +771,31 @@ export default function TasksPage() {
                           <tr key={task.id} data-selected={checked ? "true" : undefined} className="group/row">
                             <td>
                               <span className="flex min-w-0 items-center gap-2.5">
-                                <input
-                                  type="checkbox"
-                                  className="size-4 shrink-0 accent-primary opacity-60 transition-opacity checked:opacity-100 group-hover/row:opacity-100"
-                                  checked={checked}
-                                  onChange={() => toggleSelect([task.id], !checked)}
-                                  aria-label={task.title}
-                                />
+                                {/* Row number; becomes a checkbox on hover or when selected */}
+                                <span className="relative flex w-6 shrink-0 justify-end">
+                                  <span className={`text-xs tabular-nums text-muted-foreground group-hover/row:invisible ${checked ? "invisible" : ""}`}>{index + 1}</span>
+                                  <input
+                                    type="checkbox"
+                                    className={`absolute top-1/2 right-0 size-4 -translate-y-1/2 accent-[var(--c-blue)] group-hover/row:visible focus-visible:visible ${checked ? "visible" : "invisible"}`}
+                                    checked={checked}
+                                    onChange={() => toggleSelect([task.id], !checked)}
+                                    aria-label={task.title}
+                                  />
+                                </span>
+                                <StatusIcon status={task.status} />
                                 <button
                                   type="button"
-                                  className={`min-w-0 truncate text-left font-medium hover:underline hover:underline-offset-4 ${task.status === "done" ? "text-muted-foreground line-through" : "text-foreground"}`}
+                                  className={`min-w-0 truncate text-left hover:text-[var(--c-blue)] hover:underline hover:underline-offset-4 ${task.status === "done" ? "text-muted-foreground" : "text-foreground"}`}
                                   onClick={() => setOpenId(task.id)}
                                   title={task.title}
                                 >
                                   {task.title}
                                 </button>
-                                {task.description.trim() && <FileTextIcon className="size-3.5 shrink-0 text-muted-foreground" aria-label={tt("有描述", "Has description")} />}
+                                <span className="shrink-0 text-[13px] text-muted-foreground tabular-nums">#{task.id}</span>
                                 <button
                                   type="button"
                                   onClick={() => setOpenId(task.id)}
-                                  className="ml-auto flex h-6 shrink-0 items-center gap-1 rounded-[6px] border border-border bg-card px-1.5 text-xs text-muted-foreground opacity-0 group-hover/row:opacity-100 hover:bg-muted hover:text-foreground focus-visible:opacity-100"
+                                  className="ml-auto flex h-6 shrink-0 translate-x-1 items-center gap-1 rounded-[6px] border border-border bg-card px-1.5 text-xs text-muted-foreground opacity-0 transition-all duration-150 group-hover/row:translate-x-0 group-hover/row:opacity-100 hover:bg-muted hover:text-foreground focus-visible:opacity-100"
                                 >
                                   <PanelRightOpenIcon className="size-3.5" /> {tt("開啟", "Open")}
                                 </button>
@@ -812,13 +823,12 @@ export default function TasksPage() {
                             </td>
                             {showSubteam && (
                             <td>
-                              <Choice
+                              <ColorCell
+                                kind="priority"
                                 value={task.subteam}
                                 disabled={!editable}
                                 onChange={(value) => patch(task, { subteam: value })}
-                                options={subteamOptions.length ? subteamOptions : [{ value: task.subteam, label: subteamLabel(task.subteam) }]}
-                                className="border-transparent bg-transparent shadow-none hover:bg-muted"
-                                ariaLabel={t("組別")}
+                                options={subteamColorOptions.length ? subteamColorOptions : [{ value: task.subteam, label: subteamLabel(task.subteam), color: "var(--c-gray)" }]}
                               />
                             </td>
                             )}
@@ -856,13 +866,15 @@ export default function TasksPage() {
           )}
         </div>
       ) : (
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid items-start gap-3 md:grid-cols-3">
           {STATUSES.map((column) => {
             const columnTasks = sortTasks(filtered.filter((task) => task.status === column.key));
             return (
               <section
                 key={column.key}
-                className={`flex min-h-64 flex-col gap-2 rounded-[8px] p-1.5 transition-colors ${dragOver === column.key ? "bg-primary-soft" : "bg-muted/40"}`}
+                className={`flex max-h-[calc(100dvh-14rem)] min-h-64 flex-col rounded-[8px] border bg-background transition-colors duration-200 ${
+                  dragOver === column.key ? "border-[var(--c-blue)] bg-primary-soft" : "border-border"
+                }`}
                 onDragOver={(event) => {
                   event.preventDefault();
                   if (dragOver !== column.key) setDragOver(column.key);
@@ -877,58 +889,65 @@ export default function TasksPage() {
                   if (task && canEdit(task) && task.status !== column.key) patch(task, { status: column.key });
                 }}
               >
-                <div className="flex h-9 items-center gap-2 px-2 text-sm">
-                  <span className="size-2.5 rounded-full" style={{ background: column.color }} aria-hidden />
-                  <h2 className="font-semibold">{column.label}</h2>
-                  <span className="text-xs tabular-nums text-muted-foreground">{columnTasks.length}</span>
-                </div>
-                {columnTasks.map((task) => {
-                  const editable = canEdit(task);
-                  const itemsDone = task.items.filter((item) => item.done).length;
-                  const priority = PRIORITIES.find((item) => item.key === task.priority);
-                  return (
-                    <article
-                      key={task.id}
-                      draggable={editable}
-                      onDragStart={(event) => {
-                        event.dataTransfer.setData("text/plain", String(task.id));
-                        event.dataTransfer.effectAllowed = "move";
-                      }}
-                      onDragEnd={() => setDragOver(null)}
-                      onClick={() => setOpenId(task.id)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") setOpenId(task.id);
-                      }}
-                      tabIndex={0}
-                      className={`flex cursor-pointer flex-col gap-2.5 rounded-[10px] border border-border bg-card p-3 shadow-xs outline-none transition-colors hover:border-input focus-visible:ring-2 focus-visible:ring-ring ${editable ? "active:cursor-grabbing" : ""}`}
-                    >
-                      <div className="flex items-start gap-2">
-                        <p className={`min-w-0 flex-1 text-[15px] leading-snug font-medium break-words ${task.status === "done" ? "text-muted-foreground line-through" : ""}`}>{task.title}</p>
-                        {task.description.trim() && <FileTextIcon className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />}
-                      </div>
-                      <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-                        {priority && <Pill color={priority.color}>{priorityLabel(task.priority)}</Pill>}
-                        <span className="rounded-full bg-muted px-2 py-0.5">{subteamOptions.find((item) => item.value === task.subteam)?.label ?? subteamLabel(task.subteam)}</span>
+                <header className="px-3 pt-3 pb-2">
+                  <div className="flex items-center gap-2">
+                    <StatusIcon status={column.key} />
+                    <h2 className="text-[15px] font-semibold">{column.label}</h2>
+                    <span className="rounded-full bg-muted px-2 text-xs leading-5 font-medium tabular-nums text-muted-foreground">{columnTasks.length}</span>
+                  </div>
+                  <p className="mt-0.5 text-[13px] text-muted-foreground">{STATUS_HINT[column.key]}</p>
+                </header>
+                <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2">
+                  {columnTasks.map((task) => {
+                    const editable = canEdit(task);
+                    const itemsDone = task.items.filter((item) => item.done).length;
+                    const priority = PRIORITIES.find((item) => item.key === task.priority);
+                    const project = cycles.find((cycle) => cycle.id === task.cycle_id)?.title;
+                    return (
+                      <article
+                        key={task.id}
+                        draggable={editable}
+                        onDragStart={(event) => {
+                          event.dataTransfer.setData("text/plain", String(task.id));
+                          event.dataTransfer.effectAllowed = "move";
+                        }}
+                        onDragEnd={() => setDragOver(null)}
+                        onClick={() => setOpenId(task.id)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") setOpenId(task.id);
+                        }}
+                        tabIndex={0}
+                        className={`group/card flex cursor-pointer flex-col gap-2 rounded-[6px] border border-border bg-card p-3 outline-none transition-[border-color,transform,box-shadow] duration-150 hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--c-gray)_60%,transparent)] hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring ${editable ? "active:cursor-grabbing" : ""}`}
+                      >
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <StatusIcon status={task.status} size={14} />
+                          <span className="min-w-0 truncate">{project ?? tt("無專案", "No project")}</span>
+                          <span className="shrink-0 tabular-nums">#{task.id}</span>
+                          <span className="ml-auto">{task.assignee_name && <Avatar name={task.assignee_name} size={20} />}</span>
+                        </div>
+                        <p className="text-sm leading-snug font-medium break-words group-hover/card:text-[var(--c-blue)]">{task.title}</p>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {priority && <Pill color={priority.color}>{priorityLabel(task.priority)}</Pill>}
+                          <Pill color={subteamColorOptions.find((item) => item.value === task.subteam)?.color ?? "var(--c-gray)"}>{subteamOptions.find((item) => item.value === task.subteam)?.label ?? subteamLabel(task.subteam)}</Pill>
+                          {task.due_date && task.status !== "done" && <DueCell task={task} today={today} className="[&_*]:text-xs" />}
+                        </div>
                         {task.items.length > 0 && (
-                          <span className="inline-flex items-center gap-1 tabular-nums">
-                            <ListChecksIcon className="size-3.5" /> {itemsDone}/{task.items.length}
+                          <span className="flex items-center gap-2 text-xs text-muted-foreground tabular-nums">
+                            {itemsDone} / {task.items.length}
+                            <Progress done={itemsDone} total={task.items.length} label={false} className="flex-1" />
+                            {Math.round((itemsDone / task.items.length) * 100)}%
                           </span>
                         )}
-                      </div>
-                      {task.items.length > 0 && <Progress done={itemsDone} total={task.items.length} label={false} />}
-                      <div className="flex items-center justify-between gap-2 text-xs">
-                        <DueCell task={task} today={today} />
-                        <PersonCell name={task.assignee_name} />
-                      </div>
-                    </article>
-                  );
-                })}
-                {columnTasks.length === 0 && (
-                  <p className="rounded-[8px] border border-dashed border-border px-3 py-6 text-center text-xs text-muted-foreground">
-                    {tt("拖曳任務到這裡", "Drag tasks here")}
-                  </p>
-                )}
-                {defaultCycleId != null && <AddTaskRow compact onCreate={(title) => createTask({ title, status: column.key })} />}
+                      </article>
+                    );
+                  })}
+                  {columnTasks.length === 0 && (
+                    <p className="rounded-[6px] border border-dashed border-border px-3 py-6 text-center text-xs text-muted-foreground">
+                      {tt("拖曳任務到這裡", "Drag tasks here")}
+                    </p>
+                  )}
+                  {defaultCycleId != null && <AddTaskRow compact onCreate={(title) => createTask({ title, status: column.key })} />}
+                </div>
               </section>
             );
           })}
@@ -982,7 +1001,7 @@ export default function TasksPage() {
       )}
 
       <Sheet open={openTask != null} onOpenChange={(open) => { if (!open) setOpenId(null); }}>
-        <SheetContent className="w-full gap-0 sm:max-w-[640px]" style={{ width: "min(640px, 100%)", maxWidth: 640 }}>
+        <SheetContent className="w-full gap-0 sm:max-w-[1040px]" style={{ width: "min(1040px, 100%)", maxWidth: 1040 }}>
           {openTask && (
             <TaskSheet
               key={openTask.id}
@@ -990,6 +1009,7 @@ export default function TasksPage() {
               today={today}
               editable={canEdit(openTask)}
               staff={staff}
+              me={me}
               cycles={cycles}
               people={people}
               subteams={subteamOptions}

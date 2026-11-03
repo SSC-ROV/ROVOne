@@ -2,15 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import I18nProvider from "@/lib/i18n";
 import SubteamsProvider from "@/lib/subteams";
-import { Figtree, Poppins } from "next/font/google";
 import { cn } from "@/lib/utils";
-
-const figtree = Figtree({ subsets: ["latin"], variable: "--font-sans" });
-const poppins = Poppins({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-display",
-});
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://iengineer.cc.cd"),
@@ -38,7 +30,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       data-theme="dark"
       data-lang="en"
-      className={cn("dark h-full antialiased font-sans", figtree.variable, poppins.variable)}
+      className={cn("dark h-full antialiased font-sans")}
       style={{ colorScheme: "dark" }}
       suppressHydrationWarning
     >

@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Task } from "@/lib/types";
+import { Label } from "@/components/board/ColorCell";
 
 export const PRIORITY_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 };
 
@@ -136,7 +137,7 @@ export function Progress({ done, total, label = true, className = "" }: { done: 
   return (
     <span className={`inline-flex items-center gap-2 ${className}`} title={`${done}/${total}`}>
       <span className="h-1.5 w-full min-w-12 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
-        <span className="block h-full rounded-full transition-[width] duration-300" style={{ width: `${pct}%`, background: pct === 100 ? "var(--success)" : "var(--primary)" }} />
+        <span className="block h-full rounded-full transition-[width] duration-300" style={{ width: `${pct}%`, background: "var(--c-purple)" }} />
       </span>
       {label && <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{done}/{total}</span>}
     </span>
@@ -261,17 +262,9 @@ export function MultiFilter({
   );
 }
 
-/** Small colored pill used on cards for priority. */
+/** Small coloured label used on cards (priority, subteam). */
 export function Pill({ color, children }: { color: string; children: ReactNode }) {
-  return (
-    <span
-      className="inline-flex h-5 items-center gap-1.5 rounded-full px-2 text-xs font-medium text-foreground"
-      style={{ background: `color-mix(in oklch, ${color} 16%, transparent)` }}
-    >
-      <span className="size-1.5 rounded-full" style={{ background: color }} aria-hidden />
-      {children}
-    </span>
-  );
+  return <Label color={color}>{children}</Label>;
 }
 
 export function Kbd({ children }: { children: ReactNode }) {
