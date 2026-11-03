@@ -249,7 +249,7 @@ export default function CyclesPage() {
         tasks={allTasks.filter((task) => task.cycle_id === c.id)}
         expanded={expanded.has(c.id)}
         onToggle={() => toggleExpand(c.id)}
-        canComplete={canManage && ["active", "late", "approved"].includes(c.status)}
+        canComplete={canManage && c.status !== "completed" && c.status !== "rejected"}
         onComplete={() => act(c, "complete")}
         decision={decision}
         onApprove={() => act(c, "approve")}
@@ -503,8 +503,15 @@ function ProjectCard({
             )}
             {decision === "wait" && <span className="text-xs text-muted-foreground">{t("等待老師審批中")}</span>}
             {canComplete && (
-              <Button size="sm" variant="outline" onClick={onComplete} className="hover:border-[var(--c-green)] hover:text-[var(--c-green)]">
-                <CheckCircle2Icon /> {tt("標記完成", "Mark complete")}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onComplete}
+                className="hover:border-[var(--c-green)] hover:text-[var(--c-green)]"
+                title={tt("標記專案完成", "Mark project complete")}
+                aria-label={tt("標記專案完成", "Mark project complete")}
+              >
+                <CheckCircle2Icon /> <span className="hidden sm:inline">{tt("標記完成", "Mark complete")}</span>
               </Button>
             )}
             {menu.length > 0 && (

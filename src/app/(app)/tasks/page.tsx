@@ -52,7 +52,8 @@ import { TaskSheet } from "@/components/tasks/TaskSheet";
 import { NewTaskSheet, type NewTaskInput } from "@/components/tasks/NewTaskSheet";
 import { isAssignedTo, type ChecklistItem, type Cycle, type Me, type Member, type Task } from "@/lib/types";
 
-const COMPLETABLE_STATUSES = new Set(["active", "late", "approved"]);
+// Any project still open (including ones awaiting approval) can be marked complete.
+const COMPLETABLE_STATUSES = new Set(["active", "late", "approved", "pending_leader", "pending_teacher"]);
 const OPEN_STATUSES = new Set(["active", "late", "approved", "pending_leader", "pending_teacher"]);
 const PREFS_KEY = "rov-tasks-prefs-v2";
 const STATUS_HINT: Record<string, string> = {
