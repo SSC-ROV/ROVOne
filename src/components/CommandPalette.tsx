@@ -86,7 +86,7 @@ export default function CommandPalette() {
   function openTask(task: Task) {
     sessionStorage.setItem("rov-open-task", String(task.id));
     setOpen(false);
-    router.push(`/work?task=${task.id}`);
+    router.push(`/tasks?task=${task.id}`);
     window.dispatchEvent(new Event("rov-open-task"));
   }
 
@@ -94,7 +94,7 @@ export default function CommandPalette() {
     const needle = q.trim().toLowerCase();
     const pages: Hit[] = [
       { key: "home", label: t("首頁"), hint: t("頁面"), run: () => go("/") },
-      { key: "work", label: t("工作"), hint: t("頁面"), run: () => go("/work") },
+      { key: "tasks", label: t("任務"), hint: t("頁面"), run: () => go("/tasks") },
       { key: "cal", label: t("日曆"), hint: t("頁面"), run: () => go("/calendar") },
       { key: "cycles", label: t("開發週期"), hint: t("頁面"), run: () => go("/cycles") },
       { key: "parts", label: t("零件採買"), hint: t("頁面"), run: () => go("/parts") },

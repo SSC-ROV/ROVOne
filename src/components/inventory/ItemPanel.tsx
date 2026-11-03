@@ -6,11 +6,11 @@ import { PlusIcon, SearchIcon, XIcon } from "lucide-react";
 import { tt } from "@/lib/i18n-core";
 import { useI18n } from "@/lib/i18n";
 import { api } from "@/lib/api-client";
-import { BTN, BTN_GHOST } from "@/lib/ui";
 import { matchesSearch, type InventoryItem } from "@/lib/inventory";
 import { useDialogs } from "@/components/ui/Dialogs";
-import ItemForm, { EMPTY_ITEM, LocationPicker, type ItemFormValue } from "./ItemForm";
-import { LocationChip, StatusPill } from "./shared";
+import ItemForm, { EMPTY_ITEM, type ItemFormValue } from "./ItemForm";
+import LocationEditor from "./LocationEditor";
+import { StatusPill } from "./shared";
 
 type Mode = { kind: "idle" } | { kind: "existing"; item: InventoryItem } | { kind: "new"; name: string };
 
@@ -24,25 +24,30 @@ export default function ItemPanel({
   items,
   onChanged,
   onClose,
+  initialQuery = "",
+  autoFocus = true,
 }: {
   items: InventoryItem[];
   onChanged: () => Promise<void> | void;
-  onClose: () => void;
+  /** Omit to hide the close button (e.g. when the panel is the whole page). */
+  onClose?: () => void;
+  initialQuery?: string;
+  /** Focus the search box on mount (off on the standalone page, so phones don't pop the keyboard). */
+  autoFocus?: boolean;
 }) {
   const { t } = useI18n();
   const { toast } = useDialogs();
   const listId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(initialQuery);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const [mode, setMode] = useState<Mode>({ kind: "idle" });
-  const [locs, setLocs] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
+    if (autoFocus) inputRef.current?.focus();
+  }, [autoFocus]);
 
   const matches = useMemo(() => {
     const list = q.trim() ? items.filter((i) => matchesSearch(i, q)) : items;
@@ -53,7 +58,6 @@ export default function ItemPanel({
 
   function pickExisting(item: InventoryItem) {
     setMode({ kind: "existing", item });
-    setLocs(item.locations);
     setQ(item.name);
     setOpen(false);
   }
@@ -71,25 +75,9 @@ export default function ItemPanel({
   function reset() {
     setMode({ kind: "idle" });
     setQ("");
-    setLocs([]);
     setActive(0);
     setOpen(true);
     inputRef.current?.focus();
-  }
-
-  async function saveLocations() {
-    if (mode.kind !== "existing") return;
-    setBusy(true);
-    try {
-      await api(`/api/inventory/${mode.item.id}`, { method: "PATCH", body: JSON.stringify({ locations: locs }) });
-      toast(tt(`已更新「${mode.item.name}」的位置`, `Updated where ${mode.item.name} is`));
-      await onChanged();
-      reset();
-    } catch (err) {
-      toast(t((err as Error).message), "err");
-    } finally {
-      setBusy(false);
-    }
   }
 
   async function create(v: ItemFormValue) {
@@ -106,10 +94,6 @@ export default function ItemPanel({
     }
   }
 
-  const locsChanged =
-    mode.kind === "existing" &&
-    (locs.length !== mode.item.locations.length || locs.some((l) => !mode.item.locations.includes(l)));
-
   return (
     <section className="space-y-4 rounded-[16px] border border-border bg-card p-5">
       <div className="flex items-start gap-3">
@@ -119,9 +103,11 @@ export default function ItemPanel({
             {tt("先搜尋看看有沒有這個物品。有的話直接設定位置，沒有就新增。", "Search first. If the item already exists, just set where it is. If not, add it.")}
           </p>
         </div>
-        <button type="button" aria-label={t("取消")} className="rounded p-1 text-muted-foreground hover:bg-muted" onClick={onClose}>
-          <XIcon className="size-5" />
-        </button>
+        {onClose && (
+          <button type="button" aria-label={t("取消")} className="rounded p-1 text-muted-foreground hover:bg-muted" onClick={onClose}>
+            <XIcon className="size-5" />
+          </button>
+        )}
       </div>
 
       {/* 搜尋 + 下拉選單 */}
@@ -216,20 +202,15 @@ export default function ItemPanel({
             {mode.item.spec && <span className="text-sm text-muted-foreground">{mode.item.spec}</span>}
             <StatusPill status={mode.item.status} />
           </div>
-          <p className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
-            {tt("目前位置：", "Currently at:")}
-            {mode.item.locations.length ? mode.item.locations.map((l) => <LocationChip key={l} code={l} />) : tt("未指定", "not set")}
-          </p>
-          <div className="grid gap-1">
-            <span className="text-xs font-medium text-muted-foreground">{tt("放在哪裡", "Where it's stored")}</span>
-            <LocationPicker value={locs} onChange={setLocs} />
-          </div>
-          <div className="flex items-center gap-2">
-            <button type="button" className={BTN} disabled={busy || !locsChanged} onClick={saveLocations}>
-              {busy ? tt("儲存中…", "Saving…") : tt("儲存位置", "Save location")}
-            </button>
-            <button type="button" className={BTN_GHOST} onClick={reset}>{tt("選別的物品", "Pick another item")}</button>
-          </div>
+          <LocationEditor
+            key={mode.item.id}
+            item={mode.item}
+            onCancel={reset}
+            onSaved={async () => {
+              await onChanged();
+              reset();
+            }}
+          />
         </div>
       )}
 

@@ -1,0 +1,1158 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  AlertTriangleIcon,
+  ArrowDownIcon,
+  ArrowUpIcon,
+  CalendarClockIcon,
+  CheckCircle2Icon,
+  CircleDotIcon,
+  ClipboardListIcon,
+  EyeOffIcon,
+  FileTextIcon,
+  FlagIcon,
+  KanbanSquareIcon,
+  LayersIcon,
+  LinkIcon,
+  ListChecksIcon,
+  MoreHorizontalIcon,
+  PanelRightOpenIcon,
+  PlusIcon,
+  RefreshCwIcon,
+  SearchIcon,
+  Table2Icon,
+  Trash2Icon,
+  UserIcon,
+  UsersIcon,
+  XIcon,
+} from "lucide-react";
+import { api } from "@/lib/api-client";
+import { isStaff } from "@/lib/roles";
+import { useI18n } from "@/lib/i18n";
+import { tt } from "@/lib/i18n-core";
+import { todayStr, addDaysStr } from "@/lib/date";
+import { useSubteams } from "@/lib/subteams";
+import { useDialogs } from "@/components/ui/Dialogs";
+import { PageError, PageLoading } from "@/components/PageState";
+import { PRIORITIES, STATUSES, groupColor, priorityLabel, subteamLabel } from "@/lib/ui";
+import { BoardGroup } from "@/components/board/BoardGroup";
+import { BoardHeader } from "@/components/board/BoardHeader";
+import { PriorityCell, StatusCell } from "@/components/board/ColorCell";
+import { PersonCell, personColor } from "@/components/board/PersonCell";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Choice, DueCell, Kbd, MultiFilter, Pill, PRIORITY_RANK, Progress, dueState, type DueState } from "@/components/tasks/shared";
+import { TaskSheet } from "@/components/tasks/TaskSheet";
+import { NewTaskSheet, type NewTaskInput } from "@/components/tasks/NewTaskSheet";
+import type { ChecklistItem, Cycle, Me, Member, Task } from "@/lib/types";
+
+const OPEN_STATUSES = new Set(["active", "late", "approved", "pending_leader", "pending_teacher"]);
+const PREFS_KEY = "rov-tasks-prefs";
+
+type View = "table" | "board";
+type GroupBy = "cycle" | "status" | "assignee" | "priority" | "subteam" | "due" | "none";
+type SortBy = "manual" | "due" | "priority" | "title" | "status";
+type Prefs = { view: View; groupBy: GroupBy; sort: SortBy; hideDone: boolean; cycleId: string };
+type Filters = {
+  query: string;
+  assignees: string[];
+  statuses: string[];
+  priorities: string[];
+  subteams: string[];
+  cycles: string[];
+  due: string[];
+};
+type Group = {
+  id: string;
+  title: string;
+  color: string;
+  tasks: Task[];
+  preset: Partial<NewTaskInput>;
+  addable: boolean;
+};
+
+const EMPTY_FILTERS: Filters = { query: "", assignees: [], statuses: [], priorities: [], subteams: [], cycles: [], due: [] };
+const DEFAULT_PREFS: Prefs = { view: "table", groupBy: "cycle", sort: "manual", hideDone: false, cycleId: "" };
+
+function readPrefs(): Prefs {
+  if (typeof window === "undefined") return DEFAULT_PREFS;
+  try {
+    const raw = window.localStorage.getItem(PREFS_KEY);
+    return raw ? { ...DEFAULT_PREFS, ...(JSON.parse(raw) as Partial<Prefs>) } : DEFAULT_PREFS;
+  } catch {
+    return DEFAULT_PREFS;
+  }
+}
+
+function isTyping(target: EventTarget | null) {
+  const el = target as HTMLElement | null;
+  if (!el) return false;
+  if (el.tagName === "INPUT") return !["checkbox", "radio", "button"].includes((el as HTMLInputElement).type);
+  return el.isContentEditable || ["TEXTAREA", "SELECT"].includes(el.tagName);
+}
+
+function sameFilters(a: Filters, b: Filters) {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+export default function TasksPage() {
+  const { t } = useI18n();
+  const { subteams } = useSubteams();
+  const { toast, confirm } = useDialogs();
+  const [me, setMe] = useState<Me | null>(null);
+  const [tasks, setTasks] = useState<Task[] | null>(null);
+  const [cycles, setCycles] = useState<Cycle[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [error, setError] = useState("");
+  const [prefs, setPrefs] = useState<Prefs>(readPrefs);
+  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
+  const [selected, setSelected] = useState<Set<number>>(() => new Set());
+  const [openId, setOpenId] = useState<number | null>(null);
+  const [creating, setCreating] = useState<Partial<NewTaskInput> | null>(null);
+  const [dragOver, setDragOver] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const deepLinked = useRef(false);
+  const today = todayStr();
+
+  const updatePrefs = useCallback((patch: Partial<Prefs>) => {
+    setPrefs((prev) => {
+      const next = { ...prev, ...patch };
+      try {
+        window.localStorage.setItem(PREFS_KEY, JSON.stringify(next));
+      } catch {
+        /* storage unavailable: keep in memory */
+      }
+      return next;
+    });
+  }, []);
+
+  const load = useCallback(async () => {
+    const [userRes, taskRes, cycleRes, memberRes] = await Promise.all([
+      api<{ user: Me | null }>("/api/auth/me"),
+      api<{ tasks: Task[] }>("/api/tasks"),
+      api<{ cycles: Cycle[] }>("/api/cycles"),
+      api<{ members: Member[] }>("/api/members"),
+    ]);
+    setMe(userRes.user);
+    setTasks(taskRes.tasks);
+    setCycles(cycleRes.cycles);
+    setMembers(memberRes.members);
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        await load();
+      } catch (err) {
+        if (alive) setError((err as Error).message);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [load]);
+
+  async function refresh() {
+    setRefreshing(true);
+    try {
+      await load();
+    } catch (err) {
+      toast(t((err as Error).message), "err");
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
+  // Open a task from ?task=ID (deep links, home page) or from the command palette queue.
+  useEffect(() => {
+    if (!tasks) return;
+    function open(id: number) {
+      if (tasks!.some((task) => task.id === id)) setOpenId(id);
+    }
+    if (!deepLinked.current) {
+      deepLinked.current = true;
+      const fromUrl = Number(new URLSearchParams(window.location.search).get("task"));
+      if (fromUrl) open(fromUrl);
+    }
+    function openQueued() {
+      const raw = sessionStorage.getItem("rov-open-task");
+      if (!raw) return;
+      sessionStorage.removeItem("rov-open-task");
+      open(Number(raw));
+    }
+    openQueued();
+    window.addEventListener("rov-open-task", openQueued);
+    return () => window.removeEventListener("rov-open-task", openQueued);
+  }, [tasks]);
+
+  // Keep the URL in sync with the open task so it can be shared or reloaded.
+  useEffect(() => {
+    if (!deepLinked.current) return;
+    const url = new URL(window.location.href);
+    if (openId != null) url.searchParams.set("task", String(openId));
+    else url.searchParams.delete("task");
+    window.history.replaceState(window.history.state, "", url.pathname + url.search);
+  }, [openId]);
+
+  const addable = useMemo(() => cycles.filter((cycle) => OPEN_STATUSES.has(cycle.status)), [cycles]);
+  const defaultCycleId = useMemo(() => {
+    const saved = addable.find((cycle) => String(cycle.id) === prefs.cycleId);
+    return (saved ?? addable[0])?.id ?? null;
+  }, [addable, prefs.cycleId]);
+
+  const canEdit = useCallback(
+    (task: Task) => !!me && (isStaff(me.role) || task.assignee_id === me.id || task.created_by === me.id),
+    [me]
+  );
+
+  // Keyboard shortcuts: N = new task, F = focus search, Esc = clear selection.
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.metaKey || event.ctrlKey || event.altKey || isTyping(event.target)) return;
+      if (openId != null || creating) return;
+      const key = event.key.toLowerCase();
+      if (key === "n") {
+        event.preventDefault();
+        setCreating({});
+      } else if (key === "f") {
+        event.preventDefault();
+        searchRef.current?.focus();
+      } else if (event.key === "Escape") {
+        setSelected(new Set());
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [openId, creating]);
+
+  const matches = useCallback(
+    (task: Task, f: Filters) => {
+      const needle = f.query.trim().toLowerCase();
+      if (needle && !`${task.title}\n${task.description}\n${task.assignee_name ?? ""}`.toLowerCase().includes(needle)) return false;
+      if (f.statuses.length && !f.statuses.includes(task.status)) return false;
+      if (!f.statuses.length && prefs.hideDone && task.status === "done") return false;
+      if (f.priorities.length && !f.priorities.includes(task.priority)) return false;
+      if (f.subteams.length && !f.subteams.includes(task.subteam)) return false;
+      if (f.cycles.length && !f.cycles.includes(String(task.cycle_id ?? "none"))) return false;
+      if (f.assignees.length) {
+        const ok = f.assignees.some((value) =>
+          value === "me" ? task.assignee_id === me?.id : value === "none" ? task.assignee_id == null : String(task.assignee_id) === value
+        );
+        if (!ok) return false;
+      }
+      if (f.due.length && !f.due.includes(dueState(task, today))) return false;
+      return true;
+    },
+    [me, prefs.hideDone, today]
+  );
+
+  const filtered = useMemo(() => (tasks ?? []).filter((task) => matches(task, filters)), [tasks, filters, matches]);
+
+  const sortTasks = useCallback(
+    (list: Task[]) => {
+      const sorted = [...list];
+      const byManual = (a: Task, b: Task) => a.sort_order - b.sort_order || a.id - b.id;
+      switch (prefs.sort) {
+        case "due":
+          sorted.sort((a, b) => (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999") || byManual(a, b));
+          break;
+        case "priority":
+          sorted.sort((a, b) => (PRIORITY_RANK[a.priority] ?? 9) - (PRIORITY_RANK[b.priority] ?? 9) || byManual(a, b));
+          break;
+        case "title":
+          sorted.sort((a, b) => a.title.localeCompare(b.title));
+          break;
+        case "status": {
+          const rank = (s: string) => STATUSES.findIndex((item) => item.key === s);
+          sorted.sort((a, b) => rank(a.status) - rank(b.status) || byManual(a, b));
+          break;
+        }
+        default:
+          sorted.sort(byManual);
+      }
+      return sorted;
+    },
+    [prefs.sort]
+  );
+
+  const groups = useMemo<Group[]>(() => {
+    const canQuickAdd = defaultCycleId != null;
+    const make = (id: string, title: string, color: string, list: Task[], preset: Partial<NewTaskInput> = {}, addableGroup = canQuickAdd): Group => ({
+      id,
+      title,
+      color,
+      tasks: sortTasks(list),
+      preset,
+      addable: addableGroup,
+    });
+    switch (prefs.groupBy) {
+      case "status":
+        return STATUSES.map((s) => make(s.key, s.label, s.color, filtered.filter((task) => task.status === s.key), { status: s.key }));
+      case "priority":
+        return PRIORITIES.map((p) => make(p.key, p.label, p.color, filtered.filter((task) => task.priority === p.key), { priority: p.key }));
+      case "subteam":
+        return subteams.map((s, i) => make(s.key, s.label, groupColor(i), filtered.filter((task) => task.subteam === s.key), { subteam: s.key }));
+      case "assignee": {
+        const ids = new Set(filtered.map((task) => task.assignee_id));
+        const people = members.filter((member) => ids.has(member.id));
+        if (me && !people.some((m) => m.id === me.id)) people.unshift({ ...me });
+        const sortedPeople = people.sort((a, b) => (a.id === me?.id ? -1 : b.id === me?.id ? 1 : a.display_name.localeCompare(b.display_name)));
+        const out = sortedPeople.map((member) =>
+          make(
+            String(member.id),
+            member.id === me?.id ? `${member.display_name} (${tt("我", "me")})` : member.display_name,
+            personColor(member.display_name),
+            filtered.filter((task) => task.assignee_id === member.id),
+            { assignee_id: member.id }
+          )
+        );
+        out.push(make("none", tt("未指派", "Unassigned"), "#c4c4c4", filtered.filter((task) => task.assignee_id == null)));
+        return out;
+      }
+      case "due": {
+        const buckets: { key: DueState; title: string; color: string; preset: Partial<NewTaskInput> }[] = [
+          { key: "overdue", title: tt("已逾期", "Overdue"), color: "#df2f4a", preset: {} },
+          { key: "today", title: tt("今天到期", "Due today"), color: "#fdab3d", preset: { due_date: today } },
+          { key: "soon", title: tt("七天內", "Next 7 days"), color: "#579bfc", preset: { due_date: addDaysStr(today, 7) } },
+          { key: "later", title: tt("之後", "Later"), color: "#a25ddc", preset: {} },
+          { key: "none", title: tt("無截止日", "No date"), color: "#c4c4c4", preset: {} },
+          { key: "done", title: tt("已完成", "Done"), color: "#00c875", preset: { status: "done" } },
+        ];
+        return buckets.map((b) => make(b.key, b.title, b.color, filtered.filter((task) => dueState(task, today) === b.key), b.preset));
+      }
+      case "none":
+        return [make("all", tt("全部任務", "All tasks"), "#0073ea", filtered)];
+      default: {
+        const ordered = [...cycles].sort(
+          (a, b) => Number(OPEN_STATUSES.has(b.status)) - Number(OPEN_STATUSES.has(a.status)) || b.start_date.localeCompare(a.start_date) || a.title.localeCompare(b.title)
+        );
+        const out = ordered.map((cycle, i) =>
+          make(
+            String(cycle.id),
+            cycle.title,
+            groupColor(i),
+            filtered.filter((task) => task.cycle_id === cycle.id),
+            { cycle_id: cycle.id },
+            OPEN_STATUSES.has(cycle.status)
+          )
+        );
+        const loose = filtered.filter((task) => task.cycle_id == null || !cycles.some((cycle) => cycle.id === task.cycle_id));
+        if (loose.length) out.push(make("none", tt("未分週期", "No cycle"), "#c4c4c4", loose, {}, false));
+        return out;
+      }
+    }
+  }, [prefs.groupBy, filtered, sortTasks, subteams, members, me, cycles, today, defaultCycleId]);
+
+  function updateLocal(id: number, fn: (task: Task) => Task) {
+    setTasks((prev) => (prev ?? []).map((item) => (item.id === id ? fn(item) : item)));
+  }
+
+  async function patch(task: Task, body: Record<string, unknown>) {
+    // Optimistic update for simple fields so the UI feels instant.
+    const optimistic: Partial<Task> = {};
+    for (const key of ["status", "priority", "subteam", "due_date", "title", "description"] as const) {
+      if (key in body) (optimistic as Record<string, unknown>)[key] = body[key];
+    }
+    if ("assignee_id" in body) {
+      optimistic.assignee_id = body.assignee_id as number | null;
+      optimistic.assignee_name = members.find((m) => m.id === body.assignee_id)?.display_name ?? null;
+    }
+    updateLocal(task.id, (item) => ({ ...item, ...optimistic }));
+    try {
+      const res = await api<{ task: Task }>(`/api/tasks/${task.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ ...body, version: task.version }),
+      });
+      updateLocal(task.id, (item) => ({ ...item, ...res.task, items: res.task.items ?? item.items }));
+    } catch (err) {
+      toast(t((err as Error).message), "err");
+      load().catch(() => {});
+    }
+  }
+
+  async function createTask(input: Partial<NewTaskInput> & { title: string }) {
+    const cycleId = input.cycle_id ?? defaultCycleId;
+    if (!cycleId) {
+      toast(tt("請先選擇開發週期", "Pick a development cycle first"), "err");
+      return false;
+    }
+    try {
+      const res = await api<{ task: Task }>("/api/tasks", {
+        method: "POST",
+        body: JSON.stringify({
+          subteam: filters.subteams.length === 1 ? filters.subteams[0] : me?.subteam ?? "general",
+          ...input,
+          title: input.title.trim(),
+          cycle_id: cycleId,
+        }),
+      });
+      setTasks((prev) => [...(prev ?? []), res.task]);
+      updatePrefs({ cycleId: String(cycleId) });
+      toast(tt("已建立任務", "Task created"), "ok");
+      return true;
+    } catch (err) {
+      toast(t((err as Error).message), "err");
+      return false;
+    }
+  }
+
+  async function deleteTasks(ids: number[]) {
+    const results = await Promise.allSettled(ids.map((id) => api(`/api/tasks/${id}`, { method: "DELETE" })));
+    const failed = results.filter((r) => r.status === "rejected").length;
+    setTasks((prev) => (prev ?? []).filter((task) => !ids.includes(task.id) || results[ids.indexOf(task.id)].status === "rejected"));
+    setSelected(new Set());
+    if (failed) toast(tt(`${failed} 項刪除失敗`, `${failed} could not be deleted`), "err");
+    else toast(tt(`已刪除 ${ids.length} 項任務`, `Deleted ${ids.length} task(s)`), "ok");
+  }
+
+  async function confirmDelete(list: Task[]) {
+    const ok = await confirm({
+      title: list.length === 1 ? tt(`刪除「${list[0].title}」？`, `Delete "${list[0].title}"?`) : tt(`刪除 ${list.length} 項任務？`, `Delete ${list.length} tasks?`),
+      message: tt("刪除後無法復原。", "This can't be undone."),
+      confirmText: tt("刪除", "Delete"),
+      danger: true,
+    });
+    if (!ok) return;
+    if (list.some((task) => task.id === openId)) setOpenId(null);
+    await deleteTasks(list.map((task) => task.id));
+  }
+
+  async function bulkPatch(body: Record<string, unknown>) {
+    const all = (tasks ?? []).filter((task) => selected.has(task.id));
+    const targets = all.filter(canEdit);
+    const skipped = all.length - targets.length;
+    const results = await Promise.allSettled(
+      targets.map((task) => api(`/api/tasks/${task.id}`, { method: "PATCH", body: JSON.stringify({ ...body, version: task.version }) }))
+    );
+    const failed = results.filter((r) => r.status === "rejected").length;
+    await load().catch(() => {});
+    const done = targets.length - failed;
+    const extra = skipped + failed ? tt(`，${skipped + failed} 項略過（無權限或已被修改）`, `, ${skipped + failed} skipped (no permission or changed)`) : "";
+    toast(tt(`已更新 ${done} 項`, `Updated ${done}`) + extra, failed || skipped ? "info" : "ok");
+  }
+
+  async function reorder(task: Task, direction: "up" | "down") {
+    try {
+      await api(`/api/tasks/${task.id}`, { method: "PATCH", body: JSON.stringify({ reorder: direction, version: task.version }) });
+      await load();
+    } catch (err) {
+      toast(t((err as Error).message), "err");
+    }
+  }
+
+  function toggleSelect(ids: number[], on: boolean) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const id of ids) {
+        if (on) next.add(id);
+        else next.delete(id);
+      }
+      return next;
+    });
+  }
+
+  async function copyLink(task: Task) {
+    const url = `${window.location.origin}/tasks?task=${task.id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast(tt("已複製連結", "Link copied"), "ok");
+    } catch {
+      toast(url, "info");
+    }
+  }
+
+  if (error) return <PageError message={error} />;
+  if (!tasks || !me) return <PageLoading label={t("載入中…")} />;
+
+  const staff = isStaff(me.role);
+  const openTask = tasks.find((task) => task.id === openId) ?? null;
+  const narrowing = !sameFilters(filters, EMPTY_FILTERS);
+  const hiddenByToggle = prefs.hideDone && !filters.statuses.length;
+  const shownGroups = groups.filter((group) => group.tasks.length > 0 || (!narrowing && !hiddenByToggle && group.addable && (prefs.groupBy === "cycle" || prefs.groupBy === "status")));
+
+  const statusOptions = STATUSES.map((item) => ({ value: item.key, label: item.label, color: item.color }));
+  const priorityOptions = PRIORITIES.map((item) => ({ value: item.key, label: item.label, color: item.color }));
+  const people = [{ value: "none", label: "—" }, ...members.map((member) => ({ value: String(member.id), label: member.display_name }))];
+  const subteamOptions = subteams.map((item) => ({ value: item.key, label: item.label }));
+  const reorderable = prefs.sort === "manual" && prefs.groupBy === "cycle";
+
+  // Summary numbers over every task (not just the filtered view).
+  const openTasks = tasks.filter((task) => task.status !== "done");
+  const doneCount = tasks.length - openTasks.length;
+  const stats = {
+    open: openTasks.length,
+    doing: tasks.filter((task) => task.status === "doing").length,
+    overdue: tasks.filter((task) => dueState(task, today) === "overdue").length,
+    week: tasks.filter((task) => ["today", "soon"].includes(dueState(task, today))).length,
+    mine: openTasks.filter((task) => task.assignee_id === me.id).length,
+    donePct: tasks.length ? Math.round((doneCount / tasks.length) * 100) : 0,
+  };
+  const tiles: { key: string; label: string; value: ReactNode; icon: ReactNode; color: string; preset: Filters }[] = [
+    { key: "mine", label: tt("我的待辦", "My open tasks"), value: stats.mine, icon: <UserIcon />, color: "#0073ea", preset: { ...EMPTY_FILTERS, assignees: ["me"], statuses: ["todo", "doing"] } },
+    { key: "open", label: tt("未完成", "Open"), value: stats.open, icon: <CircleDotIcon />, color: "#676879", preset: { ...EMPTY_FILTERS, statuses: ["todo", "doing"] } },
+    { key: "doing", label: tt("進行中", "In progress"), value: stats.doing, icon: <ClipboardListIcon />, color: "#fdab3d", preset: { ...EMPTY_FILTERS, statuses: ["doing"] } },
+    { key: "week", label: tt("七天內到期", "Due this week"), value: stats.week, icon: <CalendarClockIcon />, color: "#579bfc", preset: { ...EMPTY_FILTERS, due: ["today", "soon"] } },
+    { key: "overdue", label: tt("已逾期", "Overdue"), value: stats.overdue, icon: <AlertTriangleIcon />, color: "#df2f4a", preset: { ...EMPTY_FILTERS, due: ["overdue"] } },
+    {
+      key: "done",
+      label: tt("完成率", "Completed"),
+      value: (
+        <span className="flex items-baseline gap-1">
+          {stats.donePct}%<span className="text-xs font-normal text-muted-foreground">{doneCount}/{tasks.length}</span>
+        </span>
+      ),
+      icon: <CheckCircle2Icon />,
+      color: "#00c875",
+      preset: { ...EMPTY_FILTERS, statuses: ["done"] },
+    },
+  ];
+
+  const countBy = (fn: (task: Task) => boolean) => tasks.filter(fn).length;
+  const newTaskDefaults = (): Partial<NewTaskInput> => ({
+    cycle_id: defaultCycleId ?? undefined,
+    subteam: filters.subteams.length === 1 ? filters.subteams[0] : me.subteam,
+    assignee_id: filters.assignees.length === 1 ? (filters.assignees[0] === "me" ? me.id : Number(filters.assignees[0]) || null) : null,
+  });
+
+  const groupByOptions: { value: GroupBy; label: string }[] = [
+    { value: "cycle", label: tt("依週期分組", "Group: Cycle") },
+    { value: "status", label: tt("依狀態分組", "Group: Status") },
+    { value: "assignee", label: tt("依負責人分組", "Group: Assignee") },
+    { value: "priority", label: tt("依優先級分組", "Group: Priority") },
+    { value: "subteam", label: tt("依組別分組", "Group: Subteam") },
+    { value: "due", label: tt("依截止日分組", "Group: Due date") },
+    { value: "none", label: tt("不分組", "No grouping") },
+  ];
+  const sortOptions: { value: SortBy; label: string }[] = [
+    { value: "manual", label: tt("排序：手動", "Sort: Manual") },
+    { value: "due", label: tt("排序：截止日", "Sort: Due date") },
+    { value: "priority", label: tt("排序：優先級", "Sort: Priority") },
+    { value: "status", label: tt("排序：狀態", "Sort: Status") },
+    { value: "title", label: tt("排序：名稱", "Sort: Name") },
+  ];
+
+  return (
+    <div className="flex w-full flex-col pb-24">
+      <BoardHeader
+        title={t("任務")}
+        subtitle={tt(`${stats.open} 項未完成 · 完成 ${stats.donePct}%`, `${stats.open} open · ${stats.donePct}% complete`)}
+        action={
+          <>
+            <Button variant="ghost" size="icon" onClick={refresh} disabled={refreshing} aria-label={tt("重新整理", "Refresh")} title={tt("重新整理", "Refresh")}>
+              <RefreshCwIcon className={refreshing ? "animate-spin" : ""} />
+            </Button>
+            <Button onClick={() => setCreating(newTaskDefaults())}>
+              <PlusIcon /> {tt("新任務", "New task")}
+              <span className="ml-1 hidden rounded-[3px] bg-white/20 px-1 text-[11px] sm:inline">N</span>
+            </Button>
+          </>
+        }
+      />
+
+      {/* Summary tiles double as one-click quick filters */}
+      <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
+        {tiles.map((tile) => {
+          const active = sameFilters(filters, tile.preset);
+          return (
+            <button
+              key={tile.key}
+              type="button"
+              aria-pressed={active}
+              onClick={() => setFilters(active ? EMPTY_FILTERS : tile.preset)}
+              className={`flex flex-col gap-1 rounded-[8px] border bg-card px-3 py-2.5 text-left transition-colors hover:border-[#d0d4e4] dark:hover:border-[#2a2e35] ${
+                active ? "border-[#0073ea] ring-1 ring-[#0073ea]" : "border-border"
+              }`}
+            >
+              <span className="flex items-center gap-1.5 text-xs text-muted-foreground [&_svg]:size-3.5">
+                <span style={{ color: tile.color }} className="flex">{tile.icon}</span>
+                {tile.label}
+              </span>
+              <span className="text-2xl leading-tight font-medium tabular-nums">{tile.value}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Toolbar: view switch, search, filters, display options */}
+      <div className="mb-3 flex flex-col gap-2 rounded-[8px] border border-border bg-card p-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Tabs value={prefs.view} onValueChange={(value) => updatePrefs({ view: value as View })}>
+            <TabsList>
+              <TabsTrigger value="table"><Table2Icon className="size-3.5" /> {t("表格")}</TabsTrigger>
+              <TabsTrigger value="board"><KanbanSquareIcon className="size-3.5" /> {t("看板")}</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <label className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-full border border-border bg-background px-3 text-muted-foreground focus-within:border-ring sm:max-w-sm">
+            <SearchIcon className="size-4 shrink-0" />
+            <input
+              ref={searchRef}
+              value={filters.query}
+              onChange={(event) => setFilters((prev) => ({ ...prev, query: event.target.value }))}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  setFilters((prev) => ({ ...prev, query: "" }));
+                  event.currentTarget.blur();
+                }
+              }}
+              placeholder={tt("搜尋任務、描述、負責人…", "Search tasks, descriptions, people…")}
+              aria-label={t("搜尋")}
+              className="h-8 min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+            />
+            {filters.query ? (
+              <button type="button" onClick={() => setFilters((prev) => ({ ...prev, query: "" }))} aria-label={tt("清除", "Clear")}>
+                <XIcon className="size-3.5" />
+              </button>
+            ) : (
+              <Kbd>F</Kbd>
+            )}
+          </label>
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            {prefs.view === "table" && (
+              <Choice value={prefs.groupBy} onChange={(value) => updatePrefs({ groupBy: value as GroupBy })} options={groupByOptions} ariaLabel={tt("分組", "Group by")} />
+            )}
+            <Choice value={prefs.sort} onChange={(value) => updatePrefs({ sort: value as SortBy })} options={sortOptions} ariaLabel={tt("排序", "Sort")} />
+            <Button
+              variant={prefs.hideDone ? "secondary" : "outline"}
+              size="sm"
+              aria-pressed={prefs.hideDone}
+              onClick={() => updatePrefs({ hideDone: !prefs.hideDone })}
+            >
+              <EyeOffIcon /> {tt("隱藏已完成", "Hide done")}
+            </Button>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <MultiFilter
+            label={tt("負責人", "Assignee")}
+            icon={<UsersIcon className="size-3.5" />}
+            value={filters.assignees}
+            onChange={(assignees) => setFilters((prev) => ({ ...prev, assignees }))}
+            options={[
+              { value: "me", label: tt("指派給我", "Assigned to me"), hint: countBy((task) => task.assignee_id === me.id) },
+              { value: "none", label: tt("未指派", "Unassigned"), hint: countBy((task) => task.assignee_id == null) },
+              ...members.map((member) => ({ value: String(member.id), label: member.display_name, color: personColor(member.display_name), hint: countBy((task) => task.assignee_id === member.id) })),
+            ]}
+          />
+          <MultiFilter
+            label={tt("狀態", "Status")}
+            icon={<CircleDotIcon className="size-3.5" />}
+            value={filters.statuses}
+            onChange={(statuses) => setFilters((prev) => ({ ...prev, statuses }))}
+            options={STATUSES.map((item) => ({ value: item.key, label: item.label, color: item.color, hint: countBy((task) => task.status === item.key) }))}
+          />
+          <MultiFilter
+            label={tt("優先級", "Priority")}
+            icon={<FlagIcon className="size-3.5" />}
+            value={filters.priorities}
+            onChange={(priorities) => setFilters((prev) => ({ ...prev, priorities }))}
+            options={PRIORITIES.map((item) => ({ value: item.key, label: item.label, color: item.color, hint: countBy((task) => task.priority === item.key) }))}
+          />
+          <MultiFilter
+            label={tt("截止日", "Due")}
+            icon={<CalendarClockIcon className="size-3.5" />}
+            value={filters.due}
+            onChange={(due) => setFilters((prev) => ({ ...prev, due }))}
+            options={[
+              { value: "overdue", label: tt("已逾期", "Overdue"), color: "#df2f4a" },
+              { value: "today", label: tt("今天", "Today"), color: "#fdab3d" },
+              { value: "soon", label: tt("七天內", "Next 7 days"), color: "#579bfc" },
+              { value: "later", label: tt("之後", "Later"), color: "#a25ddc" },
+              { value: "none", label: tt("無截止日", "No date"), color: "#c4c4c4" },
+            ].map((option) => ({ ...option, hint: countBy((task) => dueState(task, today) === option.value) }))}
+          />
+          <MultiFilter
+            label={tt("組別", "Subteam")}
+            icon={<LayersIcon className="size-3.5" />}
+            value={filters.subteams}
+            onChange={(next) => setFilters((prev) => ({ ...prev, subteams: next }))}
+            options={subteams.map((item) => ({ value: item.key, label: item.label, hint: countBy((task) => task.subteam === item.key) }))}
+          />
+          <MultiFilter
+            label={tt("開發週期", "Cycle")}
+            icon={<RefreshCwIcon className="size-3.5" />}
+            value={filters.cycles}
+            onChange={(next) => setFilters((prev) => ({ ...prev, cycles: next }))}
+            options={cycles.map((cycle) => ({ value: String(cycle.id), label: cycle.title, hint: countBy((task) => task.cycle_id === cycle.id) }))}
+          />
+          {narrowing && (
+            <Button variant="ghost" size="sm" onClick={() => setFilters(EMPTY_FILTERS)}>
+              <XIcon /> {tt("清除篩選", "Clear filters")}
+            </Button>
+          )}
+          <span className="ml-auto pr-1 text-xs text-muted-foreground tabular-nums">
+            {tt(`顯示 ${filtered.length} / ${tasks.length} 項`, `${filtered.length} of ${tasks.length} tasks`)}
+          </span>
+        </div>
+      </div>
+
+      {prefs.view === "table" ? (
+        <div className="flex flex-col">
+          {shownGroups.map((group) => {
+            const ids = group.tasks.map((task) => task.id);
+            const allChecked = ids.length > 0 && ids.every((id) => selected.has(id));
+            const someChecked = ids.some((id) => selected.has(id));
+            const groupDone = group.tasks.filter((task) => task.status === "done").length;
+            return (
+              <BoardGroup
+                key={`${prefs.groupBy}-${group.id}`}
+                title={group.title}
+                color={group.color}
+                count={group.tasks.length}
+                meta={group.tasks.length > 0 ? <Progress done={groupDone} total={group.tasks.length} className="hidden w-36 sm:inline-flex" /> : null}
+                footer={group.addable ? <AddTaskRow onCreate={(title) => createTask({ ...group.preset, title })} /> : null}
+              >
+                {group.tasks.length === 0 ? (
+                  <p className="px-4 py-6 text-sm text-muted-foreground">{tt("尚未新增任務，用下方輸入快速加入", "No tasks yet — add one below")}</p>
+                ) : (
+                  <table className="board-table is-interactive">
+                    {/* Fixed column widths keep every group's columns aligned */}
+                    <colgroup>
+                      <col />
+                      <col style={{ width: 150 }} />
+                      <col style={{ width: 140 }} />
+                      <col style={{ width: 140 }} />
+                      <col style={{ width: 150 }} />
+                      <col style={{ width: 110 }} />
+                      <col style={{ width: 130 }} />
+                      <col style={{ width: 40 }} />
+                    </colgroup>
+                    <thead>
+                      <tr>
+                        <th>
+                          <span className="flex items-center gap-2.5">
+                            <input
+                              type="checkbox"
+                              className="size-4 accent-[#0073ea]"
+                              checked={allChecked}
+                              ref={(el) => {
+                                if (el) el.indeterminate = !allChecked && someChecked;
+                              }}
+                              onChange={() => toggleSelect(ids, !allChecked)}
+                              aria-label={tt("全選", "Select all")}
+                            />
+                            {t("任務")}
+                          </span>
+                        </th>
+                        <th>{t("負責人")}</th>
+                        <th className="color-cell">{t("狀態")}</th>
+                        <th className="color-cell">{t("優先級")}</th>
+                        <th>{t("截止日")}</th>
+                        <th>{tt("子任務", "Subtasks")}</th>
+                        <th>{t("組別")}</th>
+                        <th aria-label={tt("動作", "Actions")} />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {group.tasks.map((task, index) => {
+                        const editable = canEdit(task);
+                        const checked = selected.has(task.id);
+                        const itemsDone = task.items.filter((item) => item.done).length;
+                        return (
+                          <tr key={task.id} data-selected={checked ? "true" : undefined} className="group/row">
+                            <td>
+                              <span className="flex min-w-0 items-center gap-2.5">
+                                <input
+                                  type="checkbox"
+                                  className="size-4 shrink-0 accent-[#0073ea]"
+                                  checked={checked}
+                                  onChange={() => toggleSelect([task.id], !checked)}
+                                  aria-label={task.title}
+                                />
+                                <button
+                                  type="button"
+                                  className={`min-w-0 truncate text-left hover:text-[#0073ea] ${task.status === "done" ? "text-muted-foreground line-through" : ""}`}
+                                  onClick={() => setOpenId(task.id)}
+                                  title={task.title}
+                                >
+                                  {task.title}
+                                </button>
+                                {task.description.trim() && <FileTextIcon className="size-3.5 shrink-0 text-muted-foreground" aria-label={tt("有描述", "Has description")} />}
+                                <button
+                                  type="button"
+                                  onClick={() => setOpenId(task.id)}
+                                  className="ml-auto flex h-6 shrink-0 items-center gap-1 rounded-[4px] border border-border px-1.5 text-xs text-muted-foreground opacity-0 group-hover/row:opacity-100 hover:bg-muted hover:text-foreground focus-visible:opacity-100"
+                                >
+                                  <PanelRightOpenIcon className="size-3.5" /> {tt("開啟", "Open")}
+                                </button>
+                              </span>
+                            </td>
+                            <td>
+                              <PersonCell
+                                name={task.assignee_name}
+                                disabled={!editable}
+                                options={people}
+                                onChange={(value) => patch(task, { assignee_id: value === "none" ? null : Number(value) })}
+                              />
+                            </td>
+                            <td className="color-cell">
+                              <StatusCell value={task.status} disabled={!editable} options={statusOptions} onChange={(value) => patch(task, { status: value })} />
+                            </td>
+                            <td className="color-cell">
+                              <PriorityCell value={task.priority} disabled={!editable} options={priorityOptions} onChange={(value) => patch(task, { priority: value })} />
+                            </td>
+                            <td>
+                              <DueCell task={task} today={today} disabled={!editable} onChange={(value) => patch(task, { due_date: value })} />
+                            </td>
+                            <td>
+                              <Progress done={itemsDone} total={task.items.length} />
+                            </td>
+                            <td>
+                              <Choice
+                                value={task.subteam}
+                                disabled={!editable}
+                                onChange={(value) => patch(task, { subteam: value })}
+                                options={subteamOptions.length ? subteamOptions : [{ value: task.subteam, label: subteamLabel(task.subteam) }]}
+                                className="border-transparent bg-transparent shadow-none hover:bg-muted"
+                                ariaLabel={t("組別")}
+                              />
+                            </td>
+                            <td>
+                              <RowMenu
+                                task={task}
+                                staff={staff}
+                                canUp={reorderable && editable && index > 0}
+                                canDown={reorderable && editable && index < group.tasks.length - 1}
+                                onOpen={() => setOpenId(task.id)}
+                                onCopy={() => copyLink(task)}
+                                onMove={(dir) => reorder(task, dir)}
+                                onDelete={() => confirmDelete([task])}
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </BoardGroup>
+            );
+          })}
+          {shownGroups.length === 0 && (
+            <EmptyState
+              narrowing={narrowing || hiddenByToggle}
+              hasCycle={defaultCycleId != null}
+              onClear={() => {
+                setFilters(EMPTY_FILTERS);
+                updatePrefs({ hideDone: false });
+              }}
+              onCreate={() => setCreating(newTaskDefaults())}
+            />
+          )}
+        </div>
+      ) : (
+        <div className="grid gap-3 md:grid-cols-3">
+          {STATUSES.map((column) => {
+            const columnTasks = sortTasks(filtered.filter((task) => task.status === column.key));
+            const dark = column.color === "#c4c4c4";
+            return (
+              <section
+                key={column.key}
+                className={`flex min-h-64 flex-col gap-2 rounded-[8px] p-1.5 transition-colors ${dragOver === column.key ? "bg-[#cce5ff] dark:bg-[#0073ea]/20" : "bg-transparent"}`}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  if (dragOver !== column.key) setDragOver(column.key);
+                }}
+                onDragLeave={(event) => {
+                  if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragOver(null);
+                }}
+                onDrop={(event) => {
+                  setDragOver(null);
+                  const id = Number(event.dataTransfer.getData("text/plain"));
+                  const task = tasks.find((item) => item.id === id);
+                  if (task && canEdit(task) && task.status !== column.key) patch(task, { status: column.key });
+                }}
+              >
+                <div className="flex h-9 items-center justify-between rounded-[4px] px-3 text-sm" style={{ background: column.color, color: dark ? "#323338" : "#fff" }}>
+                  <h2 className="font-medium">{column.label}</h2>
+                  <span className="rounded-full bg-black/10 px-2 text-xs tabular-nums">{columnTasks.length}</span>
+                </div>
+                {columnTasks.map((task) => {
+                  const editable = canEdit(task);
+                  const itemsDone = task.items.filter((item) => item.done).length;
+                  const priority = PRIORITIES.find((item) => item.key === task.priority);
+                  return (
+                    <article
+                      key={task.id}
+                      draggable={editable}
+                      onDragStart={(event) => {
+                        event.dataTransfer.setData("text/plain", String(task.id));
+                        event.dataTransfer.effectAllowed = "move";
+                      }}
+                      onDragEnd={() => setDragOver(null)}
+                      onClick={() => setOpenId(task.id)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") setOpenId(task.id);
+                      }}
+                      tabIndex={0}
+                      className={`flex cursor-pointer flex-col gap-2 rounded-[8px] border border-border bg-card p-3 outline-none transition-colors hover:border-[#d0d4e4] focus-visible:ring-2 focus-visible:ring-ring dark:hover:border-[#2a2e35] ${editable ? "active:cursor-grabbing" : ""}`}
+                    >
+                      <div className="flex items-start gap-2">
+                        <p className={`min-w-0 flex-1 text-sm font-medium break-words ${task.status === "done" ? "text-muted-foreground line-through" : ""}`}>{task.title}</p>
+                        {task.description.trim() && <FileTextIcon className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                        {priority && <Pill color={priority.color}>{priorityLabel(task.priority)}</Pill>}
+                        <span className="rounded-[4px] bg-muted px-1.5 py-0.5">{subteamLabel(task.subteam)}</span>
+                        {task.items.length > 0 && (
+                          <span className="inline-flex items-center gap-1 tabular-nums">
+                            <ListChecksIcon className="size-3.5" /> {itemsDone}/{task.items.length}
+                          </span>
+                        )}
+                      </div>
+                      {task.items.length > 0 && <Progress done={itemsDone} total={task.items.length} label={false} />}
+                      <div className="flex items-center justify-between gap-2 text-xs">
+                        <DueCell task={task} today={today} />
+                        <PersonCell name={task.assignee_name} />
+                      </div>
+                    </article>
+                  );
+                })}
+                {columnTasks.length === 0 && (
+                  <p className="rounded-[8px] border border-dashed border-border px-3 py-6 text-center text-xs text-muted-foreground">
+                    {tt("拖曳任務到這裡", "Drag tasks here")}
+                  </p>
+                )}
+                {defaultCycleId != null && <AddTaskRow compact onCreate={(title) => createTask({ title, status: column.key })} />}
+              </section>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Bulk actions bar */}
+      {selected.size > 0 && (
+        <div className="fixed bottom-5 left-1/2 z-40 flex w-[calc(100%-2rem)] max-w-max -translate-x-1/2 flex-wrap items-center gap-1 rounded-[8px] border border-border bg-popover p-1.5 pl-3 text-sm shadow-lg">
+          <span className="mr-1 font-medium tabular-nums">{tt(`已選 ${selected.size} 項`, `${selected.size} selected`)}</span>
+          <BulkMenu label={tt("狀態", "Status")} icon={<CircleDotIcon />}>
+            {STATUSES.map((item) => (
+              <DropdownMenuItem key={item.key} onClick={() => bulkPatch({ status: item.key })}>
+                <span className="size-2.5 rounded-full" style={{ background: item.color }} /> {item.label}
+              </DropdownMenuItem>
+            ))}
+          </BulkMenu>
+          <BulkMenu label={tt("優先級", "Priority")} icon={<FlagIcon />}>
+            {PRIORITIES.map((item) => (
+              <DropdownMenuItem key={item.key} onClick={() => bulkPatch({ priority: item.key })}>
+                <span className="size-2.5 rounded-full" style={{ background: item.color }} /> {item.label}
+              </DropdownMenuItem>
+            ))}
+          </BulkMenu>
+          <BulkMenu label={tt("負責人", "Assignee")} icon={<UserIcon />}>
+            <DropdownMenuItem onClick={() => bulkPatch({ assignee_id: me.id })}>{tt("指派給我", "Assign to me")}</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => bulkPatch({ assignee_id: null })}>{tt("取消指派", "Unassign")}</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {members.map((member) => (
+              <DropdownMenuItem key={member.id} onClick={() => bulkPatch({ assignee_id: member.id })}>
+                {member.display_name}
+              </DropdownMenuItem>
+            ))}
+          </BulkMenu>
+          <BulkMenu label={tt("截止日", "Due")} icon={<CalendarClockIcon />}>
+            <DropdownMenuItem onClick={() => bulkPatch({ due_date: today })}>{tt("今天", "Today")}</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => bulkPatch({ due_date: addDaysStr(today, 1) })}>{tt("明天", "Tomorrow")}</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => bulkPatch({ due_date: addDaysStr(today, 7) })}>{tt("下週", "Next week")}</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => bulkPatch({ due_date: null })}>{tt("清除截止日", "Clear date")}</DropdownMenuItem>
+          </BulkMenu>
+          {staff && (
+            <Button variant="ghost" size="sm" className="text-[#df2f4a] hover:text-[#df2f4a]" onClick={() => confirmDelete(tasks.filter((task) => selected.has(task.id)))}>
+              <Trash2Icon /> {tt("刪除", "Delete")}
+            </Button>
+          )}
+          <Button variant="ghost" size="icon-sm" onClick={() => setSelected(new Set())} aria-label={tt("取消選取", "Clear selection")} title={tt("取消選取 (Esc)", "Clear selection (Esc)")}>
+            <XIcon />
+          </Button>
+        </div>
+      )}
+
+      <Sheet open={openTask != null} onOpenChange={(open) => { if (!open) setOpenId(null); }}>
+        <SheetContent className="w-full gap-0 sm:max-w-[640px]" style={{ width: "min(640px, 100%)", maxWidth: 640 }}>
+          {openTask && (
+            <TaskSheet
+              key={openTask.id}
+              task={openTask}
+              today={today}
+              editable={canEdit(openTask)}
+              staff={staff}
+              cycles={cycles}
+              people={people}
+              subteams={subteamOptions}
+              onPatch={(body) => patch(openTask, body)}
+              onItems={(items: ChecklistItem[]) => updateLocal(openTask.id, (task) => ({ ...task, items }))}
+              onDelete={async () => {
+                setOpenId(null);
+                await deleteTasks([openTask.id]);
+              }}
+              onReload={load}
+              confirm={confirm}
+              toast={toast}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={creating != null} onOpenChange={(open) => { if (!open) setCreating(null); }}>
+        <SheetContent className="w-full gap-0 sm:max-w-[520px]" style={{ width: "min(520px, 100%)", maxWidth: 520 }}>
+          {creating && (
+            <NewTaskSheet
+              cycles={addable}
+              people={people}
+              subteams={subteamOptions}
+              today={today}
+              defaults={creating}
+              onCreate={(input) => createTask(input)}
+              onDone={() => setCreating(null)}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+}
+
+function AddTaskRow({ onCreate, compact }: { onCreate: (title: string) => Promise<boolean>; compact?: boolean }) {
+  useI18n();
+  const [draft, setDraft] = useState("");
+  const [busy, setBusy] = useState(false);
+  return (
+    <form
+      className={
+        compact
+          ? "flex h-9 items-center gap-2 rounded-[8px] px-2 text-muted-foreground hover:bg-card focus-within:bg-card focus-within:ring-1 focus-within:ring-ring"
+          : "flex h-9 items-center gap-2 border-t border-border px-3 text-muted-foreground focus-within:bg-muted/40"
+      }
+      onSubmit={async (event) => {
+        event.preventDefault();
+        const next = draft.trim();
+        if (!next || busy) return;
+        setBusy(true);
+        const ok = await onCreate(next);
+        setBusy(false);
+        if (ok) setDraft("");
+      }}
+    >
+      <PlusIcon className="size-4 shrink-0 text-[#0073ea]" aria-hidden />
+      <input
+        value={draft}
+        disabled={busy}
+        onChange={(event) => setDraft(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            setDraft("");
+            event.currentTarget.blur();
+          }
+        }}
+        placeholder={tt("新增任務，按 Enter 加入", "Add task, press Enter")}
+        aria-label={tt("新增任務", "Add task")}
+        className="h-8 min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+      />
+    </form>
+  );
+}
+
+function RowMenu({
+  task,
+  staff,
+  canUp,
+  canDown,
+  onOpen,
+  onCopy,
+  onMove,
+  onDelete,
+}: {
+  task: Task;
+  staff: boolean;
+  canUp: boolean;
+  canDown: boolean;
+  onOpen: () => void;
+  onCopy: () => void;
+  onMove: (dir: "up" | "down") => void;
+  onDelete: () => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        className="flex size-7 items-center justify-center rounded-[4px] text-muted-foreground hover:bg-muted hover:text-foreground aria-expanded:bg-muted"
+        aria-label={tt(`「${task.title}」的更多動作`, `More actions for "${task.title}"`)}
+      >
+        <MoreHorizontalIcon className="size-4" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuItem onClick={onOpen}>
+          <PanelRightOpenIcon /> {tt("開啟詳情", "Open details")}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={onCopy}>
+          <LinkIcon /> {tt("複製連結", "Copy link")}
+        </DropdownMenuItem>
+        {(canUp || canDown) && <DropdownMenuSeparator />}
+        {canUp && (
+          <DropdownMenuItem onClick={() => onMove("up")}>
+            <ArrowUpIcon /> {tt("上移", "Move up")}
+          </DropdownMenuItem>
+        )}
+        {canDown && (
+          <DropdownMenuItem onClick={() => onMove("down")}>
+            <ArrowDownIcon /> {tt("下移", "Move down")}
+          </DropdownMenuItem>
+        )}
+        {staff && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem variant="destructive" onClick={onDelete}>
+              <Trash2Icon /> {tt("刪除", "Delete")}
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function BulkMenu({ label, icon, children }: { label: string; icon: ReactNode; children: ReactNode }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger className="inline-flex h-7 items-center gap-1.5 rounded-[4px] px-2 text-sm hover:bg-muted aria-expanded:bg-muted [&_svg]:size-3.5">
+        {icon} {label}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent side="top" className="max-h-72 w-48">
+        {children}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function EmptyState({ narrowing, hasCycle, onClear, onCreate }: { narrowing: boolean; hasCycle: boolean; onClear: () => void; onCreate: () => void }) {
+  return (
+    <div className="flex flex-col items-center gap-3 rounded-[8px] border border-dashed border-border bg-card px-6 py-14 text-center">
+      <span className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
+        {narrowing ? <SearchIcon className="size-5" /> : <ClipboardListIcon className="size-5" />}
+      </span>
+      <div>
+        <p className="font-medium">{narrowing ? tt("沒有符合的任務", "No tasks match") : tt("還沒有任務", "No tasks yet")}</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {narrowing
+            ? tt("試著調整搜尋或篩選條件", "Try adjusting your search or filters")
+            : hasCycle
+              ? tt("建立第一個任務，開始追蹤進度", "Create the first task to start tracking work")
+              : tt("目前沒有進行中的開發週期，請先在「開發週期」頁提案", "No active development cycle right now. Propose one on the Development Cycles page first.")}
+        </p>
+      </div>
+      {narrowing ? (
+        <Button variant="outline" onClick={onClear}>{tt("清除篩選", "Clear filters")}</Button>
+      ) : hasCycle ? (
+        <Button onClick={onCreate}><PlusIcon /> {tt("新任務", "New task")}</Button>
+      ) : null}
+    </div>
+  );
+}
