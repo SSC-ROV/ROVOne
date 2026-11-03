@@ -64,7 +64,7 @@ const LEGACY_PREFS_KEY = "rov-tasks-prefs";
 
 type View = "table" | "board";
 type GroupBy = "cycle" | "status" | "assignee" | "priority" | "subteam" | "due" | "none";
-type SortBy = "manual" | "due" | "priority" | "title" | "status";
+type SortBy = "manual" | "due" | "start" | "priority" | "title" | "status";
 type SortDir = "asc" | "desc";
 type Prefs = { view: View; groupBy: GroupBy; sort: SortBy; sortDir: SortDir; cycleId: string };
 type Filters = {
@@ -86,18 +86,25 @@ type Group = {
 };
 
 const EMPTY_FILTERS: Filters = { query: "", assignees: [], statuses: [], priorities: [], subteams: [], cycles: [], due: [] };
-const DEFAULT_PREFS: Prefs = { view: "table", groupBy: "subteam", sort: "manual", sortDir: "asc", cycleId: "" };
+const DEFAULT_PREFS: Prefs = { view: "table", groupBy: "subteam", sort: "due", sortDir: "asc", cycleId: "" };
 
 function readPrefs(): Prefs {
   if (typeof window === "undefined") return DEFAULT_PREFS;
   try {
     const raw = window.localStorage.getItem(PREFS_KEY);
-    if (raw) return { ...DEFAULT_PREFS, ...(JSON.parse(raw) as Partial<Prefs>) };
+    if (raw) {
+      const saved = JSON.parse(raw) as Partial<Prefs>;
+      // Prefs saved before sort direction existed carry the old "manual" default;
+      // drop that so the soonest-due-first default applies.
+      if (!saved.sortDir) delete saved.sort;
+      return { ...DEFAULT_PREFS, ...saved };
+    }
     // Carry over older prefs, but let the new subteam grouping default take effect.
     const legacy = window.localStorage.getItem(LEGACY_PREFS_KEY);
     if (!legacy) return DEFAULT_PREFS;
-    const { groupBy: _ignored, ...rest } = JSON.parse(legacy) as Partial<Prefs>;
+    const { groupBy: _ignored, sort: _oldSort, ...rest } = JSON.parse(legacy) as Partial<Prefs>;
     void _ignored;
+    void _oldSort;
     return { ...DEFAULT_PREFS, ...rest };
   } catch {
     return DEFAULT_PREFS;
@@ -283,6 +290,13 @@ export default function TasksPage() {
             // Tasks without a due date always sink to the bottom.
             if (!a.due_date || !b.due_date) return (a.due_date ? 0 : 1) - (b.due_date ? 0 : 1) || byManual(a, b);
             return dir * a.due_date.localeCompare(b.due_date) || byManual(a, b);
+          });
+          break;
+        case "start":
+          sorted.sort((a, b) => {
+            // Tasks without a start date always sink to the bottom.
+            if (!a.start_date || !b.start_date) return (a.start_date ? 0 : 1) - (b.start_date ? 0 : 1) || byManual(a, b);
+            return dir * a.start_date.localeCompare(b.start_date) || byManual(a, b);
           });
           break;
         case "priority":
@@ -592,10 +606,17 @@ export default function TasksPage() {
   const sortOptions: { value: SortBy; label: string }[] = [
     { value: "manual", label: tt("排序：手動", "Sort: Manual") },
     { value: "due", label: tt("排序：截止日", "Sort: Due date") },
+    { value: "start", label: tt("排序：開始日", "Sort: Start date") },
     { value: "priority", label: tt("排序：優先級", "Sort: Priority") },
     { value: "status", label: tt("排序：狀態", "Sort: Status") },
     { value: "title", label: tt("排序：名稱", "Sort: Name") },
   ];
+  // Clicking a date column header sorts by it; clicking again flips the direction.
+  // Date column filter menus also carry Ascending / Descending sort choices.
+  const columnSort = (key: SortBy) => ({
+    dir: prefs.sort === key ? prefs.sortDir : null,
+    onChange: (sortDir: SortDir) => updatePrefs({ sort: key, sortDir }),
+  });
   const sortDirOptions: { value: SortDir; label: string }[] = [
     { value: "asc", label: tt("遞增", "Ascending") },
     { value: "desc", label: tt("遞減", "Descending") },
@@ -823,8 +844,12 @@ export default function TasksPage() {
                         <th><ColumnHead label={t("負責人")} options={assigneeFilter} value={filters.assignees} onChange={setFilter("assignees")} /></th>
                         <th className="color-cell"><ColumnHead label={t("狀態")} options={statusFilter} value={filters.statuses} onChange={setFilter("statuses")} /></th>
                         <th className="color-cell"><ColumnHead label={t("優先級")} options={priorityFilter} value={filters.priorities} onChange={setFilter("priorities")} /></th>
-                        <th>{tt("開始日", "Start")}</th>
-                        <th><ColumnHead label={t("截止日")} options={dueFilter} value={filters.due} onChange={setFilter("due")} /></th>
+                        <th>
+                          <ColumnHead label={tt("開始日", "Start")} options={[]} value={[]} onChange={() => {}} sort={columnSort("start")} />
+                        </th>
+                        <th>
+                          <ColumnHead label={t("截止日")} options={dueFilter} value={filters.due} onChange={setFilter("due")} sort={columnSort("due")} />
+                        </th>
                         <th>{tt("子任務", "Subtasks")}</th>
                         {showSubteam && <th><ColumnHead label={t("組別")} options={subteamFilter} value={filters.subteams} onChange={setFilter("subteams")} /></th>}
                         <th><ColumnHead label={tt("專案", "Project")} options={projectFilter} value={filters.cycles} onChange={setFilter("cycles")} /></th>
@@ -1289,11 +1314,28 @@ function EmptyState({ narrowing, hasCycle, onClear, onCreate }: { narrowing: boo
 }
 
 /** Column title with a funnel that filters the whole view by that column. */
-function ColumnHead({ label, options, value, onChange }: { label: string; options: FilterOption[]; value: string[]; onChange: (value: string[]) => void }) {
+function ColumnHead({
+  label,
+  options,
+  value,
+  onChange,
+  sort,
+}: {
+  label: string;
+  options: FilterOption[];
+  value: string[];
+  onChange: (value: string[]) => void;
+  sort?: { dir: SortDir | null; onChange: (dir: SortDir) => void };
+}) {
   return (
     <span className="flex items-center justify-between gap-1">
-      <span className="truncate">{label}</span>
-      <MultiFilter variant="icon" label={label} options={options} value={value} onChange={onChange} />
+      <span className="flex min-w-0 items-center gap-1">
+        <span className="truncate">{label}</span>
+        {sort?.dir === "asc" && <ArrowUpIcon className="size-3 shrink-0" aria-label={tt("遞增", "Ascending")} />}
+        {sort?.dir === "desc" && <ArrowDownIcon className="size-3 shrink-0" aria-label={tt("遞減", "Descending")} />}
+      </span>
+      <MultiFilter variant="icon" label={label} options={options} value={value} onChange={onChange} sort={sort} />
     </span>
   );
 }
+

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { CalendarIcon, CheckIcon, ChevronDownIcon, FilterIcon, XIcon } from "lucide-react";
+import { ArrowDownIcon, ArrowUpIcon, CalendarIcon, CheckIcon, ChevronDownIcon, FilterIcon, XIcon } from "lucide-react";
 import { tt } from "@/lib/i18n-core";
 import { addDaysStr, daysBetween, fmtMD } from "@/lib/date";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -210,6 +210,7 @@ export function MultiFilter({
   value,
   onChange,
   variant = "pill",
+  sort,
 }: {
   label: string;
   icon?: ReactNode;
@@ -218,6 +219,8 @@ export function MultiFilter({
   onChange: (value: string[]) => void;
   /** "icon" = a small funnel button for table column headers. */
   variant?: "pill" | "icon";
+  /** Adds Ascending / Descending choices at the top; `dir` is null when this column isn't the active sort. */
+  sort?: { dir: "asc" | "desc" | null; onChange: (dir: "asc" | "desc") => void };
 }) {
   const [search, setSearch] = useState("");
   const active = value.length > 0;
@@ -257,6 +260,28 @@ export function MultiFilter({
         </PopoverTrigger>
       )}
       <PopoverContent className="w-60 gap-1 p-1.5" align="start">
+        {sort && (
+          <>
+            {([
+              ["asc", tt("遞增", "Ascending"), <ArrowUpIcon key="asc" className="size-3.5" />],
+              ["desc", tt("遞減", "Descending"), <ArrowDownIcon key="desc" className="size-3.5" />],
+            ] as const).map(([dir, text, glyph]) => (
+              <button
+                key={dir}
+                type="button"
+                role="menuitemradio"
+                aria-checked={sort.dir === dir}
+                className={`flex h-8 shrink-0 items-center gap-2 rounded-[4px] px-2 text-left text-sm hover:bg-muted ${sort.dir === dir ? "font-medium text-[var(--c-blue)]" : ""}`}
+                onClick={() => sort.onChange(dir)}
+              >
+                {glyph}
+                <span className="flex-1">{text}</span>
+                {sort.dir === dir && <CheckIcon className="size-3.5" />}
+              </button>
+            ))}
+            {options.length > 0 && <div className="my-1 h-px bg-border" />}
+          </>
+        )}
         {options.length > 7 && (
           <input
             value={search}
@@ -266,6 +291,7 @@ export function MultiFilter({
           />
         )}
         <div className="flex max-h-72 flex-col gap-0.5 overflow-y-auto">
+          {shown.length === 0 && !sort && <p className="px-2 py-3 text-center text-xs text-muted-foreground">{tt("沒有選項", "No options")}</p>}
           {shown.map((option) => {
             const checked = value.includes(option.value);
             return (
@@ -290,7 +316,7 @@ export function MultiFilter({
               </button>
             );
           })}
-          {shown.length === 0 && <p className="px-2 py-3 text-center text-xs text-muted-foreground">{tt("沒有選項", "No options")}</p>}
+          {shown.length === 0 && options.length > 0 && <p className="px-2 py-3 text-center text-xs text-muted-foreground">{tt("沒有選項", "No options")}</p>}
         </div>
         {active && (
           <>
