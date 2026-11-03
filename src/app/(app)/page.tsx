@@ -13,7 +13,7 @@ import { PageEmpty, PageError, PageLoading } from "@/components/PageState";
 import { BoardGroup } from "@/components/board/BoardGroup";
 import { BoardHeader } from "@/components/board/BoardHeader";
 import { StatusCell } from "@/components/board/ColorCell";
-import { PersonCell } from "@/components/board/PersonCell";
+import { PeopleCell, PersonCell } from "@/components/board/PersonCell";
 import { Button } from "@/components/ui/button";
 import type { Cycle, Me, Part, Settings, Task, TeamEvent } from "@/lib/types";
 
@@ -154,7 +154,7 @@ export default function DashboardPage() {
                     <td>
                       <Link href={`/tasks?task=${task.id}`} className="hover:underline">{task.title}</Link>
                     </td>
-                    <td><PersonCell name={task.assignee_name} /></td>
+                    <td><PeopleCell names={(task.assignees ?? []).map((person) => person.display_name)} value={task.assignee_ids ?? []} /></td>
                     <td className="color-cell"><StatusCell value={task.status} options={statusOptions} /></td>
                     <td className="tabular-nums">{task.due_date ? fmtMD(task.due_date) : "—"}</td>
                   </tr>

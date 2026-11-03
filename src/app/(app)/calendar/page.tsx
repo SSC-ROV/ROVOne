@@ -32,7 +32,7 @@ import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/
 import { useDialogs } from "@/components/ui/Dialogs";
 import { ContextMenu, type ContextMenuState } from "@/components/ui/context-menu";
 import { Label, StatusIcon } from "@/components/board/ColorCell";
-import { Avatar, shortName } from "@/components/board/PersonCell";
+import { AvatarStack, peopleSummary } from "@/components/board/PersonCell";
 import TaskModal from "@/components/TaskModal";
 import { PageError, PageLoading } from "@/components/PageState";
 import type { EventType, Me, Member, Task, TeamEvent } from "@/lib/types";
@@ -602,7 +602,7 @@ export default function CalendarPage() {
                             </span>
                           )}
                         </span>
-                        {task.assignee_name && <Avatar name={task.assignee_name} size={22} />}
+                        {task.assignees?.length > 0 && <AvatarStack names={task.assignees.map((person) => person.display_name)} size={22} />}
                       </button>
                     );
                   })}
@@ -790,7 +790,7 @@ function EventForm({
                     >
                       <StatusIcon status={task.status} size={14} />
                       <span className="min-w-0 flex-1 truncate">{task.title}</span>
-                      {task.assignee_name && <span className="shrink-0 text-xs text-muted-foreground">{shortName(task.assignee_name)}</span>}
+                      {task.assignees?.length > 0 && <span className="shrink-0 text-xs text-muted-foreground">{peopleSummary(task.assignees.map((person) => person.display_name))}</span>}
                     </button>
                   </li>
                 ))}

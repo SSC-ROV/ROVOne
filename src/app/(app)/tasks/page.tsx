@@ -36,7 +36,7 @@ import { PRIORITIES, STATUSES, groupColor, priorityLabel, subteamLabel } from "@
 import { BoardGroup } from "@/components/board/BoardGroup";
 import { BoardHeader } from "@/components/board/BoardHeader";
 import { ColorCell, PriorityCell, StatusCell, StatusIcon } from "@/components/board/ColorCell";
-import { Avatar, PersonCell, personColor } from "@/components/board/PersonCell";
+import { AvatarStack, PeopleCell, personColor } from "@/components/board/PersonCell";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -50,7 +50,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Choice, DateCell, DueCell, Kbd, MultiFilter, Pill, PRIORITY_RANK, Progress, dueState, type DueState, type FilterOption } from "@/components/tasks/shared";
 import { TaskSheet } from "@/components/tasks/TaskSheet";
 import { NewTaskSheet, type NewTaskInput } from "@/components/tasks/NewTaskSheet";
-import type { ChecklistItem, Cycle, Me, Member, Task } from "@/lib/types";
+import { isAssignedTo, type ChecklistItem, type Cycle, type Me, type Member, type Task } from "@/lib/types";
 
 const COMPLETABLE_STATUSES = new Set(["active", "late", "approved"]);
 const OPEN_STATUSES = new Set(["active", "late", "approved", "pending_leader", "pending_teacher"]);
@@ -230,7 +230,7 @@ export default function TasksPage() {
   }, [addable, prefs.cycleId]);
 
   const canEdit = useCallback(
-    (task: Task) => !!me && (isStaff(me.role) || task.assignee_id === me.id || task.created_by === me.id),
+    (task: Task) => !!me && (isStaff(me.role) || isAssignedTo(task, me.id) || task.created_by === me.id),
     [me]
   );
 
@@ -257,7 +257,7 @@ export default function TasksPage() {
   const matches = useCallback(
     (task: Task, f: Filters) => {
       const needle = f.query.trim().toLowerCase();
-      if (needle && !`${task.title}\n${task.description}\n${task.assignee_name ?? ""}`.toLowerCase().includes(needle)) return false;
+      if (needle && !`${task.title}\n${task.description}\n${(task.assignees ?? []).map((person) => person.display_name).join("\n")}`.toLowerCase().includes(needle)) return false;
       if (f.statuses.length && !f.statuses.includes(task.status)) return false;
       // Done tasks stay hidden unless the status filter asks for them.
       if (task.status === "done" && !f.statuses.includes("done")) return false;
@@ -266,7 +266,7 @@ export default function TasksPage() {
       if (f.cycles.length && !f.cycles.includes(String(task.cycle_id ?? "none"))) return false;
       if (f.assignees.length) {
         const ok = f.assignees.some((value) =>
-          value === "me" ? task.assignee_id === me?.id : value === "none" ? task.assignee_id == null : String(task.assignee_id) === value
+          value === "me" ? isAssignedTo(task, me?.id) : value === "none" ? !task.assignee_ids?.length : isAssignedTo(task, Number(value))
         );
         if (!ok) return false;
       }
@@ -336,7 +336,7 @@ export default function TasksPage() {
       case "subteam":
         return subteams.map((s, i) => make(s.key, s.label, groupColor(i), filtered.filter((task) => task.subteam === s.key), { subteam: s.key }));
       case "assignee": {
-        const ids = new Set(filtered.map((task) => task.assignee_id));
+        const ids = new Set(filtered.flatMap((task) => task.assignee_ids ?? []));
         const people = members.filter((member) => ids.has(member.id));
         if (me && !people.some((m) => m.id === me.id)) people.unshift({ ...me });
         const sortedPeople = people.sort((a, b) => (a.id === me?.id ? -1 : b.id === me?.id ? 1 : a.display_name.localeCompare(b.display_name)));
@@ -345,11 +345,11 @@ export default function TasksPage() {
             String(member.id),
             member.id === me?.id ? `${member.display_name} (${tt("我", "me")})` : member.display_name,
             personColor(member.display_name),
-            filtered.filter((task) => task.assignee_id === member.id),
-            { assignee_id: member.id }
+            filtered.filter((task) => isAssignedTo(task, member.id)),
+            { assignee_ids: [member.id] }
           )
         );
-        out.push(make("none", tt("未指派", "Unassigned"), "var(--c-gray)", filtered.filter((task) => task.assignee_id == null)));
+        out.push(make("none", tt("未指派", "Unassigned"), "var(--c-gray)", filtered.filter((task) => !task.assignee_ids?.length)));
         return out;
       }
       case "due": {
@@ -396,15 +396,19 @@ export default function TasksPage() {
     for (const key of ["status", "priority", "subteam", "due_date", "title", "description", "cycle_id", "start_date"] as const) {
       if (key in body) (optimistic as Record<string, unknown>)[key] = body[key];
     }
-    if ("assignee_id" in body) {
-      optimistic.assignee_id = body.assignee_id as number | null;
-      optimistic.assignee_name = members.find((m) => m.id === body.assignee_id)?.display_name ?? null;
+    if ("assignee_ids" in body) {
+      const ids = body.assignee_ids as number[];
+      optimistic.assignee_ids = ids;
+      optimistic.assignees = ids.map((id) => ({ id, display_name: members.find((m) => m.id === id)?.display_name ?? "" }));
+      optimistic.assignee_id = ids[0] ?? null;
+      optimistic.assignee_name = optimistic.assignees[0]?.display_name ?? null;
     }
     updateLocal(task.id, (item) => ({ ...item, ...optimistic }));
     try {
       const res = await api<{ task: Task }>(`/api/tasks/${task.id}`, {
         method: "PATCH",
-        body: JSON.stringify({ ...body, version: task.version }),
+        // Assignee picks send the whole list, so quick successive toggles skip the stale-version check.
+        body: JSON.stringify("assignee_ids" in body ? body : { ...body, version: task.version }),
       });
       updateLocal(task.id, (item) => ({ ...item, ...res.task, items: res.task.items ?? item.items }));
     } catch (err) {
@@ -479,12 +483,12 @@ export default function TasksPage() {
     await deleteTasks(list.map((task) => task.id));
   }
 
-  async function bulkPatch(body: Record<string, unknown>) {
+  async function bulkPatch(body: Record<string, unknown> | ((task: Task) => Record<string, unknown>)) {
     const all = (tasks ?? []).filter((task) => selected.has(task.id));
     const targets = all.filter(canEdit);
     const skipped = all.length - targets.length;
     const results = await Promise.allSettled(
-      targets.map((task) => api(`/api/tasks/${task.id}`, { method: "PATCH", body: JSON.stringify({ ...body, version: task.version }) }))
+      targets.map((task) => api(`/api/tasks/${task.id}`, { method: "PATCH", body: JSON.stringify({ ...(typeof body === "function" ? body(task) : body), version: task.version }) }))
     );
     const failed = results.filter((r) => r.status === "rejected").length;
     await load().catch(() => {});
@@ -492,6 +496,11 @@ export default function TasksPage() {
     const extra = skipped + failed ? tt(`，${skipped + failed} 項略過（無權限或已被修改）`, `, ${skipped + failed} skipped (no permission or changed)`) : "";
     toast(tt(`已更新 ${done} 項`, `Updated ${done}`) + extra, failed || skipped ? "info" : "ok");
   }
+
+  /** Bulk action body that adds one person to each task's existing assignees. */
+  const addAssignee = (id: number) => (task: Task) => ({
+    assignee_ids: (task.assignee_ids ?? []).includes(id) ? task.assignee_ids : [...(task.assignee_ids ?? []), id],
+  });
 
   async function reorder(task: Task, direction: "up" | "down") {
     try {
@@ -557,7 +566,7 @@ export default function TasksPage() {
     doing: tasks.filter((task) => task.status === "doing").length,
     overdue: tasks.filter((task) => dueState(task, today) === "overdue").length,
     week: tasks.filter((task) => ["today", "soon"].includes(dueState(task, today))).length,
-    mine: openTasks.filter((task) => task.assignee_id === me.id).length,
+    mine: openTasks.filter((task) => isAssignedTo(task, me.id)).length,
     donePct: tasks.length ? Math.round((doneCount / tasks.length) * 100) : 0,
   };
   // Quick views: one click applies a preset filter; clicking again clears it.
@@ -572,9 +581,9 @@ export default function TasksPage() {
 
   const countBy = (fn: (task: Task) => boolean) => tasks.filter(fn).length;
   const assigneeFilter: FilterOption[] = [
-    { value: "me", label: tt("指派給我", "Assigned to me"), hint: countBy((task) => task.assignee_id === me.id) },
-    { value: "none", label: tt("未指派", "Unassigned"), hint: countBy((task) => task.assignee_id == null) },
-    ...members.map((member) => ({ value: String(member.id), label: member.display_name, color: personColor(member.display_name), hint: countBy((task) => task.assignee_id === member.id) })),
+    { value: "me", label: tt("指派給我", "Assigned to me"), hint: countBy((task) => isAssignedTo(task, me.id)) },
+    { value: "none", label: tt("未指派", "Unassigned"), hint: countBy((task) => !task.assignee_ids?.length) },
+    ...members.map((member) => ({ value: String(member.id), label: member.display_name, color: personColor(member.display_name), hint: countBy((task) => isAssignedTo(task, member.id)) })),
   ];
   const statusFilter: FilterOption[] = STATUSES.map((item) => ({ value: item.key, label: item.label, color: item.color, hint: countBy((task) => task.status === item.key) }));
   const priorityFilter: FilterOption[] = PRIORITIES.map((item) => ({ value: item.key, label: item.label, color: item.color, hint: countBy((task) => task.priority === item.key) }));
@@ -591,7 +600,9 @@ export default function TasksPage() {
   const newTaskDefaults = (): Partial<NewTaskInput> => ({
     cycle_id: defaultCycleId ?? undefined,
     subteam: filters.subteams.length === 1 ? filters.subteams[0] : me.subteam,
-    assignee_id: filters.assignees.length === 1 ? (filters.assignees[0] === "me" ? me.id : Number(filters.assignees[0]) || null) : null,
+    assignee_ids: filters.assignees
+      .map((value) => (value === "me" ? me.id : Number(value)))
+      .filter((id) => Number.isInteger(id) && id > 0),
   });
 
   const groupByOptions: { value: GroupBy; label: string }[] = [
@@ -895,11 +906,12 @@ export default function TasksPage() {
                               </span>
                             </td>
                             <td>
-                              <PersonCell
-                                name={task.assignee_name}
+                              <PeopleCell
+                                names={(task.assignees ?? []).map((person) => person.display_name)}
+                                value={task.assignee_ids ?? []}
                                 disabled={!editable}
                                 options={people}
-                                onChange={(value) => patch(task, { assignee_id: value === "none" ? null : Number(value) })}
+                                onChange={(ids) => patch(task, { assignee_ids: ids })}
                               />
                             </td>
                             <td className="color-cell">
@@ -1038,7 +1050,7 @@ export default function TasksPage() {
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                           <StatusIcon status={task.status} size={14} />
                           <span className="min-w-0 truncate">{project ?? tt("無專案", "No project")}</span>
-                          <span className="ml-auto">{task.assignee_name && <Avatar name={task.assignee_name} size={20} />}</span>
+                          <span className="ml-auto">{task.assignees?.length > 0 && <AvatarStack names={task.assignees.map((person) => person.display_name)} size={20} />}</span>
                         </div>
                         <p className="text-sm leading-snug font-medium break-words group-hover/card:text-[var(--c-blue)]">{task.title}</p>
                         <div className="flex flex-wrap items-center gap-1.5">
@@ -1088,11 +1100,11 @@ export default function TasksPage() {
             ))}
           </BulkMenu>
           <BulkMenu label={tt("負責人", "Assignee")} icon={<UserIcon />}>
-            <DropdownMenuItem onClick={() => bulkPatch({ assignee_id: me.id })}>{tt("指派給我", "Assign to me")}</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => bulkPatch({ assignee_id: null })}>{tt("取消指派", "Unassign")}</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => bulkPatch(addAssignee(me.id))}>{tt("加入我", "Add me")}</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => bulkPatch({ assignee_ids: [] })}>{tt("取消全部指派", "Unassign everyone")}</DropdownMenuItem>
             <DropdownMenuSeparator />
             {members.map((member) => (
-              <DropdownMenuItem key={member.id} onClick={() => bulkPatch({ assignee_id: member.id })}>
+              <DropdownMenuItem key={member.id} onClick={() => bulkPatch(addAssignee(member.id))}>
                 {member.display_name}
               </DropdownMenuItem>
             ))}

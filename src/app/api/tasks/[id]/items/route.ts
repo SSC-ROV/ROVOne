@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/pg";
 import { getSessionUser } from "@/lib/auth";
 import { isStaff } from "@/lib/roles";
+import { isTaskAssignee } from "@/lib/db";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -11,10 +12,10 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   const { id } = await ctx.params;
   const taskId = Number(id);
   const [task] = await sql`
-    SELECT assignee_id, created_by FROM tasks WHERE id = ${taskId}`;
+    SELECT * FROM tasks WHERE id = ${taskId}`;
   if (!task) return NextResponse.json({ error: "任務不存在" }, { status: 404 });
-  const t = task as { assignee_id: number | null; created_by: number | null };
-  if (!isStaff(user.role) && user.id !== t.assignee_id && user.id !== t.created_by) {
+  const t = task as { assignee_id: number | null; assignee_ids?: number[] | null; created_by: number | null };
+  if (!isStaff(user.role) && !isTaskAssignee(t, user.id) && user.id !== t.created_by) {
     return NextResponse.json({ error: "沒有權限" }, { status: 403 });
   }
   const body = (await req.json().catch(() => null)) as { text?: string } | null;

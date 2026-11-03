@@ -5,7 +5,7 @@ import { api } from "@/lib/api-client";
 import { BTN, BTN_GHOST, INPUT_CLS, PRIORITIES, STATUSES } from "@/lib/ui";
 import { useI18n } from "@/lib/i18n";
 import { useDialogs } from "@/components/ui/Dialogs";
-import type { ChecklistItem, Me, Member, Task } from "@/lib/types";
+import { isAssignedTo, type ChecklistItem, type Me, type Member, type Task } from "@/lib/types";
 
 export default function TaskModal({
   mode,
@@ -33,7 +33,7 @@ export default function TaskModal({
   const canEdit =
     mode === "create" ||
     isStaffRole(me.role) ||
-    task?.assignee_id === me.id ||
+    (!!task && isAssignedTo(task, me.id)) ||
     task?.created_by === me.id;
 
   const [title, setTitle] = useState(task?.title ?? "");
@@ -42,9 +42,7 @@ export default function TaskModal({
   const [priority, setPriority] = useState(task?.priority ?? "medium");
   const [subteam, setSubteam] = useState(task?.subteam ?? "general");
   const [dueDate, setDueDate] = useState(task?.due_date ?? "");
-  const [assigneeId, setAssigneeId] = useState<string>(
-    task?.assignee_id ? String(task.assignee_id) : ""
-  );
+  const [assigneeIds, setAssigneeIds] = useState<number[]>(task?.assignee_ids ?? []);
   const [items, setItems] = useState<ChecklistItem[]>(task?.items ?? []);
   const [newItem, setNewItem] = useState("");
   const [busy, setBusy] = useState(false);
@@ -72,7 +70,7 @@ export default function TaskModal({
       priority,
       subteam,
       due_date: dueDate || null,
-      assignee_id: assigneeId ? Number(assigneeId) : null,
+      assignee_ids: assigneeIds,
       cycle_id: cycleId,
       ...(task ? { version: task.version } : {}),
     };
@@ -212,19 +210,22 @@ export default function TaskModal({
             </div>
             <div>
               <label className="mb-1 block text-sm text-ink-subtle">{t("負責人")}</label>
-              <select
-                className={INPUT_CLS}
-                value={assigneeId}
-                onChange={(e) => setAssigneeId(e.target.value)}
-                disabled={!canEdit}
-              >
-                <option value="">{t("未指派")}</option>
+              <div className={`${INPUT_CLS} flex h-auto max-h-36 flex-col gap-1 overflow-y-auto py-1.5`}>
                 {members.map((m) => (
-                  <option key={m.id} value={String(m.id)}>
-                    {m.display_name}
-                  </option>
+                  <label key={m.id} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      className="size-4 shrink-0 accent-[#0073ea]"
+                      checked={assigneeIds.includes(m.id)}
+                      disabled={!canEdit}
+                      onChange={(e) =>
+                        setAssigneeIds((prev) => (e.target.checked ? [...prev, m.id] : prev.filter((id) => id !== m.id)))
+                      }
+                    />
+                    <span className="min-w-0 truncate">{m.display_name}</span>
+                  </label>
                 ))}
-              </select>
+              </div>
             </div>
             <div>
               <label className="mb-1 block text-sm text-ink-subtle">{t("優先級")}</label>

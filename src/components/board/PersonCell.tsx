@@ -98,3 +98,128 @@ export function PersonCell({
     </Popover>
   );
 }
+
+/** Overlapping avatars for several people (shows "+N" past `max`). */
+export function AvatarStack({ names, size = 24, max = 3 }: { names: string[]; size?: number; max?: number }) {
+  if (names.length === 0) return <Avatar name={null} size={size} />;
+  const shown = names.slice(0, max);
+  const extra = names.length - shown.length;
+  return (
+    <span className="inline-flex shrink-0 items-center" title={names.join(", ")}>
+      {shown.map((name, i) => (
+        <span key={`${name}-${i}`} className="rounded-full ring-2 ring-card" style={{ marginLeft: i ? -Math.round(size * 0.3) : 0 }}>
+          <Avatar name={name} size={size} />
+        </span>
+      ))}
+      {extra > 0 && (
+        <span
+          className="inline-flex items-center justify-center rounded-full bg-muted font-semibold text-muted-foreground ring-2 ring-card"
+          style={{ width: size, height: size, fontSize: Math.round(size * 0.4), marginLeft: -Math.round(size * 0.3) }}
+        >
+          +{extra}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/** "Jude" for one person, "Jude, Amy" for two, "Jude +2" for more. */
+export function peopleSummary(names: string[]) {
+  if (names.length === 0) return "";
+  if (names.length <= 2) return names.map(shortName).join(", ");
+  return `${shortName(names[0])} +${names.length - 1}`;
+}
+
+/** Checkbox list of people; toggling keeps the list open so several can be picked. */
+export function PeopleChecklist({
+  options,
+  value,
+  onChange,
+}: {
+  options: { value: string; label: string }[];
+  value: number[];
+  onChange: (ids: number[]) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const needle = search.trim().toLowerCase();
+  const list = options.filter((option) => option.value !== "none" && (!needle || option.label.toLowerCase().includes(needle)));
+  return (
+    <>
+      {options.length > 7 && (
+        <input
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder={tt("搜尋成員…", "Search people…")}
+          className="mb-1 h-8 w-full shrink-0 rounded-[4px] border border-input bg-background px-2 text-sm outline-none focus-visible:border-ring"
+        />
+      )}
+      {list.map((option) => {
+        const id = Number(option.value);
+        const checked = value.includes(id);
+        return (
+          <button
+            key={option.value}
+            type="button"
+            role="menuitemcheckbox"
+            aria-checked={checked}
+            className="flex min-h-8 w-full shrink-0 items-center gap-2 rounded-[6px] px-2 py-1 text-left text-sm hover:bg-muted"
+            onClick={() => onChange(checked ? value.filter((item) => item !== id) : [...value, id])}
+          >
+            <span
+              className={`flex size-4 shrink-0 items-center justify-center rounded-[4px] border ${
+                checked ? "border-[var(--c-blue)] bg-[var(--c-blue)] text-white" : "border-input bg-background"
+              }`}
+              aria-hidden
+            >
+              {checked && <CheckIcon className="size-3" strokeWidth={3} />}
+            </span>
+            <Avatar name={option.label} size={22} />
+            <span className="min-w-0 flex-1 truncate">{option.label}</span>
+          </button>
+        );
+      })}
+      {list.length === 0 && <p className="px-2 py-3 text-center text-xs text-muted-foreground">{tt("找不到成員", "No matching people")}</p>}
+      {value.length > 0 && (
+        <>
+          <div className="my-1 h-px shrink-0 bg-border" />
+          <button type="button" className="h-8 w-full shrink-0 rounded-[6px] px-2 text-left text-sm text-muted-foreground hover:bg-muted" onClick={() => onChange([])}>
+            {tt("清除負責人", "Clear assignees")}
+          </button>
+        </>
+      )}
+    </>
+  );
+}
+
+/** Table cell for a task's assignees: stacked avatars + names; opens a multi-select list. */
+export function PeopleCell({
+  names,
+  value,
+  options,
+  disabled,
+  onChange,
+}: {
+  names: string[];
+  value: number[];
+  options?: { value: string; label: string }[];
+  disabled?: boolean;
+  onChange?: (ids: number[]) => void;
+}) {
+  const face = (
+    <span className="inline-flex min-w-0 items-center gap-2" title={names.join(", ") || undefined}>
+      <AvatarStack names={names} />
+      <span className={`truncate text-sm ${names.length ? "" : "text-muted-foreground"}`}>{names.length ? peopleSummary(names) : "—"}</span>
+    </span>
+  );
+  if (!onChange || disabled || !options) return face;
+  return (
+    <Popover>
+      <PopoverTrigger type="button" className="inline-flex h-7 max-w-full min-w-0 cursor-pointer items-center rounded-[6px] border-0 bg-transparent px-1 hover:bg-muted">
+        {face}
+      </PopoverTrigger>
+      <PopoverContent className="max-h-80 w-64 max-w-[calc(100vw-2rem)] gap-0.5 overflow-y-auto p-1" align="start">
+        <PeopleChecklist options={options} value={value} onChange={onChange} />
+      </PopoverContent>
+    </Popover>
+  );
+}

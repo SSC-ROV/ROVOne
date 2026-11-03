@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/pg";
 import { getSessionUser } from "@/lib/auth";
-import { getTaskWithItems } from "@/lib/db";
+import { getTaskWithItems, isTaskAssignee, parseAssigneeIds, saveAssignees } from "@/lib/db";
 import { fmtDue, notifyDiscord } from "@/lib/notify";
 import { logAudit } from "@/lib/audit";
 import { logActivity } from "@/lib/activity";
@@ -24,12 +24,12 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   const current = cur as unknown as {
     id: number; title: string; description: string; status: string;
     priority: string; subteam: string; due_date: string | null;
-    assignee_id: number | null; created_by: number | null;
+    assignee_id: number | null; assignee_ids?: number[] | null; created_by: number | null;
     cycle_id: number | null; completed_at: string | null; version: number;
   };
   const allowed =
     isStaffRole(user.role) ||
-    user.id === current.assignee_id ||
+    isTaskAssignee(current, user.id) ||
     user.id === current.created_by;
   if (!allowed) {
     return NextResponse.json(
@@ -77,6 +77,14 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   const title = body.title !== undefined ? String(body.title).trim() : current.title;
   if (!title) return NextResponse.json({ error: "標題不可空白" }, { status: 400 });
   const status = body.status !== undefined ? String(body.status) : current.status;
+  // `assignee_ids` sets the whole list; the older `assignee_id` replaces it with one person (or nobody).
+  const nextAssignees =
+    body.assignee_ids !== undefined
+      ? parseAssigneeIds(body.assignee_ids)
+      : body.assignee_id !== undefined
+        ? parseAssigneeIds([body.assignee_id])
+        : null;
+  const prevAssignees = nextAssignees ? ((await getTaskWithItems(taskId))?.assignees ?? []) : [];
 
   await sql`
     UPDATE tasks SET
@@ -86,20 +94,21 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       priority = ${body.priority !== undefined ? String(body.priority) : current.priority},
       subteam = ${body.subteam !== undefined ? String(body.subteam) : current.subteam},
       due_date = ${body.due_date !== undefined ? (body.due_date as string) || null : current.due_date},
-      assignee_id = ${body.assignee_id !== undefined ? (body.assignee_id as number) || null : current.assignee_id},
       cycle_id = ${body.cycle_id !== undefined ? (body.cycle_id as number) || null : current.cycle_id},
       completed_at = ${body.status !== undefined ? (status === "done" ? new Date().toISOString() : null) : current.completed_at},
       version = version + 1
     WHERE id = ${taskId}`;
+
+  if (nextAssignees) await saveAssignees(taskId, nextAssignees);
 
   // Kept separate so the rest of the update still works before the start_date migration has run.
   const startDate = body.start_date !== undefined ? (body.start_date as string) || null : undefined;
   if (startDate !== undefined) await sql`UPDATE tasks SET start_date = ${startDate} WHERE id = ${taskId}`;
 
   const updated = (await getTaskWithItems(taskId))!;
-  const before = current as unknown as { start_date?: string | null };
-  if (startDate !== undefined && startDate !== (before.start_date ?? null)) {
-    await logActivity(taskId, user.id, "start_date", { from: before.start_date ?? null, to: startDate });
+  const prevStart = (current as unknown as { start_date?: string | null }).start_date ?? null;
+  if (startDate !== undefined && startDate !== prevStart) {
+    await logActivity(taskId, user.id, "start_date", { from: prevStart, to: startDate });
   }
 
   // Timeline entries for meaningful changes
@@ -108,17 +117,26 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   if ((updated.due_date ?? null) !== (current.due_date ?? null)) await logActivity(taskId, user.id, "due_date", { from: current.due_date, to: updated.due_date });
   if ((updated.cycle_id ?? null) !== (current.cycle_id ?? null)) await logActivity(taskId, user.id, "project", { from: current.cycle_id, to: updated.cycle_id });
   if (updated.title !== current.title) await logActivity(taskId, user.id, "title", { from: current.title, to: updated.title });
-  if ((updated.assignee_id ?? null) !== (current.assignee_id ?? null)) {
-    await logActivity(taskId, user.id, "assignee", { from: current.assignee_id, to: updated.assignee_id, to_name: updated.assignee_name });
-  }
-  if (
-    body.assignee_id !== undefined &&
-    updated.assignee_id &&
-    updated.assignee_id !== current.assignee_id
-  ) {
-    notifyDiscord(
-      `📋 任務「${updated.title}」改指派給 ${updated.assignee_name ?? "隊員"}${fmtDue(updated.due_date)}`
-    ).catch(() => {});
+  if (nextAssignees) {
+    const prevIds = new Set(prevAssignees.map((person) => person.id));
+    const nextIds = new Set(updated.assignees.map((person) => person.id));
+    const added = updated.assignees.filter((person) => !prevIds.has(person.id));
+    const removed = prevAssignees.filter((person) => !nextIds.has(person.id));
+    if (added.length || removed.length) {
+      await logActivity(taskId, user.id, "assignee", {
+        added: added.map((person) => ({ id: person.id, name: person.display_name })),
+        removed: removed.map((person) => ({ id: person.id, name: person.display_name })),
+        // Older timeline readers look at `to` / `to_name`.
+        to: updated.assignee_id,
+        to_name: updated.assignee_name,
+      });
+    }
+    const notify = added.filter((person) => person.id !== user.id);
+    if (notify.length) {
+      notifyDiscord(
+        `📋 任務「${updated.title}」指派給 ${notify.map((person) => person.display_name).join("、")}${fmtDue(updated.due_date)}`
+      ).catch(() => {});
+    }
   }
   return NextResponse.json({ task: updated });
 }
