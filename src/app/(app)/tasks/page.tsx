@@ -612,9 +612,11 @@ export default function TasksPage() {
     { value: "title", label: tt("排序：名稱", "Sort: Name") },
   ];
   // Clicking a date column header sorts by it; clicking again flips the direction.
-  const toggleSort = (key: SortBy) =>
-    updatePrefs(prefs.sort === key ? { sortDir: prefs.sortDir === "asc" ? "desc" : "asc" } : { sort: key, sortDir: "asc" });
-  const sortState = (key: SortBy) => (prefs.sort === key ? prefs.sortDir : null);
+  // Date column filter menus also carry Ascending / Descending sort choices.
+  const columnSort = (key: SortBy) => ({
+    dir: prefs.sort === key ? prefs.sortDir : null,
+    onChange: (sortDir: SortDir) => updatePrefs({ sort: key, sortDir }),
+  });
   const sortDirOptions: { value: SortDir; label: string }[] = [
     { value: "asc", label: tt("遞增", "Ascending") },
     { value: "desc", label: tt("遞減", "Descending") },
@@ -843,13 +845,10 @@ export default function TasksPage() {
                         <th className="color-cell"><ColumnHead label={t("狀態")} options={statusFilter} value={filters.statuses} onChange={setFilter("statuses")} /></th>
                         <th className="color-cell"><ColumnHead label={t("優先級")} options={priorityFilter} value={filters.priorities} onChange={setFilter("priorities")} /></th>
                         <th>
-                          <SortHead label={tt("開始日", "Start")} dir={sortState("start")} onClick={() => toggleSort("start")} />
+                          <ColumnHead label={tt("開始日", "Start")} options={[]} value={[]} onChange={() => {}} sort={columnSort("start")} />
                         </th>
                         <th>
-                          <span className="flex items-center justify-between gap-1">
-                            <SortHead label={t("截止日")} dir={sortState("due")} onClick={() => toggleSort("due")} />
-                            <MultiFilter variant="icon" label={t("截止日")} options={dueFilter} value={filters.due} onChange={setFilter("due")} />
-                          </span>
+                          <ColumnHead label={t("截止日")} options={dueFilter} value={filters.due} onChange={setFilter("due")} sort={columnSort("due")} />
                         </th>
                         <th>{tt("子任務", "Subtasks")}</th>
                         {showSubteam && <th><ColumnHead label={t("組別")} options={subteamFilter} value={filters.subteams} onChange={setFilter("subteams")} /></th>}
@@ -1315,28 +1314,28 @@ function EmptyState({ narrowing, hasCycle, onClear, onCreate }: { narrowing: boo
 }
 
 /** Column title with a funnel that filters the whole view by that column. */
-function ColumnHead({ label, options, value, onChange }: { label: string; options: FilterOption[]; value: string[]; onChange: (value: string[]) => void }) {
+function ColumnHead({
+  label,
+  options,
+  value,
+  onChange,
+  sort,
+}: {
+  label: string;
+  options: FilterOption[];
+  value: string[];
+  onChange: (value: string[]) => void;
+  sort?: { dir: SortDir | null; onChange: (dir: SortDir) => void };
+}) {
   return (
     <span className="flex items-center justify-between gap-1">
-      <span className="truncate">{label}</span>
-      <MultiFilter variant="icon" label={label} options={options} value={value} onChange={onChange} />
+      <span className="flex min-w-0 items-center gap-1">
+        <span className="truncate">{label}</span>
+        {sort?.dir === "asc" && <ArrowUpIcon className="size-3 shrink-0" aria-label={tt("遞增", "Ascending")} />}
+        {sort?.dir === "desc" && <ArrowDownIcon className="size-3 shrink-0" aria-label={tt("遞減", "Descending")} />}
+      </span>
+      <MultiFilter variant="icon" label={label} options={options} value={value} onChange={onChange} sort={sort} />
     </span>
   );
 }
 
-function SortHead({ label, dir, onClick }: { label: string; dir: SortDir | null; onClick: () => void }) {
-  const next = dir === "asc" ? tt("改為遞減", "Sort descending") : tt("改為遞增", "Sort ascending");
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={next}
-      aria-label={`${label}: ${next}`}
-      className="flex min-w-0 items-center gap-1 hover:text-foreground"
-    >
-      <span className="truncate">{label}</span>
-      {dir === "asc" && <ArrowUpIcon className="size-3 shrink-0" />}
-      {dir === "desc" && <ArrowDownIcon className="size-3 shrink-0" />}
-    </button>
-  );
-}
