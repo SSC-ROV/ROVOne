@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
+import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { CheckIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
@@ -28,10 +28,44 @@ export function StatusIcon({ status, size = 16, className = "" }: { status: stri
   );
 }
 
-/** Outlined, tinted pill coloured by `color`. */
+/**
+ * Shrinks an element's font size (down to `min` px) until its text fits its box, and grows it back
+ * when there is room again. Keeps short labels readable on narrow screens instead of spilling over.
+ */
+export function useFitText<T extends HTMLElement>(min = 9) {
+  const ref = useRef<T>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    let frame = 0;
+    const fit = () => {
+      el.style.fontSize = "";
+      let size = parseFloat(getComputedStyle(el).fontSize);
+      while (el.scrollWidth > el.clientWidth + 0.5 && size > min) {
+        size -= 0.5;
+        el.style.fontSize = `${size}px`;
+      }
+    };
+    fit();
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(fit);
+    });
+    observer.observe(el);
+    if (el.parentElement) observer.observe(el.parentElement);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [min]);
+  return ref;
+}
+
+/** Outlined, tinted pill coloured by `color`. Its text shrinks to fit when space is tight. */
 export function Label({ color, children, className = "" }: { color: string; children: React.ReactNode; className?: string }) {
+  const ref = useFitText<HTMLSpanElement>();
   return (
-    <span className={`gh-label ${className}`} style={{ "--label": color } as CSSProperties}>
+    <span ref={ref} className={`gh-label ${className}`} style={{ "--label": color } as CSSProperties}>
       {children}
     </span>
   );
@@ -61,7 +95,7 @@ export function ColorCell({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         type="button"
-        className="inline-flex max-w-full cursor-pointer rounded-full border-0 bg-transparent p-0 hover:brightness-125 focus-visible:ring-2 focus-visible:ring-ring"
+        className="inline-flex max-w-full min-w-0 cursor-pointer rounded-full border-0 bg-transparent p-0 hover:brightness-125 focus-visible:ring-2 focus-visible:ring-ring"
         disabled={disabled}
       >
         {face}

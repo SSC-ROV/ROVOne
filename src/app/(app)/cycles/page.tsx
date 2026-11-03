@@ -1,21 +1,42 @@
 "use client";
+
+import { useCallback, useEffect, useState, type ReactNode } from "react";
+import {
+  CalendarRangeIcon,
+  CheckCircle2Icon,
+  ChevronDownIcon,
+  ClockAlertIcon,
+  HandIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  PlusIcon,
+  RotateCcwIcon,
+  Trash2Icon,
+  UsersIcon,
+  XIcon,
+} from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { tt } from "@/lib/i18n-core";
 import TaskModal from "@/components/TaskModal";
 import CycleTimeline from "@/components/CycleTimeline";
 import { useSubteams } from "@/lib/subteams";
-
-import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 import { useDialogs } from "@/components/ui/Dialogs";
-import { PageEmpty, PageError, PageLoading } from "@/components/PageState";
-import { CHIP, INPUT_CLS, cycleStatus } from "@/lib/ui";
+import { PageError, PageLoading } from "@/components/PageState";
+import { INPUT_CLS, cycleStatus } from "@/lib/ui";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { BoardHeader } from "@/components/board/BoardHeader";
+import { Label, StatusIcon } from "@/components/board/ColorCell";
+import { Avatar, shortName } from "@/components/board/PersonCell";
+import { Choice, Progress } from "@/components/tasks/shared";
 import { isStaff } from "@/lib/roles";
 import { daysBetween, fmtMD, todayStr } from "@/lib/date";
 import type { Cycle, CycleStatus, Me, Member, Task } from "@/lib/types";
+
+type Action = "approve" | "reject" | "complete" | "resubmit" | "marklate";
 
 export default function CyclesPage() {
   const { t } = useI18n();
@@ -27,15 +48,15 @@ export default function CyclesPage() {
   const [form, setForm] = useState<null | { editing: Cycle | null }>(null);
   const [tasks, setTasks] = useState<Task[] | null>(null);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
-  const [modal, setModal] = useState<
-    { mode: "create"; cycleId: number } | { mode: "edit"; task: Task } | null
-  >(null);
+  const [modal, setModal] = useState<{ mode: "create"; cycleId: number } | { mode: "edit"; task: Task } | null>(null);
   const [error, setError] = useState("");
   const [fSubteam, setFSubteam] = useState("all");
   const [fAssignee, setFAssignee] = useState("all");
+  const [showHistory, setShowHistory] = useState(false);
+  const [showStats, setShowStats] = useState(false);
 
   const load = useCallback(async () => {
-    const [c, m, u, t] = await Promise.all([
+    const [c, m, u, tk] = await Promise.all([
       api<{ cycles: Cycle[] }>("/api/cycles"),
       api<{ members: Member[] }>("/api/members"),
       api<{ user: Me | null }>("/api/auth/me"),
@@ -43,10 +64,12 @@ export default function CyclesPage() {
     ]);
     setCycles(c.cycles);
     setMembers(m.members);
-    setTasks(t.tasks);
+    setTasks(tk.tasks);
     setMe(u.user);
   }, []);
-  const bgReload = () => { load().catch(() => {}); };
+  const bgReload = () => {
+    load().catch(() => {});
+  };
 
   useEffect(() => {
     load().catch((err: Error) => setError(err.message));
@@ -60,9 +83,7 @@ export default function CyclesPage() {
       if (!task) return;
       sessionStorage.removeItem("rov-open-task");
       setModal({ mode: "edit", task });
-      if (task.cycle_id) {
-        setExpanded((prev) => new Set(prev).add(task.cycle_id as number));
-      }
+      if (task.cycle_id) setExpanded((prev) => new Set(prev).add(task.cycle_id as number));
     }
     openQueued();
     window.addEventListener("rov-open-task", openQueued);
@@ -72,57 +93,49 @@ export default function CyclesPage() {
   if (error) return <PageError message={error} />;
   if (!cycles || !me) return <PageLoading label={t("載入中…")} />;
 
-  // today 必須在下方 filter 之前宣告（approvedNotStarted 會用到，否則暫時性死區 ReferenceError）
   const today = todayStr();
+  const staff = isStaff(me.role);
+  const meId = me.id;
+  const allTasks = tasks ?? [];
+
   function cycleVisible(c: Cycle) {
     if (fAssignee !== "all") {
       const id = Number(fAssignee);
       const onCycle = c.proposer_id === id || c.members.some((m) => m.id === id);
-      const onTask = (tasks ?? []).some((task) => task.cycle_id === c.id && task.assignee_id === id);
+      const onTask = allTasks.some((task) => task.cycle_id === c.id && task.assignee_id === id);
       if (!onCycle && !onTask) return false;
     }
     if (fSubteam !== "all") {
       const ids = [c.proposer_id, ...c.members.map((m) => m.id)].filter((x): x is number => x != null);
       const memberHit = ids.some((id) => members.find((m) => m.id === id)?.subteam === fSubteam);
-      const taskHit = (tasks ?? []).some((task) => task.cycle_id === c.id && task.subteam === fSubteam);
+      const taskHit = allTasks.some((task) => task.cycle_id === c.id && task.subteam === fSubteam);
       if (!memberHit && !taskHit) return false;
     }
     return true;
   }
 
-  const pending = cycles.filter((c) => (c.status === "pending_leader" || c.status === "pending_teacher") && cycleVisible(c));
-  const active = cycles.filter((c) => c.status === "active" && cycleVisible(c));
-  const approvedNotStarted = cycles.filter(
-    (c) => c.status === "approved" && c.start_date > today && cycleVisible(c)
-  );
-  const late = cycles.filter((c) => c.status === "late" && cycleVisible(c));
-  const history = cycles.filter((c) => (c.status === "completed" || c.status === "rejected") && cycleVisible(c));
-  const myRole = me.role;
-  const meId = me.id;
-  // 示範帳號（leader/member/teacher）與所有老師帳號：不進專案邀請名單與成員統計
-  const DEMO_USERNAMES = ["leader", "member", "teacher", "dashboard"];
-  const invitableMembers = members.filter(
-    (m) => m.role !== "teacher" && !DEMO_USERNAMES.includes(m.username)
-  );
-  // 開放認領中：幹部發佈、尚未被認領、已核准／進行中，且不是自己發的
-  const claimableOpen = cycles.filter(
-    (c) =>
-      c.claimable &&
-      !c.claimed_by &&
-      (c.status === "active" || c.status === "approved") &&
-      c.proposer_id !== meId
-  );
+  const visible = cycles.filter(cycleVisible);
+  const pending = visible.filter((c) => c.status === "pending_leader" || c.status === "pending_teacher");
+  const active = visible.filter((c) => c.status === "active");
+  const upcoming = visible.filter((c) => c.status === "approved");
+  const late = visible.filter((c) => c.status === "late");
+  const history = visible.filter((c) => c.status === "completed" || c.status === "rejected");
 
-  // 樂觀更新：任務勾選（立即改畫面，背景同步；失敗則還原）
+  // Demo and teacher accounts are left out of invitations and stats.
+  const DEMO_USERNAMES = ["leader", "member", "teacher", "dashboard"];
+  const invitableMembers = members.filter((m) => m.role !== "teacher" && !DEMO_USERNAMES.includes(m.username));
+  // Open to claim: posted by a leader, not yet claimed, approved or active, and not posted by me.
+  const claimableOpen = visible.filter(
+    (c) => c.claimable && !c.claimed_by && (c.status === "active" || c.status === "approved") && c.proposer_id !== meId
+  );
+  const filtering = fSubteam !== "all" || fAssignee !== "all";
+
+  // Optimistic tick: update the screen now, sync in the background, roll back on failure.
   async function toggleTaskDone(task: Task) {
     const nextStatus = task.status === "done" ? "doing" : "done";
     const snapshot = tasks;
     setTasks((prev) =>
-      prev!.map((x) =>
-        x.id === task.id
-          ? { ...x, status: nextStatus, completed_at: nextStatus === "done" ? new Date().toISOString() : null }
-          : x
-      )
+      prev!.map((x) => (x.id === task.id ? { ...x, status: nextStatus, completed_at: nextStatus === "done" ? new Date().toISOString() : null } : x))
     );
     setCycles((prev) =>
       prev!.map((c) => {
@@ -132,10 +145,7 @@ export default function CyclesPage() {
       })
     );
     try {
-      await api(`/api/tasks/${task.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ status: nextStatus, version: task.version }),
-      });
+      await api(`/api/tasks/${task.id}`, { method: "PATCH", body: JSON.stringify({ status: nextStatus, version: task.version }) });
       bgReload();
     } catch (err) {
       setTasks(snapshot);
@@ -143,38 +153,38 @@ export default function CyclesPage() {
     }
   }
 
-  async function moveTask(task: Task, dir: "up" | "down") {
-    try {
-      await api(`/api/tasks/${task.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ reorder: dir, version: task.version }),
-      });
-      bgReload();
-    } catch (err) {
-      toast(t((err as Error).message), "err");
-    }
-  }
-
-  async function act(c: Cycle, action: "approve" | "reject" | "complete" | "resubmit" | "marklate") {
+  async function act(c: Cycle, action: Action) {
     let note: string | null = "";
     if (action === "reject") {
-      note = await prompt({ title: `駁回「${c.title}」`, label: "給提案人的備註（可留空）" });
+      note = await prompt({ title: tt(`駁回「${c.title}」`, `Reject "${c.title}"`), label: tt("給提案人的備註（可留空）", "Note for the proposer (optional)") });
       if (note === null) return;
     }
-    try {
-      const r = await api<{ status: CycleStatus }>(`/api/cycles/${c.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ action, note: note ?? "" }),
+    if (action === "complete") {
+      const open = allTasks.filter((task) => task.cycle_id === c.id && task.status !== "done").length;
+      const ok = await confirm({
+        title: tt(`將「${c.title}」標記為完成？`, `Mark "${c.title}" as complete?`),
+        message: open
+          ? tt(`還有 ${open} 項任務未完成。完成後專案會移到歷史，無法再加入任務。`, `${open} task${open === 1 ? " is" : "s are"} still open. Completed projects move to history and can't take new tasks.`)
+          : tt("完成後專案會移到歷史，無法再加入任務。", "Completed projects move to history and can't take new tasks."),
+        confirmText: tt("標記完成", "Mark complete"),
       });
-      toast(
+      if (!ok) return;
+    }
+    try {
+      const r = await api<{ status: CycleStatus }>(`/api/cycles/${c.id}`, { method: "PATCH", body: JSON.stringify({ action, note: note ?? "" }) });
+      const message =
         action === "approve"
-          ? r.status === "active" ? "" : t("已核准，送老師最終審批")
-          : action === "reject" ? t("已駁回")
-          : action === "complete" ? t("專案已完成，辛苦了！")
-          : action === "marklate" ? t("已標記為遲交")
-          : t("已重新提交"),
-        "ok"
-      );
+          ? r.status === "approved" || r.status === "active"
+            ? tt("已核准", "Approved")
+            : t("已核准，送老師最終審批")
+          : action === "reject"
+            ? t("已駁回")
+            : action === "complete"
+              ? t("專案已完成，辛苦了！")
+              : action === "marklate"
+                ? t("已標記為遲交")
+                : t("已重新提交");
+      toast(message, "ok");
       await load();
     } catch (err) {
       toast(t((err as Error).message), "err");
@@ -183,10 +193,7 @@ export default function CyclesPage() {
 
   async function claim(c: Cycle) {
     try {
-      await api(`/api/cycles/${c.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ action: "claim" }),
-      });
+      await api(`/api/cycles/${c.id}`, { method: "PATCH", body: JSON.stringify({ action: "claim" }) });
       toast(t("認領成功！專案已加入你的名下"), "ok");
       await load();
     } catch (err) {
@@ -206,20 +213,19 @@ export default function CyclesPage() {
     }
   }
 
-  function canDecide(c: Cycle): "approve" | "wait" | false {
-    if (c.status === "pending_leader") return isStaff(myRole) ? "approve" : false;
-    if (c.status === "pending_teacher") return myRole === "teacher" ? "approve" : "wait";
-    return false;
+  function toggleExpand(id: number) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
-  // 幹部統計：每個成員參與（提案或合作）的專案數量
+  // Per-member project counts (proposed or collaborating).
   const stats = invitableMembers
     .map((m) => {
-      const mine = cycles.filter(
-        (c) =>
-          (c.proposer_id === m.id && !(c.claimable && !c.count_for_leader)) ||
-          c.members.some((x) => x.id === m.id)
-      );
+      const mine = cycles.filter((c) => (c.proposer_id === m.id && !(c.claimable && !c.count_for_leader)) || c.members.some((x) => x.id === m.id));
       return {
         member: m,
         active: mine.filter((c) => c.status === "active").length,
@@ -232,92 +238,84 @@ export default function CyclesPage() {
     })
     .sort((a, b) => b.total - a.total || a.member.id - b.member.id);
 
-  function toggleExpand(id: number) {
-    setExpanded((prev) => {
-      const n = new Set(prev);
-      if (n.has(id)) n.delete(id);
-      else n.add(id);
-      return n;
-    });
-  }
-
-  function workCycle(
-    c: Cycle,
-    tone: string,
-    opts: { showComplete?: boolean; showMarkLate?: boolean; footnote?: string }
-  ) {
-    const pastEnd = c.end_date < today;
+  const card = (c: Cycle, extra?: ReactNode) => {
+    const canManage = staff || c.proposer_id === meId;
+    const decision = c.status === "pending_leader" ? (staff ? "approve" : null) : c.status === "pending_teacher" ? (me.role === "teacher" ? "approve" : "wait") : null;
     return (
-      <div key={c.id} className={tone}>
-        <CycleHead c={c} today={today} />
-        <TaskProgress done={c.task_done} total={c.task_total} />
-        <CycleTasks
-          cycle={c}
-          tasks={(tasks ?? []).filter((x) => x.cycle_id === c.id)}
-          expanded={expanded.has(c.id)}
-          onToggleExpand={() => toggleExpand(c.id)}
-          onChanged={load}
-          onEdit={(task) => setModal({ mode: "edit", task })}
-          onToggleDone={(task) => toggleTaskDone(task)}
-          onMove={(task, dir) => moveTask(task, dir)}
-        />
-        {opts.footnote && <p className="mt-2 text-xs text-ink-tertiary">{opts.footnote}</p>}
-        <div className="mt-2 flex flex-wrap gap-2">
-          {opts.showComplete && (isStaff(myRole) || c.proposer_id === meId) && (
-            <Button type="button" variant="ghost" onClick={() => act(c, "complete")}>
-              {t("🏁 標記完成")}
-            </Button>
-          )}
-          {opts.showMarkLate && isStaff(myRole) && pastEnd && (
-            <Button type="button" variant="ghost" onClick={() => act(c, "marklate")}>
-              {t("標記遲交")}
-            </Button>
-          )}
-          {isStaff(myRole) && opts.showComplete && (
-            <Button type="button" variant="ghost" className="text-muted-foreground" onClick={() => removeCycle(c)}>
-              {t("刪除")}
-            </Button>
-          )}
-        </div>
-      </div>
+      <ProjectCard
+        key={c.id}
+        cycle={c}
+        today={today}
+        tasks={allTasks.filter((task) => task.cycle_id === c.id)}
+        expanded={expanded.has(c.id)}
+        onToggle={() => toggleExpand(c.id)}
+        canComplete={canManage && ["active", "late", "approved"].includes(c.status)}
+        onComplete={() => act(c, "complete")}
+        decision={decision}
+        onApprove={() => act(c, "approve")}
+        onReject={() => act(c, "reject")}
+        menu={[
+          ...(c.status.startsWith("pending") && canManage ? [{ label: tt("編輯", "Edit"), icon: <PencilIcon />, onSelect: () => setForm({ editing: c }) }] : []),
+          ...(staff && c.status === "active" && c.end_date < today ? [{ label: tt("標記遲交", "Mark late"), icon: <ClockAlertIcon />, onSelect: () => act(c, "marklate") }] : []),
+          ...(c.status === "rejected" && c.proposer_id === meId ? [{ label: tt("修改後重新提交", "Resubmit"), icon: <RotateCcwIcon />, onSelect: () => act(c, "resubmit") }] : []),
+          ...(staff || (c.proposer_id === meId && c.status === "rejected")
+            ? [{ label: tt("刪除專案", "Delete project"), icon: <Trash2Icon />, danger: true, onSelect: () => removeCycle(c) }]
+            : []),
+        ]}
+        onOpenTask={(task) => setModal({ mode: "edit", task })}
+        onToggleDone={toggleTaskDone}
+        onChanged={bgReload}
+        extra={extra}
+      />
     );
-  }
+  };
+
+  const section = (title: string, color: string, list: Cycle[], render: (c: Cycle) => ReactNode, hint?: string) =>
+    list.length > 0 && (
+      <section className="flex flex-col gap-3">
+        <h2 className="flex items-center gap-2 text-[15px] font-semibold">
+          <span className="size-2.5 rounded-full" style={{ background: color }} />
+          {title}
+          <span className="rounded-full bg-muted px-2 text-xs leading-5 font-medium tabular-nums text-muted-foreground">{list.length}</span>
+          {hint && <span className="hidden truncate text-sm font-normal text-muted-foreground sm:inline">{hint}</span>}
+        </h2>
+        {list.map(render)}
+      </section>
+    );
 
   return (
-    <div className="space-y-5">
-      <CycleTimeline cycles={cycles} today={today} />
-
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="board-title">{t("專案")}</h1>
-        <span className="text-sm text-ink-tertiary">
-          {t("提案 → 隊長審批 → 老師審批 → 進行中；任務在專案卡片內直接新增")}
-        </span>
-        <Select value={fSubteam} onValueChange={(value) => value && setFSubteam(value)}>
-          <SelectTrigger className="ml-auto w-36">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("全部組別")}</SelectItem>
-            {subteams.map((s) => (
-              <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={fAssignee} onValueChange={(value) => value && setFAssignee(value)}>
-          <SelectTrigger className="w-36">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("全部成員")}</SelectItem>
-            {invitableMembers.map((m) => (
-              <SelectItem key={m.id} value={String(m.id)}>{m.display_name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button type="button" onClick={() => setForm({ editing: null })}>
-          {t("＋ 提案新專案")}
-        </Button>
-      </div>
+    <div className="flex w-full min-w-0 flex-col gap-6 pb-24">
+      <BoardHeader
+        title={t("專案")}
+        subtitle={tt(`${active.length} 個進行中 · ${upcoming.length} 個即將開始 · ${pending.length} 個審批中`, `${active.length} active · ${upcoming.length} upcoming · ${pending.length} in review`)}
+        action={
+          <Button onClick={() => setForm({ editing: null })}>
+            <PlusIcon /> {tt("提案新專案", "Propose project")}
+          </Button>
+        }
+        filters={
+          <>
+            <Choice
+              value={fSubteam}
+              onChange={setFSubteam}
+              options={[{ value: "all", label: t("全部組別") }, ...subteams.map((s) => ({ value: s.key, label: s.label }))]}
+              ariaLabel={tt("組別", "Subteam")}
+            />
+            <Choice
+              value={fAssignee}
+              onChange={setFAssignee}
+              options={[{ value: "all", label: t("全部成員") }, ...invitableMembers.map((m) => ({ value: String(m.id), label: shortName(m.display_name) }))]}
+              ariaLabel={tt("成員", "Member")}
+            />
+            {filtering && (
+              <Button variant="ghost" size="sm" onClick={() => { setFSubteam("all"); setFAssignee("all"); }}>
+                <XIcon /> {tt("清除篩選", "Clear filters")}
+              </Button>
+            )}
+            <span className="ml-auto text-xs text-muted-foreground">{t("提案 → 隊長審批 → 老師審批 → 進行中；任務在專案卡片內直接新增")}</span>
+          </>
+        }
+      />
 
       {modal && (
         <TaskModal
@@ -325,11 +323,7 @@ export default function CyclesPage() {
           mode={modal.mode === "edit" ? "edit" : "create"}
           task={modal.mode === "edit" ? modal.task : null}
           cycleId={(modal.mode === "edit" ? modal.task.cycle_id : modal.cycleId) ?? 0}
-          cycleTitle={
-            modal.mode === "edit"
-              ? (cycles.find((x) => x.id === modal.task.cycle_id)?.title ?? "")
-              : (cycles.find((x) => x.id === modal.cycleId)?.title ?? "")
-          }
+          cycleTitle={cycles.find((x) => x.id === (modal.mode === "edit" ? modal.task.cycle_id : modal.cycleId))?.title ?? ""}
           members={invitableMembers}
           subteams={subteams}
           me={me}
@@ -351,216 +345,374 @@ export default function CyclesPage() {
         />
       )}
 
-      {isStaff(myRole) && pending.length > 0 && (
-        <section className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-5">
-          <h2 className="group-title mb-3" style={{ color: "#fdab3d" }}>{t("待審批")}（{pending.length}）</h2>
-          <div className="space-y-3">
-            {pending.map((c) => {
-              const dec = canDecide(c);
-              return (
-                <div key={c.id} className="rounded-xl border border-hairline bg-surface-1/70 p-4">
-                  <CycleHead c={c} today={today} />
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {dec === "approve" && (
-                      <>
-                        <Button type="button" onClick={() => act(c, "approve")}>
-                          {c.status === "pending_teacher" ? t("✓ 批准（標記已核准）") : t("✓ 批准，送老師審批")}
-                        </Button>
-                        <Button type="button" variant="destructive" onClick={() => act(c, "reject")}>
-                          {t("✕ 駁回")}
-                        </Button>
-                      </>
-                    )}
-                    {dec === "wait" && <p className="text-xs text-ink-tertiary">{t("等待老師審批中")}</p>}
-                    <Button type="button" variant="ghost" className="ml-auto" onClick={() => setForm({ editing: c })}>
-                      {t("編輯")}
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
+      <CycleTimeline cycles={visible} today={today} />
+
+      {section(tt("待審批", "Needs review"), "var(--c-orange)", staff || me.role === "teacher" ? pending : pending.filter((c) => c.proposer_id === meId || c.members.some((m) => m.id === meId)), (c) => card(c))}
+
+      {section(tt("可認領", "Open to claim"), "var(--c-blue)", claimableOpen, (c) =>
+        card(
+          c,
+          !staff && (
+            <Button size="sm" onClick={() => claim(c)}>
+              <HandIcon /> {t("認領")}
+            </Button>
+          )
+        )
       )}
 
-      {claimableOpen.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="group-title" style={{ color: "#579bfc" }}>{t("可認領的專案")}（{claimableOpen.length}）</h2>
-          {claimableOpen.map((c) => (
-            <div
-              key={c.id}
-              className="rounded-xl border border-primary/40 bg-blue-50/50 p-4 dark:bg-primary/5"
-            >
-              <CycleHead c={c} today={today} />
-              <div className="mt-3 flex items-center justify-between gap-3">
-                <span className="text-sm text-ink-subtle">
-                  {t("提案人")}：{c.proposer_name}
-                </span>
-                {!isStaff(myRole) && (
-                  <Button type="button" onClick={() => claim(c)}>
-                    🙋 {t("認領")}
-                  </Button>
-                )}
-              </div>
-            </div>
-          ))}
-        </section>
-      )}
+      {section(tt("遲交", "Late"), "var(--c-red)", late, (c) => card(c))}
 
-      <section className="space-y-3">
-        <h2 className="group-title" style={{ color: "#fdab3d" }}>{t("進行中")}（{active.length}）</h2>
+      <section className="flex flex-col gap-3">
+        <h2 className="flex items-center gap-2 text-[15px] font-semibold">
+          <span className="size-2.5 rounded-full" style={{ background: "var(--c-yellow)" }} />
+          {tt("進行中", "Active")}
+          <span className="rounded-full bg-muted px-2 text-xs leading-5 font-medium tabular-nums text-muted-foreground">{active.length}</span>
+        </h2>
         {active.length === 0 && (
-          <PageEmpty>
-            {fSubteam !== "all" || fAssignee !== "all" ? t("沒有符合的結果") : t("目前沒有進行中的專案")}
-          </PageEmpty>
+          <p className="rounded-[6px] border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
+            {filtering ? t("沒有符合的結果") : t("目前沒有進行中的專案")}
+          </p>
         )}
-        {active.map((c) =>
-          workCycle(c, "rounded-xl border border-hairline bg-surface-1 p-4", {
-            showComplete: true,
-            showMarkLate: true,
-          })
-        )}
+        {active.map((c) => card(c))}
       </section>
 
-      {approvedNotStarted.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="group-title" style={{ color: "#00c875" }}>{t("已核准")}（{approvedNotStarted.length}）</h2>
-          {approvedNotStarted.map((c) =>
-            workCycle(c, "rounded-xl border border-success/30 bg-success/5 p-4", {
-              footnote: `${t("開始日期")} ${fmtMD(c.start_date)} ${t("後自動進入進行中")}`,
-            })
-          )}
+      {section(tt("即將開始", "Upcoming"), "var(--c-green)", upcoming, (c) => card(c), tt("已核准，在開始日自動進入進行中", "Approved; becomes active on its start date"))}
+
+      {history.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <button type="button" onClick={() => setShowHistory((v) => !v)} className="flex items-center gap-2 self-start rounded-[6px] px-1 text-[15px] font-semibold text-muted-foreground hover:text-foreground">
+            <ChevronDownIcon className="size-4 transition-transform" style={{ transform: showHistory ? "none" : "rotate(-90deg)" }} />
+            {tt("已完成與已駁回", "Completed & rejected")}
+            <span className="rounded-full bg-muted px-2 text-xs leading-5 font-medium tabular-nums">{history.length}</span>
+          </button>
+          {showHistory && history.map((c) => card(c))}
         </section>
       )}
 
-      {late.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="group-title" style={{ color: "#df2f4a" }}>{t("遲交")}（{late.length}）</h2>
-          {late.map((c) =>
-            workCycle(c, "rounded-xl border border-warning/30 bg-warning/5 p-4", { showComplete: true })
-          )}
-        </section>
-      )}
-
-      <section className="rounded-xl border border-hairline bg-surface-1 p-5">
-        <h2 className="mb-3 font-bold">{t("成員專案統計")}</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+      <section className="overflow-hidden rounded-[6px] border border-border bg-card">
+        <button type="button" onClick={() => setShowStats((v) => !v)} className="flex h-11 w-full items-center gap-2 px-4 text-left text-[15px] font-semibold hover:bg-muted/60">
+          <ChevronDownIcon className="size-4 text-muted-foreground transition-transform" style={{ transform: showStats ? "none" : "rotate(-90deg)" }} />
+          <UsersIcon className="size-4 text-muted-foreground" /> {t("成員專案統計")}
+        </button>
+        {showStats && (
+          <div className="overflow-x-auto border-t border-border">
+            <table className="w-full min-w-[560px] text-sm">
               <thead>
-                <tr className="text-left text-xs text-ink-tertiary">
-                  <th className="px-2 py-2 font-medium">#</th>
-                  <th className="px-2 py-2 font-medium">{t("成員")}</th>
-                  <th className="px-2 py-2 font-medium">{t("進行中")}</th>
-                  <th className="px-2 py-2 font-medium">{t("已核准")}</th>
-                  <th className="px-2 py-2 font-medium">{t("遲交")}</th>
-                  <th className="px-2 py-2 font-medium">{t("審批中")}</th>
-                  <th className="px-2 py-2 font-medium">{t("已完成")}</th>
-                  <th className="px-2 py-2 font-medium">{t("總計")}</th>
+                <tr className="bg-muted/50 text-left text-xs text-muted-foreground">
+                  <th className="px-4 py-2 font-semibold">{t("成員")}</th>
+                  <th className="px-2 py-2 font-semibold">{t("進行中")}</th>
+                  <th className="px-2 py-2 font-semibold">{t("已核准")}</th>
+                  <th className="px-2 py-2 font-semibold">{t("遲交")}</th>
+                  <th className="px-2 py-2 font-semibold">{t("審批中")}</th>
+                  <th className="px-2 py-2 font-semibold">{t("已完成")}</th>
+                  <th className="px-2 py-2 font-semibold">{t("總計")}</th>
                 </tr>
               </thead>
               <tbody>
-                {stats.map((s, i) => (
-                  <tr key={s.member.id} className="border-t border-hairline/60">
-                    <td className="px-2 py-2.5 tabular-nums text-ink-tertiary">{i + 1}</td>
-                    <td className="px-2 py-2.5">{s.member.display_name}</td>
-                    <td className="px-2 py-2.5 tabular-nums text-primary">{s.active}</td>
-                    <td className="px-2 py-2.5 tabular-nums text-emerald-600">{s.approved}</td>
-                    <td className="px-2 py-2.5 tabular-nums text-orange-600">{s.late}</td>
-                    <td className="px-2 py-2.5 tabular-nums text-amber-600">{s.pending}</td>
-                    <td className="px-2 py-2.5 tabular-nums text-emerald-600">{s.completed}</td>
-                    <td className="px-2 py-2.5 tabular-nums font-bold">{s.total}</td>
+                {stats.map((s) => (
+                  <tr key={s.member.id} className="border-t border-border">
+                    <td className="px-4 py-2">
+                      <span className="flex items-center gap-2">
+                        <Avatar name={s.member.display_name} size={22} />
+                        <span className="truncate">{shortName(s.member.display_name)}</span>
+                      </span>
+                    </td>
+                    <td className="px-2 py-2 tabular-nums">{s.active}</td>
+                    <td className="px-2 py-2 tabular-nums">{s.approved}</td>
+                    <td className={`px-2 py-2 tabular-nums ${s.late ? "text-destructive" : ""}`}>{s.late}</td>
+                    <td className="px-2 py-2 tabular-nums">{s.pending}</td>
+                    <td className="px-2 py-2 tabular-nums">{s.completed}</td>
+                    <td className="px-2 py-2 font-semibold tabular-nums">{s.total}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            <p className="border-t border-border px-4 py-2 text-xs text-muted-foreground">{t("統計包含「提案」與「作為合作成員」的專案；已核准的專案在開始日自動轉為進行中。")}</p>
           </div>
-          <p className="mt-2 text-xs text-ink-tertiary">{t("統計包含「提案」與「作為合作成員」的專案；已核准的專案在開始日自動轉為進行中。")}</p>
+        )}
       </section>
-
-      {history.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="font-bold text-ink-subtle">{t("歷史")}（{history.length}）</h2>
-          {history.map((c) => (
-            <div key={c.id} className="rounded-xl border border-hairline bg-surface-1 p-4">
-              <CycleHead c={c} today={today} />
-              {c.status === "rejected" && c.proposer_id === me.id && (
-                <Button type="button" variant="ghost" className="mt-2" onClick={() => act(c, "resubmit")}>
-                  {t("修改後重新提交")}
-                </Button>
-              )}
-              {(isStaff(me.role) || (c.proposer_id === meId && c.status === "rejected")) && (
-                <Button type="button" variant="link" className="ml-3 h-auto px-0 text-xs text-muted-foreground hover:text-destructive" onClick={() => removeCycle(c)}>
-                  {t("刪除")}
-                </Button>
-              )}
-            </div>
-          ))}
-        </section>
-      )}
     </div>
   );
 }
 
-function CycleHead({ c, today }: { c: Cycle; today: string }) {
-  const { t, lang } = useI18n();
+type MenuEntry = { label: string; icon: ReactNode; danger?: boolean; onSelect: () => void };
+
+function ProjectCard({
+  cycle: c,
+  today,
+  tasks,
+  expanded,
+  onToggle,
+  canComplete,
+  onComplete,
+  decision,
+  onApprove,
+  onReject,
+  menu,
+  onOpenTask,
+  onToggleDone,
+  onChanged,
+  extra,
+}: {
+  cycle: Cycle;
+  today: string;
+  tasks: Task[];
+  expanded: boolean;
+  onToggle: () => void;
+  canComplete: boolean;
+  onComplete: () => void;
+  decision: "approve" | "wait" | null;
+  onApprove: () => void;
+  onReject: () => void;
+  menu: MenuEntry[];
+  onOpenTask: (task: Task) => void;
+  onToggleDone: (task: Task) => void;
+  onChanged: () => void;
+  extra?: ReactNode;
+}) {
+  const { t } = useI18n();
   const st = cycleStatus(c.status);
   const left = daysBetween(today, c.end_date);
+  const running = c.status === "active" || c.status === "late";
+  const people = [...(c.proposer_name ? [{ id: c.proposer_id ?? 0, display_name: c.proposer_name }] : []), ...c.members.filter((m) => m.id !== c.proposer_id)];
+  const ordered = [...tasks].sort((a, b) => a.sort_order - b.sort_order || a.id - b.id);
+  const closed = c.status === "completed" || c.status === "rejected";
+
   return (
-    <div>
-      <div className="flex flex-wrap items-center gap-2">
-        <span className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-medium ${st.chip}`}>
-          {st.label}
-        </span>
-        <span className="font-bold">{c.title}</span>
-        <span className="ml-auto text-xs tabular-nums text-ink-subtle">
-          {fmtMD(c.start_date)} ~ {fmtMD(c.end_date)}
-          {c.status === "active" && (
-            <span className={`ml-2 ${left < 0 ? "text-rose-400" : left <= 3 ? "text-amber-600" : "text-ink-tertiary"}`}>
-              {left < 0 ? `${t("已超過結束日")} ${-left} ${t("天")}` : `${t("剩")} ${left} ${t("天")}`}
+    <article className="min-w-0 overflow-hidden rounded-[8px] border border-border bg-card transition-colors hover:border-[color-mix(in_srgb,var(--c-gray)_55%,transparent)]">
+      <div className="flex flex-col gap-3 px-4 py-3.5">
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 items-center gap-2">
+              <Label color={st.color}>{st.label}</Label>
+              <h3 className="min-w-0 truncate text-base font-semibold" title={c.title}>{c.title}</h3>
+            </div>
+            {c.description && <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{c.description}</p>}
+          </div>
+          <div className="flex shrink-0 items-center gap-1.5">
+            {extra}
+            {decision === "approve" && (
+              <>
+                <Button size="sm" onClick={onApprove}>
+                  <CheckCircle2Icon /> {tt("批准", "Approve")}
+                </Button>
+                <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={onReject}>
+                  <XIcon /> {tt("駁回", "Reject")}
+                </Button>
+              </>
+            )}
+            {decision === "wait" && <span className="text-xs text-muted-foreground">{t("等待老師審批中")}</span>}
+            {canComplete && (
+              <Button size="sm" variant="outline" onClick={onComplete} className="hover:border-[var(--c-green)] hover:text-[var(--c-green)]">
+                <CheckCircle2Icon /> {tt("標記完成", "Mark complete")}
+              </Button>
+            )}
+            {menu.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger className="flex size-8 items-center justify-center rounded-[6px] text-muted-foreground hover:bg-muted hover:text-foreground" aria-label={tt("更多", "More")}>
+                  <MoreHorizontalIcon className="size-4" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
+                  {menu.map((item, i) => (
+                    <span key={item.label}>
+                      {item.danger && i > 0 && <DropdownMenuSeparator />}
+                      <DropdownMenuItem variant={item.danger ? "destructive" : "default"} onClick={item.onSelect}>
+                        {item.icon} {item.label}
+                      </DropdownMenuItem>
+                    </span>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5 tabular-nums">
+            <CalendarRangeIcon className="size-4" />
+            {fmtMD(c.start_date)} – {fmtMD(c.end_date)}
+            {running && (
+              <span className={`ml-1 rounded-full px-2 text-xs leading-5 font-medium ${left < 0 ? "bg-[color-mix(in_srgb,var(--c-red)_16%,transparent)] text-destructive" : left <= 3 ? "bg-[color-mix(in_srgb,var(--c-yellow)_20%,transparent)] text-warning" : "bg-muted"}`}>
+                {left < 0 ? tt(`逾期 ${-left} 天`, `${-left}d over`) : tt(`剩 ${left} 天`, `${left}d left`)}
+              </span>
+            )}
+          </span>
+          {people.length > 0 && (
+            <span className="inline-flex min-w-0 items-center gap-2">
+              <span className="flex -space-x-1.5">
+                {people.slice(0, 5).map((p) => (
+                  <span key={p.id} className="rounded-full ring-2 ring-card">
+                    <Avatar name={p.display_name} size={22} />
+                  </span>
+                ))}
+              </span>
+              <span className="truncate">
+                {people.slice(0, 2).map((p) => shortName(p.display_name)).join(", ")}
+                {people.length > 2 ? ` +${people.length - 2}` : ""}
+              </span>
             </span>
           )}
-        </span>
+          {c.claimed_by_name && <span>{tt(`由 ${shortName(c.claimed_by_name)} 認領`, `Claimed by ${shortName(c.claimed_by_name)}`)}</span>}
+          {c.task_total > 0 && <Progress done={c.task_done} total={c.task_total} className="ml-auto w-44" />}
+        </div>
+        {closed && c.decided_note && <p className="text-xs text-muted-foreground">{t("審批備註")}：{c.decided_note}</p>}
       </div>
-      {c.description && <p className="mt-1 text-sm text-ink-subtle">{c.description}</p>}
-      <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-ink-tertiary">
-        <span>{t("提案")}：{c.proposer_name ?? "—"}</span>
-        {c.claimed_by_name && (
-          <p className="mt-1 text-sm font-semibold text-primary">
-            {lang === "en" ? `🙋 Claimed by ${c.claimed_by_name}` : `🙋 已由 ${c.claimed_by_name} 認領`}
-          </p>
-        )}
-        {c.members.length > 0 && (
-          <span className="flex flex-wrap items-center gap-1">
-            · {t("合作")}：
-            {c.members.map((m) => (
-              <span key={m.id} className={`${CHIP} border-hairline-strong text-ink-muted`}>
-                {m.display_name}
-              </span>
-            ))}
-          </span>
-        )}
-      </div>
-      {(c.status === "rejected" || c.status === "completed") && c.decided_note && (
-        <p className="mt-1 text-xs text-ink-subtle">{t("審批備註")}：{c.decided_note}</p>
-      )}
-    </div>
+
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={expanded}
+        className="flex h-9 w-full items-center gap-2 border-t border-border px-4 text-left text-sm text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+      >
+        <ChevronDownIcon className="size-4 transition-transform duration-150" style={{ transform: expanded ? "none" : "rotate(-90deg)" }} />
+        {tt(`任務（${tasks.length}）`, `Tasks (${tasks.length})`)}
+      </button>
+      {expanded && <ProjectTasks cycle={c} tasks={ordered} today={today} closed={closed} onOpenTask={onOpenTask} onToggleDone={onToggleDone} onChanged={onChanged} />}
+    </article>
   );
 }
 
-function TaskProgress({ done, total }: { done: number; total: number }) {
+/** Task table inside a project: title, assignee, status, start, due and a bar showing where the task sits in the project. */
+function ProjectTasks({
+  cycle,
+  tasks,
+  today,
+  closed,
+  onOpenTask,
+  onToggleDone,
+  onChanged,
+}: {
+  cycle: Cycle;
+  tasks: Task[];
+  today: string;
+  closed: boolean;
+  onOpenTask: (task: Task) => void;
+  onToggleDone: (task: Task) => void;
+  onChanged: () => void;
+}) {
   const { t } = useI18n();
-  if (total === 0) {
-    return <p className="mt-2 text-xs text-ink-tertiary">{t("尚未新增任務，用下方輸入快速加入")}</p>;
+  const { toast } = useDialogs();
+  const [quick, setQuick] = useState("");
+  const span = Math.max(1, daysBetween(cycle.start_date, cycle.end_date));
+  const pos = (d: string) => Math.max(0, Math.min(100, (daysBetween(cycle.start_date, d) / span) * 100));
+  const todayPos = today >= cycle.start_date && today <= cycle.end_date ? pos(today) : null;
+
+  async function quickAdd() {
+    const title = quick.trim();
+    if (!title) return;
+    try {
+      await api("/api/tasks", { method: "POST", body: JSON.stringify({ title, cycle_id: cycle.id, subteam: "general" }) });
+      setQuick("");
+      onChanged();
+    } catch (err) {
+      toast(t((err as Error).message), "err");
+    }
   }
-  const pct = Math.round((done / total) * 100);
+
   return (
-    <div className="mt-2 flex items-center gap-3 text-xs text-ink-subtle">
-      <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-2">
-        <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+    <div className="border-t border-border">
+      <div className="overflow-x-auto">
+        <table className="board-table table-fixed" style={{ minWidth: 820 }}>
+          <colgroup>
+            <col />
+            <col style={{ width: 140 }} />
+            <col style={{ width: 84 }} />
+            <col style={{ width: 84 }} />
+            <col style={{ width: 200 }} />
+          </colgroup>
+          <thead>
+            <tr>
+              <th className="!pl-4">{tt("標題", "Title")}</th>
+              <th>{t("負責人")}</th>
+              <th>{tt("開始日", "Start")}</th>
+              <th>{t("截止日")}</th>
+              <th>{tt("時程", "Timeline")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {tasks.map((task) => {
+              const start = task.start_date ?? null;
+              const due = task.due_date;
+              const from = start ?? due;
+              const to = due ?? start;
+              const overdue = task.status !== "done" && due != null && due < today;
+              return (
+                <tr key={task.id} className="group/row">
+                  <td className="!pl-4">
+                    <span className="flex min-w-0 items-center gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => onToggleDone(task)}
+                        className="flex shrink-0 rounded-full transition-transform hover:scale-110 active:scale-95"
+                        aria-label={task.status === "done" ? tt("標記為未完成", "Mark incomplete") : tt("標記為完成", "Mark complete")}
+                      >
+                        <StatusIcon status={task.status} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onOpenTask(task)}
+                        title={task.title}
+                        className={`min-w-0 truncate text-left hover:text-[var(--c-blue)] hover:underline hover:underline-offset-4 ${task.status === "done" ? "text-muted-foreground line-through" : ""}`}
+                      >
+                        {task.title}
+                      </button>
+                    </span>
+                  </td>
+                  <td>
+                    {task.assignee_name ? (
+                      <span className="flex min-w-0 items-center gap-2">
+                        <Avatar name={task.assignee_name} size={22} />
+                        <span className="truncate">{shortName(task.assignee_name)}</span>
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </td>
+                  <td className="tabular-nums">{start ? fmtMD(start) : <span className="text-muted-foreground">—</span>}</td>
+                  <td className={`tabular-nums ${overdue ? "font-medium text-destructive" : ""}`}>{due ? fmtMD(due) : <span className="text-muted-foreground">—</span>}</td>
+                  <td>
+                    <span className="relative block h-2 rounded-full bg-muted" title={from ? `${fmtMD(from)} – ${fmtMD(to!)}` : tt("未設定日期", "No dates")}>
+                      {from && (
+                        <span
+                          className="absolute top-0 h-full rounded-full"
+                          style={{
+                            left: `${pos(from)}%`,
+                            width: `max(6px, ${pos(to!) - pos(from)}%)`,
+                            background: task.status === "done" ? "var(--c-purple)" : overdue ? "var(--c-red)" : "var(--c-blue)",
+                          }}
+                        />
+                      )}
+                      {todayPos != null && <span className="absolute -top-1 h-4 w-px bg-foreground/50" style={{ left: `${todayPos}%` }} />}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+            {tasks.length === 0 && (
+              <tr>
+                <td colSpan={5} className="!pl-4 text-sm text-muted-foreground">{t("尚未新增任務，用下方輸入快速加入")}</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
-      <span className="tabular-nums">
-        {t("任務")} {done}/{total}（{pct}%）
-      </span>
+      {!closed && (
+        <form
+          className="flex items-center gap-2 px-4 transition-colors focus-within:bg-muted/40"
+          onSubmit={(event) => {
+            event.preventDefault();
+            quickAdd();
+          }}
+        >
+          <PlusIcon className="size-4 shrink-0 text-muted-foreground" />
+          <input
+            value={quick}
+            onChange={(event) => setQuick(event.target.value)}
+            placeholder={tt("新增任務，按 Enter 加入", "Add a task, press Enter")}
+            className="h-10 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+          />
+        </form>
+      )}
     </div>
   );
 }
@@ -699,107 +851,5 @@ function CycleForm({
     </form>
       </CardContent>
     </Card>
-  );
-}
-
-
-function CycleTasks({
-  cycle,
-  tasks,
-  expanded,
-  onToggleExpand,
-  onChanged,
-  onEdit,
-  onToggleDone,
-  onMove,
-}: {
-  cycle: Cycle;
-  tasks: Task[];
-  expanded: boolean;
-  onToggleExpand: () => void;
-  onChanged: () => void;
-  onEdit: (task: Task) => void;
-  onToggleDone: (task: Task) => void;
-  onMove: (task: Task, dir: "up" | "down") => void;
-}) {
-  const { t } = useI18n();
-  const { toast } = useDialogs();
-  const [quick, setQuick] = useState("");
-  const ordered = [...tasks].sort((a, b) => a.sort_order - b.sort_order || a.id - b.id);
-
-  // 樂觀更新由父層處理
-
-
-  async function quickAdd() {
-    if (!quick.trim()) return;
-    try {
-      await api("/api/tasks", {
-        method: "POST",
-        body: JSON.stringify({ title: quick.trim(), cycle_id: cycle.id, subteam: "general" }),
-      });
-      setQuick("");
-      onChanged();
-    } catch (err) {
-      toast(t((err as Error).message), "err");
-    }
-  }
-
-  return (
-    <div className="mt-2">
-      <Button type="button" variant="ghost" size="sm" className="h-auto px-1 text-xs text-muted-foreground" onClick={onToggleExpand}>
-        {expanded ? "▾" : "▸"} {t("任務")}（{tasks.length}）
-      </Button>
-      {expanded && (
-        <div className="mt-2 space-y-1.5">
-          {ordered.map((task, index) => (
-            <div key={task.id} className="flex items-center gap-2 rounded-lg bg-surface-2/50 px-2.5 py-2 text-sm">
-              <span className="flex flex-col">
-                <Button type="button" variant="ghost" size="icon-xs" className="h-3 text-[10px]" disabled={index === 0} aria-label={t("上移")} onClick={() => onMove(task, "up")}>
-                  ▲
-                </Button>
-                <Button type="button" variant="ghost" size="icon-xs" className="h-3 text-[10px]" disabled={index === ordered.length - 1} aria-label={t("下移")} onClick={() => onMove(task, "down")}>
-                  ▼
-                </Button>
-              </span>
-              <input
-                type="checkbox"
-                className="h-4 w-4 accent-primary"
-                checked={task.status === "done"}
-                onChange={() => onToggleDone(task)}
-                title={t("任務")}
-              />
-              <Button type="button" variant="ghost" className="h-auto flex-1 justify-start truncate px-1 font-normal" onClick={() => onEdit(task)}>
-                <span className={task.status === "done" ? "text-muted-foreground line-through" : ""}>{task.title}</span>
-              </Button>
-              {task.due_date && (
-                <span className="shrink-0 text-xs text-ink-tertiary">{fmtMD(task.due_date)}</span>
-              )}
-              {task.assignee_name && (
-                <span className="shrink-0 text-xs text-ink-tertiary">{task.assignee_name}</span>
-              )}
-            </div>
-          ))}
-          {tasks.length === 0 && (
-            <p className="rounded-lg bg-surface-2/40 px-2.5 py-2 text-xs text-ink-tertiary">
-              {t("尚未新增任務，用下方輸入快速加入")}
-            </p>
-          )}
-          <div className="flex gap-2">
-            <Input
-              placeholder={t("＋ 新任務")}
-              value={quick}
-              onChange={(e) => setQuick(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && quickAdd()}
-            />
-            <Button type="button" variant="secondary" onClick={quickAdd}>
-              {t("加入")}
-            </Button>
-          </div>
-          <p className="text-xs text-ink-tertiary">
-            {t("點任務名稱可編輯詳情（負責人、截止日、子任務）")}
-          </p>
-        </div>
-      )}
-    </div>
   );
 }

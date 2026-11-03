@@ -53,6 +53,7 @@ export async function POST(req: NextRequest) {
             ${(body?.due_date as string) || null}, ${assigneeId}, ${user.id},
             ${cycleId})
     RETURNING id`;
+  if (body?.start_date) await sql`UPDATE tasks SET start_date = ${String(body.start_date)} WHERE id = ${Number(task.id)}`;
   const created = await getTaskWithItems(Number(task.id));
   if (created?.assignee_id && created.assignee_id !== user.id) {
     notifyDiscord(

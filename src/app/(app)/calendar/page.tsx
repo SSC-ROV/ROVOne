@@ -24,7 +24,8 @@ import { useSubteams } from "@/lib/subteams";
 import { tt } from "@/lib/i18n-core";
 import { isStaff } from "@/lib/roles";
 import { api } from "@/lib/api-client";
-import { addDaysStr, localDateStr, parseDate, todayStr } from "@/lib/date";
+import { localDateStr, parseDate, todayStr } from "@/lib/date";
+import { googleCalendarUrl } from "@/lib/google-calendar";
 import { EVENT_TYPES, eventType, groupColor } from "@/lib/ui";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
@@ -168,12 +169,16 @@ export default function CalendarPage() {
   const monthLabel = first.toLocaleDateString(locale(lang), { month: "long", year: "numeric" });
   const weekdayNames = Array.from({ length: 7 }, (_, i) => new Date(2026, 10, 1 + i).toLocaleDateString(locale(lang), { weekday: "short" }));
   const longDate = (date: string) => parseDate(date).toLocaleDateString(locale(lang), { weekday: "long", day: "numeric", month: "long" });
-  const shortDate = (date: string) => parseDate(date).toLocaleDateString(locale(lang), { weekday: "short", day: "numeric", month: "short" });
 
   const selData = byDate.get(sel) ?? { tasks: [], events: [] };
-  const upcoming = events
-    .filter((event) => event.date >= today && event.date <= addDaysStr(today, 14))
-    .slice(0, 6);
+
+  /** Clicking an event opens its linked task; events without one open the editor (leaders) or the day. */
+  function openEvent(event: TeamEvent) {
+    const linked = event.task_id ? taskById.get(event.task_id) : undefined;
+    if (linked) setModalTask(linked);
+    else if (staff) openEdit(event);
+    else setSel(event.date);
+  }
 
   function goMonth(delta: number) {
     const next = new Date(anchor.y, anchor.m + delta, 1);
@@ -271,6 +276,7 @@ export default function CalendarPage() {
       items: [
         { type: "label", label: event.title },
         { label: staff ? tt("編輯活動", "Edit event") : tt("查看活動", "View event"), icon: <PencilIcon />, onSelect: () => (staff ? openEdit(event) : setSel(event.date)) },
+        { label: tt("加到我的 Google 日曆", "Add to my Google Calendar"), icon: <CalendarPlusIcon />, onSelect: () => window.open(googleCalendarUrl(event), "_blank", "noopener") },
         ...(linked
           ? [
               { label: tt("開啟關聯任務", "Open linked task"), icon: <StatusIcon status={linked.status} />, onSelect: () => setModalTask(linked) },
@@ -311,7 +317,7 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex min-w-0 flex-col gap-4">
       {modalTask && (
         <TaskModal
           key={modalTask.id}
@@ -366,17 +372,17 @@ export default function CalendarPage() {
         </span>
       </div>
 
-      <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 2xl:grid-cols-[minmax(0,1fr)_22rem]">
         {/* Month grid */}
-        <div className="overflow-hidden rounded-[6px] border border-border bg-card">
-          <div className="grid grid-cols-7 border-b border-border bg-muted/50">
+        <div className="min-w-0 overflow-hidden rounded-[6px] border border-border bg-card">
+          <div className="grid grid-cols-[repeat(7,minmax(0,1fr))] border-b border-border bg-muted/50">
             {weekdayNames.map((name, i) => (
-              <div key={name} className={`px-3 py-2 text-xs font-semibold tracking-wide uppercase ${i === 0 || i === 6 ? "text-muted-foreground/80" : "text-muted-foreground"}`}>
+              <div key={name} className={`truncate px-1.5 py-2 text-xs sm:px-3 font-semibold tracking-wide uppercase ${i === 0 || i === 6 ? "text-muted-foreground/80" : "text-muted-foreground"}`}>
                 {name}
               </div>
             ))}
           </div>
-          <div className="grid grid-cols-7" role="grid" aria-label={monthLabel}>
+          <div className="grid grid-cols-[repeat(7,minmax(0,1fr))]" role="grid" aria-label={monthLabel}>
             {cells.map((cell, index) => {
               const inMonth = cell.startsWith(monthKey);
               const day = parseDate(cell).getDate();
@@ -399,7 +405,7 @@ export default function CalendarPage() {
                   onKeyDown={(event) => {
                     if (event.key === "Enter") setSel(cell);
                   }}
-                  className={`group/day relative flex min-h-[7.5rem] cursor-default flex-col gap-1 border-r border-b border-border p-1.5 outline-none transition-colors duration-150 [&:nth-child(7n)]:border-r-0 ${
+                  className={`group/day relative flex min-h-[7.5rem] min-w-0 cursor-default flex-col overflow-hidden gap-1 border-r border-b border-border p-1.5 outline-none transition-colors duration-150 [&:nth-child(7n)]:border-r-0 ${
                     selected ? "bg-primary-soft" : weekend ? "bg-muted/25 hover:bg-muted/60" : "hover:bg-muted/50"
                   } ${inMonth ? "" : "text-muted-foreground/60"} focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset`}
                 >
@@ -433,8 +439,7 @@ export default function CalendarPage() {
                           type="button"
                           onClick={(mouse) => {
                             mouse.stopPropagation();
-                            if (staff) openEdit(item.event);
-                            else setSel(item.event.date);
+                            openEvent(item.event);
                           }}
                           onContextMenu={(mouse) => eventMenu(mouse, item.event)}
                           title={item.event.title}
@@ -484,8 +489,8 @@ export default function CalendarPage() {
         </div>
 
         {/* Day agenda */}
-        <aside className="grid items-start gap-4 md:grid-cols-2 2xl:flex 2xl:flex-col">
-          <section key={sel} className="animate-in overflow-hidden rounded-[6px] border border-border bg-card duration-200 fade-in slide-in-from-right-1">
+        <aside className="flex min-w-0 flex-col gap-4">
+          <section key={sel} className="min-w-0 animate-in overflow-hidden rounded-[6px] border border-border bg-card duration-200 fade-in slide-in-from-right-1">
             <header className="flex items-center gap-2 border-b border-border px-4 py-3">
               <div className="min-w-0 flex-1">
                 <h2 className="text-[17px] font-semibold capitalize">{longDate(sel)}</h2>
@@ -520,23 +525,27 @@ export default function CalendarPage() {
                   <article
                     key={event.id}
                     onContextMenu={(mouse) => eventMenu(mouse, event)}
-                    className={`group/ev rounded-[6px] border border-transparent p-2.5 transition-colors hover:border-border hover:bg-muted/40 ${flash === event.id ? "border-[var(--c-blue)] bg-primary-soft" : ""}`}
+                    onClick={(mouse) => {
+                      if ((mouse.target as HTMLElement).closest("a,button")) return;
+                      if (linked) setModalTask(linked);
+                    }}
+                    className={`group/ev min-w-0 rounded-[6px] ${linked ? "cursor-pointer" : ""} border border-transparent p-2.5 transition-colors hover:border-border hover:bg-muted/40 ${flash === event.id ? "border-[var(--c-blue)] bg-primary-soft" : ""}`}
                   >
                     <div className="flex items-start gap-2.5">
                       <span className="mt-1 h-9 w-1 shrink-0 rounded-full" style={{ background: eventType(event.type).color }} />
                       <div className="min-w-0 flex-1">
-                        <p className="text-[15px] leading-snug font-semibold">{event.title}</p>
+                        <p className="text-[15px] leading-snug font-semibold [overflow-wrap:anywhere]">{event.title}</p>
                         <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-muted-foreground">
                           <Label color={eventType(event.type).color}>{eventType(event.type).label}</Label>
                           {event.time && (
                             <span className="inline-flex items-center gap-1"><ClockIcon className="size-3.5" /> {event.time}</span>
                           )}
                           {event.location && (
-                            <span className="inline-flex items-center gap-1"><MapPinIcon className="size-3.5" /> {event.location}</span>
+                            <span className="inline-flex min-w-0 items-center gap-1 [overflow-wrap:anywhere]"><MapPinIcon className="size-3.5 shrink-0" /> {event.location}</span>
                           )}
                           <span className="inline-flex items-center gap-1"><UsersIcon className="size-3.5" /> {subteamName(event.subteam)}</span>
                         </div>
-                        {event.notes && <p className="mt-1.5 text-[13px] whitespace-pre-wrap text-muted-foreground">{event.notes}</p>}
+                        {event.notes && <p className="mt-1.5 text-[13px] whitespace-pre-wrap text-muted-foreground [overflow-wrap:anywhere]">{event.notes}</p>}
                         {linked && (
                           <button
                             type="button"
@@ -545,9 +554,16 @@ export default function CalendarPage() {
                           >
                             <StatusIcon status={linked.status} size={14} />
                             <span className="min-w-0 flex-1 truncate">{linked.title}</span>
-                            <span className="shrink-0 text-muted-foreground tabular-nums">#{linked.id}</span>
                           </button>
                         )}
+                        <a
+                          href={googleCalendarUrl(event)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-2 inline-flex h-7 items-center gap-1.5 rounded-[6px] border border-border bg-background px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        >
+                          <CalendarPlusIcon className="size-3.5" /> {tt("加到我的 Google 日曆", "Add to my Google Calendar")}
+                        </a>
                       </div>
                       {staff && (
                         <button
@@ -595,33 +611,6 @@ export default function CalendarPage() {
             </div>
           </section>
 
-          <section className="overflow-hidden rounded-[6px] border border-border bg-card">
-            <h2 className="border-b border-border px-4 py-2.5 text-sm font-semibold">{tt("接下來兩週", "Next two weeks")}</h2>
-            {upcoming.length === 0 ? (
-              <p className="px-4 py-4 text-sm text-muted-foreground">{tt("沒有即將到來的活動", "No upcoming events")}</p>
-            ) : (
-              <ul className="flex flex-col p-1.5">
-                {upcoming.map((event) => (
-                  <li key={event.id}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSel(event.date);
-                        setAnchor({ y: parseDate(event.date).getFullYear(), m: parseDate(event.date).getMonth() });
-                      }}
-                      onContextMenu={(mouse) => eventMenu(mouse, event)}
-                      className="flex w-full items-center gap-2.5 rounded-[6px] px-2.5 py-2 text-left transition-colors hover:bg-muted/60"
-                    >
-                      <span className="size-2.5 shrink-0 rounded-[3px]" style={{ background: eventType(event.type).color }} />
-                      <span className="min-w-0 flex-1 truncate text-sm">{event.title}</span>
-                      {event.task_id && <LinkIcon className="size-3.5 shrink-0 text-muted-foreground" />}
-                      <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{shortDate(event.date)}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
         </aside>
       </div>
 
@@ -764,8 +753,7 @@ function EventForm({
             <div className="flex items-center gap-2 rounded-[6px] border border-border bg-background px-3 py-2 text-sm">
               <StatusIcon status={linked.status} />
               <span className="min-w-0 flex-1 truncate">{linked.title}</span>
-              <span className="text-muted-foreground tabular-nums">#{linked.id}</span>
-              <button type="button" onClick={() => setPicking(true)} className="rounded-[4px] px-1.5 text-xs text-[var(--c-blue)] hover:underline">
+                            <button type="button" onClick={() => setPicking(true)} className="rounded-[4px] px-1.5 text-xs text-[var(--c-blue)] hover:underline">
                 {tt("更換", "Change")}
               </button>
               <button type="button" onClick={() => set("task_id", null)} className="flex size-6 items-center justify-center rounded-[4px] text-muted-foreground hover:bg-muted hover:text-foreground" aria-label={tt("取消關聯", "Unlink")}>
@@ -779,7 +767,7 @@ function EventForm({
                 <input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder={tt("搜尋任務名稱或 #編號", "Search tasks by name or #number")}
+                  placeholder={tt("搜尋任務名稱", "Search tasks by name")}
                   className="h-9 min-w-0 flex-1 bg-transparent text-sm outline-none"
                 />
                 {linked && (
@@ -803,7 +791,6 @@ function EventForm({
                       <StatusIcon status={task.status} size={14} />
                       <span className="min-w-0 flex-1 truncate">{task.title}</span>
                       {task.assignee_name && <span className="shrink-0 text-xs text-muted-foreground">{shortName(task.assignee_name)}</span>}
-                      <span className="shrink-0 text-xs text-muted-foreground tabular-nums">#{task.id}</span>
                     </button>
                   </li>
                 ))}

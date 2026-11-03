@@ -19,9 +19,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   const { id } = await ctx.params;
   const taskId = Number(id);
   const [cur] = await sql`
-    SELECT id, title, description, status, priority, subteam, due_date,
-           assignee_id, created_by, cycle_id, completed_at, version
-    FROM tasks WHERE id = ${taskId}`;
+    SELECT * FROM tasks WHERE id = ${taskId}`;
   if (!cur) return NextResponse.json({ error: "任務不存在" }, { status: 404 });
   const current = cur as unknown as {
     id: number; title: string; description: string; status: string;
@@ -94,7 +92,15 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       version = version + 1
     WHERE id = ${taskId}`;
 
+  // Kept separate so the rest of the update still works before the start_date migration has run.
+  const startDate = body.start_date !== undefined ? (body.start_date as string) || null : undefined;
+  if (startDate !== undefined) await sql`UPDATE tasks SET start_date = ${startDate} WHERE id = ${taskId}`;
+
   const updated = (await getTaskWithItems(taskId))!;
+  const before = current as unknown as { start_date?: string | null };
+  if (startDate !== undefined && startDate !== (before.start_date ?? null)) {
+    await logActivity(taskId, user.id, "start_date", { from: before.start_date ?? null, to: startDate });
+  }
 
   // Timeline entries for meaningful changes
   if (updated.status !== current.status) await logActivity(taskId, user.id, "status", { from: current.status, to: updated.status });

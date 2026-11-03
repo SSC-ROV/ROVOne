@@ -11,7 +11,6 @@ import {
   CABINETS,
   INVENTORY_STATUSES,
   INVENTORY_TAGS,
-  describeLocation,
   tagLabel,
   matchesSearch,
   parseLocation,
@@ -26,7 +25,6 @@ import { BoardHeader } from "@/components/board/BoardHeader";
 import RoomMap, { type CabinetBadge } from "@/components/inventory/RoomMap";
 import InventoryTabs from "@/components/inventory/InventoryTabs";
 import LocationEditor from "@/components/inventory/LocationEditor";
-import LocationDiagram from "@/components/inventory/LocationDiagram";
 import { LocationChip, MultiLocationFlag, StatusPill, TagList, reportToast, timeAgo, type ReportResponse } from "@/components/inventory/shared";
 
 type Filter = "all" | InventoryStatus | "multi";
@@ -398,7 +396,7 @@ export default function InventoryPage() {
                         }}
                       />
                     ) : (
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
+                      <div className="flex flex-col gap-3">
                         <div className="min-w-0 flex-1 space-y-2">
                           {i.locations.length === 0 ? (
                             <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -407,12 +405,9 @@ export default function InventoryPage() {
                           ) : (
                             <ul className="space-y-1.5">
                               {i.locations.map((l) => (
-                                <li key={l} className="flex items-start gap-2 text-sm">
-                                  <MapPinIcon className="mt-0.5 size-4 shrink-0 text-[#0073ea]" />
-                                  <div className="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-2">
-                                    <LocationChip code={l} />
-                                    <span className="text-muted-foreground">{describeLocation(l)}</span>
-                                  </div>
+                                <li key={l} className="flex items-center gap-2">
+                                  <MapPinIcon className="size-5 shrink-0 text-[#0073ea]" />
+                                  <LocationChip code={l} size="lg" />
                                 </li>
                               ))}
                             </ul>
@@ -432,7 +427,6 @@ export default function InventoryPage() {
                             </button>
                           </div>
                         </div>
-                        <LocationDiagram locations={i.locations} className="w-full max-w-[560px] sm:w-[560px] sm:shrink" />
                       </div>
                     )}
                   </div>

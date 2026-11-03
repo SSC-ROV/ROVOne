@@ -75,6 +75,8 @@ export interface Task {
   status: TaskStatus;
   priority: Priority;
   subteam: Subteam;
+  /** Optional; null until the start-date migration has run. */
+  start_date?: string | null;
   due_date: string | null;
   assignee_id: number | null;
   assignee_name: string | null;
