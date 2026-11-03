@@ -13,6 +13,7 @@ export function BoardGroup({
   children,
   footer,
   meta,
+  actions,
   defaultOpen = true,
 }: {
   title: string;
@@ -25,14 +26,17 @@ export function BoardGroup({
   footer?: ReactNode;
   /** Extra info shown at the right of the group header (e.g. progress). */
   meta?: ReactNode;
+  /** Buttons shown at the far right of the header, outside the collapse toggle. */
+  actions?: ReactNode;
   defaultOpen?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <section className="mb-4 overflow-hidden rounded-[6px] border border-border bg-card" data-open={open ? "true" : "false"}>
+      <div className={`flex items-center ${open ? "border-b border-border" : ""}`}>
       <button
         type="button"
-        className={`flex h-11 w-full items-center gap-2.5 px-3 text-left hover:bg-muted/60 ${open ? "border-b border-border" : ""}`}
+        className="flex h-11 min-w-0 flex-1 items-center gap-2.5 px-3 text-left hover:bg-muted/60"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
       >
@@ -49,6 +53,8 @@ export function BoardGroup({
         {description ? <span className="hidden truncate text-sm text-muted-foreground sm:inline">{description}</span> : null}
         {meta ? <span className="ml-auto flex shrink-0 items-center gap-2 text-sm text-muted-foreground">{meta}</span> : null}
       </button>
+      {actions ? <div className="flex shrink-0 items-center gap-1 pr-2">{actions}</div> : null}
+      </div>
       {open ? (
         <>
           <div className="overflow-x-auto">{children}</div>
