@@ -29,6 +29,57 @@ export type ItemFormValue = {
   photo?: string | null;
 };
 
+const CUSTOM = "__custom";
+
+/**
+ * Category picker. A native <select> so phones show their own picker
+ * (a <datalist> has no visible dropdown on most mobile browsers), with a
+ * "Custom…" option that reveals a text field for anything not in the list.
+ */
+function CategoryField({ value, onChange }: { value: string; onChange: (next: string) => void }) {
+  const { lang } = useI18n();
+  const preset = INVENTORY_CATEGORIES.find((c) => c.zh === value || c.en === value);
+  const [custom, setCustom] = useState(value !== "" && !preset);
+  const selected = custom ? CUSTOM : preset ? preset.en : "";
+
+  return (
+    <div className="grid gap-2">
+      <select
+        id="inv-category"
+        className={`${SELECT_CLS} w-full`}
+        value={selected}
+        onChange={(e) => {
+          const next = e.target.value;
+          if (next === CUSTOM) {
+            setCustom(true);
+            if (preset) onChange("");
+            return;
+          }
+          setCustom(false);
+          const picked = INVENTORY_CATEGORIES.find((c) => c.en === next);
+          onChange(picked ? (lang === "zh" ? picked.zh : picked.en) : "");
+        }}
+      >
+        <option value="">{tt("未分類", "No category")}</option>
+        {INVENTORY_CATEGORIES.map((c) => (
+          <option key={c.en} value={c.en}>{lang === "zh" ? c.zh : c.en}</option>
+        ))}
+        <option value={CUSTOM}>{tt("自訂…", "Custom…")}</option>
+      </select>
+      {custom && (
+        <input
+          autoFocus={value === ""}
+          className={INPUT_CLS}
+          placeholder={tt("輸入自訂分類", "Type a custom category")}
+          aria-label={tt("自訂分類", "Custom category")}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      )}
+    </div>
+  );
+}
+
 export const EMPTY_ITEM: ItemFormValue = {
   name: "",
   spec: "",
@@ -42,9 +93,18 @@ export const EMPTY_ITEM: ItemFormValue = {
 export function LocationPicker({
   value,
   onChange,
+  onPendingChange,
+  hideAddButton = false,
 }: {
   value: string[];
   onChange: (next: string[]) => void;
+  /**
+   * Reports the spot currently picked in the dropdowns (null until the user
+   * touches them). Lets the parent save it even if "+ Add" was never pressed.
+   */
+  onPendingChange?: (code: string | null) => void;
+  /** Hide the "+ Add" button and chip list when the parent offers its own actions. */
+  hideAddButton?: boolean;
 }) {
   const [cab, setCab] = useState("1");
   const [slot, setSlot] = useState("1-1");
@@ -57,12 +117,28 @@ export function LocationPicker({
   function add(code: string | null) {
     if (!code) return;
     if (!value.includes(code)) onChange([...value, code].sort(compareLocations));
+    onPendingChange?.(null);
+  }
+
+  function codeFor(next: { cab?: string; col?: string; row?: string; slot?: string }) {
+    const c = next.cab ?? cab;
+    const d = CABINETS.find((x) => x.id === c)!;
+    if (d.grid) return `${c}-${next.col ?? col}-${next.row ?? row}`;
+    if (d.slots === 1) return `${c}-1`;
+    return next.slot ?? slot;
   }
 
   function pickCabinet(id: string) {
     setCab(id);
     const opts = slotOptions(id);
-    if (opts.length) setSlot(opts[0]);
+    const nextSlot = opts.length ? opts[0] : slot;
+    if (opts.length) setSlot(nextSlot);
+    const d = CABINETS.find((x) => x.id === id)!;
+    const nextCol = d.grid && GRID_COLS.indexOf(col) >= d.grid.cols ? "A" : col;
+    const nextRow = d.grid && Number(row) > d.grid.rows ? "1" : row;
+    if (nextCol !== col) setCol(nextCol);
+    if (nextRow !== row) setRow(nextRow);
+    onPendingChange?.(codeFor({ cab: id, slot: nextSlot, col: nextCol, row: nextRow }));
   }
 
   const current = def.grid ? `${cab}-${col}-${row}` : slot;
@@ -77,34 +153,41 @@ export function LocationPicker({
         </select>
         {def.grid ? (
           <>
-            <select aria-label={tt("欄", "Column")} className={`${SELECT_CLS} w-24`} value={col} onChange={(e) => setCol(e.target.value)}>
+            <select aria-label={tt("欄", "Column")} className={`${SELECT_CLS} w-24`} value={col} onChange={(e) => { setCol(e.target.value); onPendingChange?.(codeFor({ col: e.target.value })); }}>
               {GRID_COLS.slice(0, def.grid.cols).map((c) => (
                 <option key={c} value={c}>{tt(`${c} 欄`, `Col ${c}`)}</option>
               ))}
             </select>
-            <select aria-label={tt("列（由上數）", "Row (from top)")} className={`${SELECT_CLS} w-28`} value={row} onChange={(e) => setRow(e.target.value)}>
+            <select aria-label={tt("列（由上數）", "Row (from top)")} className={`${SELECT_CLS} w-28`} value={row} onChange={(e) => { setRow(e.target.value); onPendingChange?.(codeFor({ row: e.target.value })); }}>
               {Array.from({ length: def.grid.rows }, (_, i) => (
                 <option key={i} value={String(i + 1)}>{tt(`第 ${i + 1} 列`, `Row ${i + 1}`)}</option>
               ))}
             </select>
           </>
         ) : def.slots > 1 ? (
-          <select aria-label={slotKindLabel(def.kind)} className={`${SELECT_CLS} w-32`} value={slot} onChange={(e) => setSlot(e.target.value)}>
+          <select aria-label={slotKindLabel(def.kind)} className={`${SELECT_CLS} w-32`} value={slot} onChange={(e) => { setSlot(e.target.value); onPendingChange?.(codeFor({ slot: e.target.value })); }}>
             {slotOptions(cab).map((code) => (
               <option key={code} value={code}>{slotKindLabel(def.kind)} {code.split("-")[1]}</option>
             ))}
           </select>
         ) : null}
-        <button type="button" className={BTN_GHOST + " border border-border"} onClick={() => add(def.slots === 1 ? `${cab}-1` : current)}>
-          {tt("＋ 加入", "+ Add")} {def.slots === 1 ? `${cab}-1` : current}
-        </button>
+        {!hideAddButton && (
+          <button type="button" className={BTN_GHOST + " border border-border"} onClick={() => add(def.slots === 1 ? `${cab}-1` : current)}>
+            {tt("＋ 加入", "+ Add")} {def.slots === 1 ? `${cab}-1` : current}
+          </button>
+        )}
         <span className="text-xs text-muted-foreground">{tt("或輸入", "or type")}</span>
         <input
           className={`${INPUT_CLS.replace("w-full", "w-28")} ${typedErr ? "border-danger" : ""}`}
           placeholder="4-A-14"
           aria-label={tt("輸入位置代碼", "Type a location code")}
           value={typed}
-          onChange={(e) => { setTyped(e.target.value); setTypedErr(false); }}
+          onChange={(e) => {
+            setTyped(e.target.value);
+            setTypedErr(false);
+            const code = normalizeLocation(e.target.value);
+            if (code) onPendingChange?.(code);
+          }}
           onKeyDown={(e) => {
             if (e.key !== "Enter") return;
             e.preventDefault();
@@ -115,17 +198,19 @@ export function LocationPicker({
         />
       </div>
       {typedErr && <p className="text-xs text-danger">{tt("沒有這個位置。格式：7-12、8-1、4-A-14", "That location doesn't exist. Use 7-12, 8-1 or 4-A-14")}</p>}
+      {!hideAddButton && (
       <div className="flex flex-wrap gap-1.5">
-        {value.length === 0 && <span className="text-xs text-muted-foreground">{tt("還沒選位置", "No location yet")}</span>}
-        {value.map((code) => (
-          <span key={code} className="inline-flex items-center gap-1 rounded-[4px] bg-[#cce5ff] px-2 py-0.5 text-sm text-[#0060b9] dark:bg-[#0073ea]/25 dark:text-[#cce5ff]" title={describeLocation(code)}>
-            <b className="font-mono">{code}</b>
-            <button type="button" aria-label={tt(`移除 ${code}`, `Remove ${code}`)} className="rounded hover:bg-black/10" onClick={() => onChange(value.filter((v) => v !== code))}>
-              <XIcon className="size-3.5" />
-            </button>
-          </span>
-        ))}
-      </div>
+          {value.length === 0 && <span className="text-xs text-muted-foreground">{tt("還沒選位置", "No location yet")}</span>}
+          {value.map((code) => (
+            <span key={code} className="inline-flex items-center gap-1 rounded-[4px] bg-[#cce5ff] px-2 py-0.5 text-sm text-[#0060b9] dark:bg-[#0073ea]/25 dark:text-[#cce5ff]" title={describeLocation(code)}>
+              <b className="font-mono">{code}</b>
+              <button type="button" aria-label={tt(`移除 ${code}`, `Remove ${code}`)} className="rounded hover:bg-black/10" onClick={() => onChange(value.filter((v) => v !== code))}>
+                <XIcon className="size-3.5" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
       {value.length > 1 && (
         <p className="text-xs text-[#c27c0e]">
           {tt("⚠ 同一物品放在多個位置會被標記，建議集中放一處", "⚠ Items in more than one place get flagged. Try to keep them in one spot.")}
@@ -173,10 +258,11 @@ export default function ItemForm({
   onSubmit: (v: ItemFormValue) => void;
   onCancel?: () => void;
 }) {
-  const { t, lang } = useI18n();
+  const { t } = useI18n();
   const [v, setV] = useState<ItemFormValue>(initial);
   const [preview, setPreview] = useState<string | null>(initialPhoto ?? null);
   const [photoErr, setPhotoErr] = useState("");
+  const [pending, setPending] = useState<string | null>(null);
   const set = <K extends keyof ItemFormValue>(k: K, val: ItemFormValue[K]) => setV((p) => ({ ...p, [k]: val }));
 
   async function pickPhoto(file: File | undefined) {
@@ -196,7 +282,10 @@ export default function ItemForm({
       className="space-y-4"
       onSubmit={(e) => {
         e.preventDefault();
-        if (v.name.trim()) onSubmit(v);
+        if (!v.name.trim()) return;
+        // A spot picked in the dropdowns but never "+ Add"-ed still counts.
+        const locations = pending && !v.locations.includes(pending) ? [...v.locations, pending].sort(compareLocations) : v.locations;
+        onSubmit({ ...v, locations });
       }}
     >
       <div className="grid gap-3 sm:grid-cols-2">
@@ -208,15 +297,10 @@ export default function ItemForm({
           <span className="text-xs font-medium text-muted-foreground">{tt("規格 / 尺寸", "Size / spec")}</span>
           <input id="inv-spec" className={INPUT_CLS} placeholder={tt("例如：M3 × 10 mm 不鏽鋼", "e.g. M3 × 10 mm, stainless")} value={v.spec} onChange={(e) => set("spec", e.target.value)} />
         </label>
-        <label className="grid gap-1 text-sm">
-          <span className="text-xs font-medium text-muted-foreground">{tt("分類", "Category")}</span>
-          <input id="inv-category" className={INPUT_CLS} list="inv-category-list" placeholder={tt("選擇或輸入", "Pick or type")} value={v.category} onChange={(e) => set("category", e.target.value)} />
-          <datalist id="inv-category-list">
-            {INVENTORY_CATEGORIES.map((c) => (
-              <option key={c.en} value={lang === "zh" ? c.zh : c.en} />
-            ))}
-          </datalist>
-        </label>
+        <div className="grid gap-1 text-sm">
+          <label htmlFor="inv-category" className="text-xs font-medium text-muted-foreground">{tt("分類", "Category")}</label>
+          <CategoryField value={v.category} onChange={(next) => set("category", next)} />
+        </div>
         <label className="grid gap-1 text-sm">
           <span className="text-xs font-medium text-muted-foreground">{tt("備註", "Note")}</span>
           <input id="inv-note" className={INPUT_CLS} placeholder={tt("選填", "Optional")} value={v.note} onChange={(e) => set("note", e.target.value)} />
@@ -225,7 +309,10 @@ export default function ItemForm({
 
       <div className="grid gap-1">
         <span className="text-xs font-medium text-muted-foreground">{tt("放在哪裡", "Where it's stored")}</span>
-        <LocationPicker value={v.locations} onChange={(locs) => set("locations", locs)} />
+        <LocationPicker value={v.locations} onChange={(locs) => set("locations", locs)} onPendingChange={setPending} />
+        {pending && !v.locations.includes(pending) && (
+          <p className="text-xs text-muted-foreground">{tt(`儲存時會加入 ${pending}`, `${pending} will be added when you save`)}</p>
+        )}
       </div>
 
       {showStatus && (

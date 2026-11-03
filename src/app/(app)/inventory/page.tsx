@@ -2,14 +2,15 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MapIcon, QrCodeIcon, SearchIcon, XIcon } from "lucide-react";
+import { MapIcon, MapPinIcon, PencilIcon, QrCodeIcon, SearchIcon, XIcon } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { tt } from "@/lib/i18n-core";
 import { api } from "@/lib/api-client";
-import { BTN, BTN_GHOST, SELECT_CLS } from "@/lib/ui";
+import { BTN_GHOST, SELECT_CLS } from "@/lib/ui";
 import {
   CABINETS,
   INVENTORY_STATUSES,
+  describeLocation,
   matchesSearch,
   parseLocation,
   restockRequestHref,
@@ -20,10 +21,11 @@ import { useDialogs } from "@/components/ui/Dialogs";
 import { PageEmpty, PageError, PageLoading } from "@/components/PageState";
 import { BoardGroup } from "@/components/board/BoardGroup";
 import { BoardHeader } from "@/components/board/BoardHeader";
-import { StatusCell } from "@/components/board/ColorCell";
 import RoomMap, { type CabinetBadge } from "@/components/inventory/RoomMap";
-import ItemPanel from "@/components/inventory/ItemPanel";
-import { LocationChip, MultiLocationFlag, timeAgo } from "@/components/inventory/shared";
+import InventoryTabs from "@/components/inventory/InventoryTabs";
+import LocationEditor from "@/components/inventory/LocationEditor";
+import LocationDiagram from "@/components/inventory/LocationDiagram";
+import { LocationChip, MultiLocationFlag, StatusPill, timeAgo } from "@/components/inventory/shared";
 
 type Filter = "all" | InventoryStatus | "multi";
 
@@ -37,7 +39,7 @@ export default function InventoryPage() {
   const [cabinet, setCabinet] = useState<string | null>(null);
   const [category, setCategory] = useState("all");
   const [showMap, setShowMap] = useState(true);
-  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
   async function load() {
@@ -139,7 +141,6 @@ export default function InventoryPage() {
     }
   }
 
-  const statusOptions = INVENTORY_STATUSES.map((s) => ({ value: s.key, label: s.label, color: s.color }));
   const filterChips: { key: Filter; label: string; color?: string }[] = [
     { key: "all", label: tt("全部", "All") },
     ...INVENTORY_STATUSES.map((s) => ({ key: s.key as Filter, label: s.label, color: s.color })),
@@ -159,16 +160,11 @@ export default function InventoryPage() {
             <button type="button" className={`${BTN_GHOST} gap-1.5 border border-border`} onClick={toggleMap} aria-pressed={showMap}>
               <MapIcon className="size-4" /> {showMap ? tt("隱藏地圖", "Hide map") : tt("顯示地圖", "Show map")}
             </button>
-            <button type="button" className={BTN} onClick={() => setShowForm((v) => !v)}>
-              {tt("＋ 新增 / 放置物品", "+ Add or place item")}
-            </button>
           </>
         }
       />
 
-      {showForm && (
-        <ItemPanel items={items} onChanged={load} onClose={() => setShowForm(false)} />
-      )}
+      <InventoryTabs />
 
       {/* 搜尋 + 篩選 */}
       <div className="space-y-3">
@@ -178,7 +174,7 @@ export default function InventoryPage() {
             ref={searchRef}
             id="inv-search"
             type="search"
-            className="h-12 w-full rounded-full border border-border bg-card pr-11 pl-11 text-base text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            className="h-12 w-full rounded-full border [&::-webkit-search-cancel-button]:hidden border-border bg-card pr-11 pl-11 text-base text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
             placeholder={tt("搜尋名稱、規格或位置，例如：M3、熱縮管、4-A-14", "Search name, size or location, e.g. M3, heat shrink, 4-A-14")}
             value={q}
             onChange={(e) => setQ(e.target.value)}
@@ -243,95 +239,126 @@ export default function InventoryPage() {
         </section>
       )}
 
-      <BoardGroup title={tt("庫存物品", "Items")} color="#579bfc" count={visible.length}>
+      <BoardGroup title={searching ? tt("搜尋結果", "Results") : tt("庫存物品", "Items")} color="#579bfc" count={visible.length}>
         {visible.length === 0 ? (
           <div className="p-4">
             <PageEmpty>
               {items.length === 0 ? (
                 <>
                   {tt("還沒有任何物品。", "No items yet.")}{" "}
-                  <button type="button" className="text-primary hover:underline" onClick={() => setShowForm(true)}>
+                  <Link href="/inventory/manage" className="text-primary hover:underline">
                     {tt("新增第一個", "Add the first one")}
-                  </button>
+                  </Link>
                 </>
               ) : (
-                tt("沒有符合的物品", "Nothing matches")
+                <>
+                  {tt("沒有符合的物品。", "Nothing matches.")}{" "}
+                  <Link href={`/inventory/manage${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ""}`} className="text-primary hover:underline">
+                    {tt("新增這個物品", "Add it as a new item")}
+                  </Link>
+                </>
               )}
             </PageEmpty>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="board-table">
-              <thead>
-                <tr>
-                  <th>{tt("物品", "Item")}</th>
-                  <th>{tt("位置", "Location")}</th>
-                  <th className="color-cell">{tt("庫存", "Stock")}</th>
-                  <th>{tt("最後回報", "Last report")}</th>
-                  <th>{t("操作")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visible.map((i) => (
-                  <tr key={i.id}>
-                    <td>
-                      <div className="max-w-sm whitespace-normal py-1">
-                        <Link href={`/inventory/${i.id}`} className="font-medium hover:underline">{i.name}</Link>
-                        <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
-                          {i.spec && <span>{i.spec}</span>}
-                          {i.category && <span>· {i.category}</span>}
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="flex max-w-xs min-w-[10rem] flex-wrap items-center gap-1 whitespace-normal py-1">
+          <ul className="divide-y divide-border">
+            {visible.map((i) => {
+              const editing = editingId === i.id;
+              return (
+                <li key={i.id} className="flex flex-col gap-3 px-3 py-3 sm:px-4 lg:flex-row lg:items-start lg:gap-6">
+                  {/* What */}
+                  <div className="min-w-0 lg:w-64 lg:shrink-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Link href={`/inventory/${i.id}`} className="font-medium hover:underline">{i.name}</Link>
+                      <StatusPill status={i.status} />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                      {i.spec && <span>{i.spec}</span>}
+                      {i.category && <span>· {i.category}</span>}
+                    </div>
+                  </div>
+
+                  {/* Where */}
+                  <div className="min-w-0 flex-1 space-y-2">
+                    {editing ? (
+                      <LocationEditor
+                        item={i}
+                        onCancel={() => setEditingId(null)}
+                        onSaved={async (locations) => {
+                          setItems((prev) => prev!.map((x) => (x.id === i.id ? { ...x, locations } : x)));
+                          setEditingId(null);
+                          load().catch(() => {});
+                        }}
+                      />
+                    ) : (
+                      <>
                         {i.locations.length === 0 ? (
-                          <span className="text-xs text-muted-foreground">{tt("未指定", "Not set")}</span>
+                          <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                            <MapPinIcon className="size-4 shrink-0" /> {tt("還沒指定位置", "No location set yet")}
+                          </p>
                         ) : (
-                          i.locations.map((l) => <LocationChip key={l} code={l} href={`/inventory/${i.id}`} />)
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-4">
+                          <ul className="min-w-0 flex-1 space-y-1">
+                            {i.locations.map((l) => (
+                              <li key={l} className="flex flex-wrap items-center gap-2 text-sm">
+                                <MapPinIcon className="size-4 shrink-0 text-[#0073ea]" />
+                                <LocationChip code={l} />
+                                <span className="text-muted-foreground">{describeLocation(l)}</span>
+                              </li>
+                            ))}
+                          </ul>
+                          <LocationDiagram locations={i.locations} className="w-fit max-w-full sm:shrink-0" />
+                          </div>
                         )}
-                        <MultiLocationFlag count={i.locations.length} />
-                      </div>
-                    </td>
-                    <td className="color-cell">
-                      <StatusCell value={i.status} options={statusOptions} onChange={(v) => report(i, v as InventoryStatus)} />
-                    </td>
-                    <td className="text-xs text-muted-foreground">
-                      {i.status_at ? (
-                        <span title={new Date(i.status_at).toLocaleString()}>
-                          {i.status_by_name ?? "—"} · {timeAgo(i.status_at)}
-                        </span>
-                      ) : "—"}
-                    </td>
-                    <td>
-                      <div className="flex flex-wrap items-center gap-2 py-1 text-xs">
-                        {i.status === "in_stock" && (
-                          <>
-                            <button type="button" className="rounded-[4px] border border-[#fdab3d]/60 px-2 py-1 font-medium text-[#b86e00] hover:bg-[#fdab3d]/15 dark:text-[#ffc56b]" onClick={() => report(i, "low")}>
-                              {tt("回報快用完", "Report low")}
-                            </button>
-                            <button type="button" className="rounded-[4px] border border-[#df2f4a]/60 px-2 py-1 font-medium text-[#c0233b] hover:bg-[#df2f4a]/10 dark:text-[#ff8597]" onClick={() => report(i, "empty")}>
-                              {tt("回報沒有了", "Report empty")}
-                            </button>
-                          </>
-                        )}
-                        {i.status !== "in_stock" && (
-                          <>
-                            <Link href={restockRequestHref(i)} className="rounded-[4px] bg-primary px-2 py-1 font-medium text-primary-foreground hover:bg-[#0060b9]">
-                              {tt("申請補貨 →", "Request restock →")}
-                            </Link>
-                            <button type="button" className="text-muted-foreground hover:text-foreground hover:underline" onClick={() => report(i, "in_stock")}>
-                              {tt("已補貨", "Restocked")}
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                          <MultiLocationFlag count={i.locations.length} />
+                          <span className="text-xs text-muted-foreground">
+                            {i.locations.length === 0 ? tt("知道它在哪？", "Know where it is?") : tt("不在這裡？", "Not here?")}
+                          </span>
+                          <button
+                            type="button"
+                            className="inline-flex h-7 items-center gap-1 rounded-[4px] border border-border px-2 text-xs font-medium hover:bg-muted"
+                            onClick={() => setEditingId(i.id)}
+                          >
+                            <PencilIcon className="size-3.5" />
+                            {i.locations.length === 0 ? tt("加上位置", "Add location") : tt("編輯位置", "Edit location")}
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Stock */}
+                  <div className="flex flex-wrap items-center gap-2 text-xs lg:w-60 lg:shrink-0 lg:justify-end">
+                    {i.status === "in_stock" ? (
+                      <>
+                        <button type="button" className="rounded-[4px] border border-[#fdab3d]/60 px-2 py-1 font-medium text-[#b86e00] hover:bg-[#fdab3d]/15 dark:text-[#ffc56b]" onClick={() => report(i, "low")}>
+                          {tt("回報快用完", "Report low")}
+                        </button>
+                        <button type="button" className="rounded-[4px] border border-[#df2f4a]/60 px-2 py-1 font-medium text-[#c0233b] hover:bg-[#df2f4a]/10 dark:text-[#ff8597]" onClick={() => report(i, "empty")}>
+                          {tt("回報沒有了", "Report empty")}
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <Link href={restockRequestHref(i)} className="rounded-[4px] bg-primary px-2 py-1 font-medium text-primary-foreground hover:bg-[#0060b9]">
+                          {tt("申請補貨 →", "Request restock →")}
+                        </Link>
+                        <button type="button" className="text-muted-foreground hover:text-foreground hover:underline" onClick={() => report(i, "in_stock")}>
+                          {tt("已補貨", "Restocked")}
+                        </button>
+                      </>
+                    )}
+                    {i.status_at && (
+                      <span className="w-full text-muted-foreground lg:text-right" title={new Date(i.status_at).toLocaleString()}>
+                        {tt("最後回報", "Last report")}: {i.status_by_name ?? "—"} · {timeAgo(i.status_at)}
+                      </span>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
         )}
       </BoardGroup>
     </div>

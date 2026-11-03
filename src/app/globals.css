@@ -179,6 +179,25 @@ body {
   min-width: 220px;
 }
 
+/* Interactive boards (Tasks page): fixed layout, row hover and selection */
+.board-table.is-interactive {
+  table-layout: fixed;
+  min-width: 1110px;
+}
+
+.board-table.is-interactive th:first-child,
+.board-table.is-interactive td:first-child {
+  min-width: 0;
+}
+
+.board-table.is-interactive tbody tr:hover td {
+  background: color-mix(in oklch, var(--muted) 55%, var(--card));
+}
+
+.board-table.is-interactive tbody tr[data-selected="true"] td {
+  background: color-mix(in oklch, #0073ea 10%, var(--card));
+}
+
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
