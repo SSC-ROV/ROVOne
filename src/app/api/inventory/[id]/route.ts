@@ -1,0 +1,71 @@
+import { NextRequest, NextResponse } from "next/server";
+import { sql } from "@/lib/pg";
+import { getSessionUser } from "@/lib/auth";
+import { isStaff } from "@/lib/roles";
+import { logAudit } from "@/lib/audit";
+import { cleanLocations, cleanPhoto, getInventoryItem, replaceLocations } from "@/lib/inventory-db";
+
+type Ctx = { params: Promise<{ id: string }> };
+
+async function itemId(ctx: Ctx) {
+  const { id } = await ctx.params;
+  const n = Number(id);
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
+
+export async function GET(_req: NextRequest, ctx: Ctx) {
+  const user = await getSessionUser();
+  if (!user) return NextResponse.json({ error: "未登入" }, { status: 401 });
+  const id = await itemId(ctx);
+  const item = id ? await getInventoryItem(id) : null;
+  if (!item) return NextResponse.json({ error: "找不到這個物品" }, { status: 404 });
+  return NextResponse.json({ item });
+}
+
+/** 任何隊員都能修改名稱、規格、分類、位置與照片 */
+export async function PATCH(req: NextRequest, ctx: Ctx) {
+  const user = await getSessionUser();
+  if (!user) return NextResponse.json({ error: "未登入" }, { status: 401 });
+  const id = await itemId(ctx);
+  const cur = id ? await getInventoryItem(id) : null;
+  if (!id || !cur) return NextResponse.json({ error: "找不到這個物品" }, { status: 404 });
+  const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
+  if (!body) return NextResponse.json({ error: "格式錯誤" }, { status: 400 });
+
+  const name = body.name !== undefined ? String(body.name).trim() : cur.name;
+  if (!name) return NextResponse.json({ error: "請填寫物品名稱" }, { status: 400 });
+  const photo = cleanPhoto(body.photo);
+  if (photo && typeof photo === "object") return NextResponse.json({ error: photo.error }, { status: 400 });
+
+  if (body.locations !== undefined) {
+    const locs = cleanLocations(body.locations);
+    if ("error" in locs) return NextResponse.json({ error: locs.error }, { status: 400 });
+    await replaceLocations(id, locs.locations);
+  }
+  const nextPhoto = photo === undefined ? cur.photo : photo;
+  await sql`
+    UPDATE inventory_items SET
+      name = ${name},
+      spec = ${body.spec !== undefined ? String(body.spec).trim() : cur.spec},
+      category = ${body.category !== undefined ? String(body.category).trim() : cur.category},
+      note = ${body.note !== undefined ? String(body.note).trim() : cur.note},
+      photo = ${nextPhoto},
+      updated_at = now()
+    WHERE id = ${id}`;
+  await logAudit(user.id, user.username, "inventory.update", `inventory:${id}`, name);
+  return NextResponse.json({ ok: true });
+}
+
+export async function DELETE(_req: NextRequest, ctx: Ctx) {
+  const user = await getSessionUser();
+  if (!user) return NextResponse.json({ error: "未登入" }, { status: 401 });
+  if (!isStaff(user.role)) {
+    return NextResponse.json({ error: "只有隊長或老師可以刪除庫存物品" }, { status: 403 });
+  }
+  const id = await itemId(ctx);
+  const cur = id ? await getInventoryItem(id) : null;
+  if (!id || !cur) return NextResponse.json({ error: "找不到這個物品" }, { status: 404 });
+  await sql`DELETE FROM inventory_items WHERE id = ${id}`;
+  await logAudit(user.id, user.username, "inventory.delete", `inventory:${id}`, cur.name);
+  return NextResponse.json({ ok: true });
+}

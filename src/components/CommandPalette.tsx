@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/lib/i18n";
 import type { Cycle, Equipment, Part, Task } from "@/lib/types";
+import type { InventoryItem } from "@/lib/inventory";
 
 type Hit = { key: string; label: string; hint: string; run: () => void };
 
@@ -18,6 +19,7 @@ export default function CommandPalette() {
   const [parts, setParts] = useState<Part[]>([]);
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [cycles, setCycles] = useState<Cycle[]>([]);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
   function openPalette() {
@@ -59,13 +61,15 @@ export default function CommandPalette() {
       api<{ parts: Part[] }>("/api/parts"),
       api<{ equipment: Equipment[] }>("/api/equipment"),
       api<{ cycles: Cycle[] }>("/api/cycles"),
+      api<{ items: InventoryItem[] }>("/api/inventory").catch(() => ({ items: [] as InventoryItem[] })),
     ])
-      .then(([taskRes, partRes, equipRes, cycleRes]) => {
+      .then(([taskRes, partRes, equipRes, cycleRes, invRes]) => {
         if (cancelled) return;
         setTasks(taskRes.tasks);
         setParts(partRes.parts);
         setEquipment(equipRes.equipment);
         setCycles(cycleRes.cycles);
+        setInventory(invRes.items);
       })
       .catch(() => {});
     return () => {
@@ -94,6 +98,7 @@ export default function CommandPalette() {
       { key: "cal", label: t("日曆"), hint: t("頁面"), run: () => go("/calendar") },
       { key: "cycles", label: t("開發週期"), hint: t("頁面"), run: () => go("/cycles") },
       { key: "parts", label: t("零件採買"), hint: t("頁面"), run: () => go("/parts") },
+      { key: "inventory", label: t("庫存"), hint: t("頁面"), run: () => go("/inventory") },
       { key: "equip", label: t("租借設備"), hint: t("頁面"), run: () => go("/equipment") },
       { key: "logs", label: t("水測日誌"), hint: t("頁面"), run: () => go("/divelogs") },
       { key: "account", label: t("帳號"), hint: t("頁面"), run: () => go("/account") },
@@ -122,7 +127,13 @@ export default function CommandPalette() {
       hint: t("開發週期"),
       run: () => go("/cycles"),
     }));
-    const all = [...pages, ...taskHits, ...cycleHits, ...partHits, ...equipHits];
+    const invHits: Hit[] = inventory.map((item) => ({
+      key: `i${item.id}`,
+      label: [item.name, item.spec, item.locations.join(" ")].filter(Boolean).join(" · "),
+      hint: t("庫存"),
+      run: () => go(`/inventory/${item.id}`),
+    }));
+    const all = [...pages, ...taskHits, ...cycleHits, ...invHits, ...partHits, ...equipHits];
     if (!needle) return all.slice(0, 12);
     return all.filter((hit) => hit.label.toLowerCase().includes(needle)).slice(0, 12);
   })();
@@ -143,7 +154,7 @@ export default function CommandPalette() {
         <input
           ref={inputRef}
           className="w-full border-b border-hairline bg-transparent px-4 py-3 text-sm text-ink outline-none placeholder:text-ink-tertiary"
-          placeholder={t("搜尋任務、零件、設備、週期")}
+          placeholder={t("搜尋任務、庫存、零件、設備、週期")}
           value={q}
           onChange={(e) => {
             setQ(e.target.value);
