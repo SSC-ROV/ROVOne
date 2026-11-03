@@ -146,7 +146,7 @@ export default function DiveLogsPage() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="board-title">{t("水測日誌")}</h1>
+        <h1 className="board-title">{t("水測紀錄")}</h1>
         <span className="text-sm text-ink-tertiary">{t("每次下水的問題與修正都留下紀錄，才不會踩同樣的坑")}</span>
         <Input className="ml-auto w-40" type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} />
         <Select value={filterAuthor} onValueChange={(value) => value && setFilterAuthor(value)}>

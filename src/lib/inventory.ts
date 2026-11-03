@@ -141,24 +141,47 @@ export const inventoryStatus = (k: string) =>
 export const isInventoryStatus = (v: unknown): v is InventoryStatus =>
   v === "in_stock" || v === "low" || v === "empty";
 
-export const INVENTORY_CATEGORIES: { zh: string; en: string }[] = [
-  { zh: "螺絲五金", en: "Fasteners" },
-  { zh: "電子零件", en: "Electronics" },
-  { zh: "接頭端子", en: "Connectors" },
-  { zh: "線材", en: "Cables & wire" },
-  { zh: "防水密封", en: "Seals & waterproofing" },
-  { zh: "機構零件", en: "Mechanical parts" },
-  { zh: "工具", en: "Tools" },
-  { zh: "耗材", en: "Consumables" },
-  { zh: "其他", en: "Other" },
-];
+/** 分類標籤（可多選）。key 存進資料庫，顯示時再翻譯。 */
+export const INVENTORY_TAGS = [
+  { key: "props", zh: "推進器", en: "Props", color: "#0086c0" },
+  { key: "rov", zh: "ROV", en: "ROV", color: "#579bfc" },
+  { key: "float", zh: "浮標", en: "Float", color: "#00c875" },
+  { key: "ground_station", zh: "岸上控制站", en: "Ground station", color: "#a25ddc" },
+  { key: "logistics", zh: "後勤", en: "Logistics", color: "#ff642e" },
+  { key: "electronics", zh: "電子", en: "Electronics", color: "#fdab3d" },
+  { key: "mechanical", zh: "機構", en: "Mechanical", color: "#9d99b9" },
+] as const;
+
+export type InventoryTag = (typeof INVENTORY_TAGS)[number]["key"];
+
+export const isInventoryTag = (v: unknown): v is InventoryTag => INVENTORY_TAGS.some((t) => t.key === v);
+
+export function inventoryTag(key: string) {
+  return INVENTORY_TAGS.find((t) => t.key === key) ?? null;
+}
+
+export function tagLabel(key: string): string {
+  const t = inventoryTag(key);
+  return t ? tt(t.zh, t.en) : key;
+}
+
+/** 只留下認得的標籤，依固定順序排列、去重複 */
+export function cleanTags(raw: unknown): InventoryTag[] {
+  const list = Array.isArray(raw) ? raw : [];
+  return INVENTORY_TAGS.map((t) => t.key).filter((k) => list.includes(k));
+}
 
 export interface InventoryItem {
   id: number;
   name: string;
   spec: string;
-  category: string;
+  /** Category tags (keys from INVENTORY_TAGS); an item can have several. */
+  tags: InventoryTag[];
   note: string;
+  /** Where to buy it (used when it runs out). */
+  buy_link: string;
+  /** Estimated price per unit. */
+  unit_price: number;
   status: InventoryStatus;
   locations: string[];
   has_photo: boolean;
@@ -187,7 +210,11 @@ export function matchesSearch(item: InventoryItem, query: string): boolean {
   const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
   if (words.length === 0) return true;
   const normLocs = item.locations.map((l) => l.toLowerCase());
-  const text = [item.name, item.spec, item.category, item.note].join(" ").toLowerCase();
+  const tagText = item.tags.flatMap((k) => {
+    const t = inventoryTag(k);
+    return t ? [t.zh, t.en] : [];
+  });
+  const text = [item.name, item.spec, ...tagText, item.note].join(" ").toLowerCase();
   const hay = [text, ...normLocs].join(" ");
   const squash = (v: string) => v.replace(/[×*]/g, "x").replace(/[\s-]+/g, "");
   const hayCompact = squash(hay);
@@ -202,7 +229,7 @@ export function matchesSearch(item: InventoryItem, query: string): boolean {
 }
 
 /** 到零件採買頁開新需求的網址（預先帶入資料） */
-export function restockRequestHref(item: Pick<InventoryItem, "id" | "name" | "spec" | "status" | "locations">): string {
+export function restockRequestHref(item: Pick<InventoryItem, "id" | "name" | "spec" | "status" | "locations"> & Partial<Pick<InventoryItem, "buy_link" | "unit_price">>): string {
   const where = item.locations.join(", ");
   const statusText = item.status === "empty" ? tt("已用完", "empty") : tt("快用完", "running low");
   const purpose = tt(
@@ -210,5 +237,26 @@ export function restockRequestHref(item: Pick<InventoryItem, "id" | "name" | "sp
     `Restock: ${statusText} (location ${where || "not set"})`
   );
   const q = new URLSearchParams({ new: "1", name: item.name, spec: item.spec, purpose, from_inventory: String(item.id) });
+  if (item.buy_link) q.set("link", item.buy_link);
+  if (item.unit_price) q.set("est_price", String(item.unit_price));
   return `/parts?${q.toString()}`;
+}
+
+/** 購買連結必須是 http(s) 網址 */
+export function isValidBuyLink(v: string): boolean {
+  try {
+    const u = new URL(v.trim());
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+/** 新增物品時的必填檢查（規格、購買連結、單價），回傳錯誤訊息或 null */
+export function purchaseInfoError(v: { spec: string; buy_link: string; unit_price: number }): string | null {
+  if (!v.spec.trim()) return "請填寫規格 / 型號";
+  if (!v.buy_link.trim()) return "請填寫購買連結";
+  if (!isValidBuyLink(v.buy_link)) return "購買連結需以 http:// 或 https:// 開頭";
+  if (!Number.isFinite(v.unit_price) || v.unit_price <= 0) return "請填寫預估單價（大於 0）";
+  return null;
 }

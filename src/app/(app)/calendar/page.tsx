@@ -159,7 +159,7 @@ export default function CalendarPage() {
         />
       )}
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="board-title">{t("任務日曆")}</h1>
+        <h1 className="board-title">{t("行事曆")}</h1>
         <div className="ml-auto flex items-center gap-2">
           <Button type="button" variant="ghost" size="icon" onClick={() => setNow(new Date(y, m - 1, 1))}>
             ‹

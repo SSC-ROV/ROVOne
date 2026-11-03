@@ -112,7 +112,7 @@ function LoginInner() {
             </Button>
           </form>
           <p className="text-xs leading-5 text-muted-foreground">
-            {t("帳號由隊長在「管理」頁開立；忘記密碼請找隊長重置。")}
+            {t("帳號由隊長在「團隊設定」頁開立；忘記密碼請找隊長重置。")}
           </p>
         </CardContent>
       </Card>
