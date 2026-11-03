@@ -1,4 +1,5 @@
 import { sql } from "./pg";
+import { createPartRequest } from "./parts-db";
 import {
   compareLocations,
   isInventoryStatus,
@@ -48,6 +49,10 @@ export function ensureInventorySchema(): Promise<void> {
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
       )`;
       await sql`CREATE INDEX IF NOT EXISTS inventory_reports_item_idx ON inventory_reports(item_id, created_at DESC)`;
+      // 採購資訊：用完時自動送到採購申請
+      await sql`ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS buy_link TEXT NOT NULL DEFAULT ''`;
+      await sql`ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS unit_price DOUBLE PRECISION NOT NULL DEFAULT 0`;
+      await sql`ALTER TABLE parts ADD COLUMN IF NOT EXISTS inventory_id INTEGER`;
     })().catch((err) => {
       schemaReady = null; // 下次請求再試
       throw err;
@@ -66,6 +71,8 @@ function toItem(r: Row): InventoryItem {
     spec: String(r.spec ?? ""),
     category: String(r.category ?? ""),
     note: String(r.note ?? ""),
+    buy_link: String(r.buy_link ?? ""),
+    unit_price: Number(r.unit_price ?? 0) || 0,
     status: isInventoryStatus(r.status) ? r.status : "in_stock",
     locations: [...locs].sort(compareLocations),
     has_photo: Boolean(r.has_photo),
@@ -80,7 +87,7 @@ function toItem(r: Row): InventoryItem {
 export async function listInventory(): Promise<InventoryItem[]> {
   await ensureInventorySchema();
   const rows = await sql`
-    SELECT i.id, i.name, i.spec, i.category, i.note, i.status, i.status_note, i.status_at,
+    SELECT i.id, i.name, i.spec, i.category, i.note, i.buy_link, i.unit_price, i.status, i.status_note, i.status_at,
            i.created_at, i.updated_at, (i.photo IS NOT NULL) AS has_photo,
            u.display_name AS status_by_name,
            COALESCE(array_agg(l.location) FILTER (WHERE l.location IS NOT NULL), '{}') AS locations
@@ -162,4 +169,36 @@ export async function recordStatus(itemId: number, status: InventoryStatus, note
   await sql`
     INSERT INTO inventory_reports (item_id, status, note, user_id)
     VALUES (${itemId}, ${status}, ${note}, ${userId})`;
+}
+
+/**
+ * 物品被回報「沒有了」時，自動在採購申請開一筆待審批的補貨需求。
+ * 如果這個物品已經有還沒到貨的申請（待審批／已核准／已下單），就不重複開。
+ */
+export async function autoRestockRequest(
+  item: InventoryItem,
+  user: { id: number; display_name: string },
+  origin: string
+): Promise<{ created: boolean; partId: number | null }> {
+  await ensureInventorySchema();
+  const [open] = await sql`
+    SELECT id FROM parts
+    WHERE inventory_id = ${item.id} AND status IN ('pending', 'approved', 'ordered')
+    ORDER BY id DESC LIMIT 1`;
+  if (open) return { created: false, partId: Number(open.id) };
+  const where = item.locations.join(", ") || "未指定";
+  const partId = await createPartRequest(
+    {
+      name: item.name,
+      spec: item.spec,
+      link: item.buy_link,
+      qty: 1,
+      est_price: item.unit_price,
+      purpose: `庫存補貨：已用完（位置 ${where}）`,
+    },
+    user,
+    origin
+  );
+  await sql`UPDATE parts SET inventory_id = ${item.id} WHERE id = ${partId}`;
+  return { created: true, partId };
 }

@@ -57,6 +57,8 @@ export default function PartsPage() {
       setName(params.get("name") ?? "");
       setSpec(params.get("spec") ?? "");
       setPurpose(params.get("purpose") ?? "");
+      setLink(params.get("link") ?? "");
+      setEstPrice(params.get("est_price") ?? "");
       setShowForm(true);
       window.history.replaceState(null, "", window.location.pathname);
     }

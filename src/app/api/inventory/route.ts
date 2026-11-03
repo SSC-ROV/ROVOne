@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/pg";
 import { getSessionUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
-import { isInventoryStatus } from "@/lib/inventory";
+import { isInventoryStatus, purchaseInfoError } from "@/lib/inventory";
 import {
   cleanLocations,
   cleanPhoto,
@@ -30,12 +30,17 @@ export async function POST(req: NextRequest) {
   const photo = cleanPhoto(body?.photo);
   if (photo && typeof photo === "object") return NextResponse.json({ error: photo.error }, { status: 400 });
   const status = isInventoryStatus(body?.status) ? body.status : "in_stock";
+  const spec = String(body?.spec ?? "").trim();
+  const buyLink = String(body?.buy_link ?? "").trim();
+  const unitPrice = Number(body?.unit_price);
+  const missing = purchaseInfoError({ spec, buy_link: buyLink, unit_price: unitPrice });
+  if (missing) return NextResponse.json({ error: missing }, { status: 400 });
 
   await ensureInventorySchema();
   const [row] = await sql`
-    INSERT INTO inventory_items (name, spec, category, note, photo, created_by)
-    VALUES (${name}, ${String(body?.spec ?? "").trim()}, ${String(body?.category ?? "").trim()},
-            ${String(body?.note ?? "").trim()}, ${photo ?? null}, ${user.id})
+    INSERT INTO inventory_items (name, spec, category, note, buy_link, unit_price, photo, created_by)
+    VALUES (${name}, ${spec}, ${String(body?.category ?? "").trim()},
+            ${String(body?.note ?? "").trim()}, ${buyLink}, ${unitPrice}, ${photo ?? null}, ${user.id})
     RETURNING id`;
   const id = Number(row.id);
   await replaceLocations(id, locs.locations);

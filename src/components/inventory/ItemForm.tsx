@@ -13,6 +13,8 @@ import {
   compareLocations,
   describeLocation,
   normalizeLocation,
+  isValidBuyLink,
+  purchaseInfoError,
   slotKindLabel,
   slotOptions,
   type InventoryStatus,
@@ -23,6 +25,10 @@ export type ItemFormValue = {
   spec: string;
   category: string;
   note: string;
+  /** Where to buy more (required). */
+  buy_link: string;
+  /** Estimated price per unit, as typed (required, > 0). */
+  unit_price: string;
   locations: string[];
   status: InventoryStatus;
   /** undefined = 不變；null = 移除；字串 = 新照片 */
@@ -85,6 +91,8 @@ export const EMPTY_ITEM: ItemFormValue = {
   spec: "",
   category: "",
   note: "",
+  buy_link: "",
+  unit_price: "",
   locations: [],
   status: "in_stock",
 };
@@ -263,6 +271,10 @@ export default function ItemForm({
   const [preview, setPreview] = useState<string | null>(initialPhoto ?? null);
   const [photoErr, setPhotoErr] = useState("");
   const [pending, setPending] = useState<string | null>(null);
+  const [tried, setTried] = useState(false);
+  const purchaseErr = purchaseInfoError({ spec: v.spec, buy_link: v.buy_link, unit_price: Number(v.unit_price) });
+  const nameErr = !v.name.trim();
+  const showErr = (bad: boolean) => (tried && bad ? " border-danger" : "");
   const set = <K extends keyof ItemFormValue>(k: K, val: ItemFormValue[K]) => setV((p) => ({ ...p, [k]: val }));
 
   async function pickPhoto(file: File | undefined) {
@@ -279,10 +291,12 @@ export default function ItemForm({
 
   return (
     <form
+      noValidate
       className="space-y-4"
       onSubmit={(e) => {
         e.preventDefault();
-        if (!v.name.trim()) return;
+        setTried(true);
+        if (nameErr || purchaseErr) return;
         // A spot picked in the dropdowns but never "+ Add"-ed still counts.
         const locations = pending && !v.locations.includes(pending) ? [...v.locations, pending].sort(compareLocations) : v.locations;
         onSubmit({ ...v, locations });
@@ -291,11 +305,42 @@ export default function ItemForm({
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="grid gap-1 text-sm">
           <span className="text-xs font-medium text-muted-foreground">{tt("名稱 *", "Name *")}</span>
-          <input id="inv-name" className={INPUT_CLS} placeholder={tt("例如：M3 內六角螺絲", "e.g. M3 hex socket screw")} value={v.name} onChange={(e) => set("name", e.target.value)} />
+          <input id="inv-name" className={INPUT_CLS + showErr(nameErr)} placeholder={tt("例如：M3 內六角螺絲", "e.g. M3 hex socket screw")} value={v.name} onChange={(e) => set("name", e.target.value)} />
         </label>
         <label className="grid gap-1 text-sm">
-          <span className="text-xs font-medium text-muted-foreground">{tt("規格 / 尺寸", "Size / spec")}</span>
-          <input id="inv-spec" className={INPUT_CLS} placeholder={tt("例如：M3 × 10 mm 不鏽鋼", "e.g. M3 × 10 mm, stainless")} value={v.spec} onChange={(e) => set("spec", e.target.value)} />
+          <span className="text-xs font-medium text-muted-foreground">{tt("規格 / 型號 *", "Specs / model *")}</span>
+          <input id="inv-spec" required className={INPUT_CLS + showErr(!v.spec.trim())} placeholder={tt("例如：M3 × 10 mm 不鏽鋼、BlueRobotics T200", "e.g. M3 × 10 mm stainless, BlueRobotics T200")} value={v.spec} onChange={(e) => set("spec", e.target.value)} />
+        </label>
+        <label className="grid gap-1 text-sm">
+          <span className="text-xs font-medium text-muted-foreground">{tt("購買連結 *", "Buy link *")}</span>
+          <input
+            id="inv-link"
+            type="url"
+            inputMode="url"
+            required
+            className={INPUT_CLS + showErr(!isValidBuyLink(v.buy_link))}
+            placeholder="https://…"
+            value={v.buy_link}
+            onChange={(e) => set("buy_link", e.target.value)}
+          />
+        </label>
+        <label className="grid gap-1 text-sm">
+          <span className="text-xs font-medium text-muted-foreground">{tt("預估單價 *", "Est. unit price *")}</span>
+          <div className="relative">
+            <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+            <input
+              id="inv-price"
+              type="number"
+              inputMode="decimal"
+              min="0"
+              step="any"
+              required
+              className={`${INPUT_CLS} pl-7${showErr(!(Number(v.unit_price) > 0))}`}
+              placeholder="0"
+              value={v.unit_price}
+              onChange={(e) => set("unit_price", e.target.value)}
+            />
+          </div>
         </label>
         <div className="grid gap-1 text-sm">
           <label htmlFor="inv-category" className="text-xs font-medium text-muted-foreground">{tt("分類", "Category")}</label>
@@ -355,8 +400,15 @@ export default function ItemForm({
         </div>
       </div>
 
+      <p className="text-xs text-muted-foreground">
+        {tt("規格、購買連結和單價是必填的：有人回報「沒有了」時，會自動用這些資料送出採購申請。", "Specs, buy link and price are required: when someone reports it empty, a purchase request is sent automatically with these details.")}
+      </p>
+      {tried && (nameErr || purchaseErr) && (
+        <p role="alert" className="text-sm text-danger">{nameErr ? t("請填寫物品名稱") : t(purchaseErr!)}</p>
+      )}
+
       <div className="flex items-center gap-2">
-        <button className={BTN} disabled={busy || !v.name.trim()}>{busy ? tt("儲存中…", "Saving…") : submitLabel}</button>
+        <button className={BTN} disabled={busy}>{busy ? tt("儲存中…", "Saving…") : submitLabel}</button>
         {onCancel && (
           <button type="button" className={BTN_GHOST} onClick={onCancel}>{t("取消")}</button>
         )}

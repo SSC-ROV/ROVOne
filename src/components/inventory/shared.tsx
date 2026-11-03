@@ -45,3 +45,16 @@ export function timeAgo(iso: string | null): string {
   if (days < 30) return tt(`${days} 天前`, `${days} d ago`);
   return new Date(iso).toLocaleDateString();
 }
+
+export type ReportResponse = { ok: boolean; restock: { created: boolean; partId: number | null } | null };
+
+/** 回報後的提示文字；回報「沒有了」時說明採購申請已自動送出 */
+export function reportToast(name: string, statusLabel: string, res: ReportResponse | null): string {
+  if (res?.restock?.created) {
+    return tt(`已回報「${name}」沒有了，已自動送出採購申請`, `Reported ${name} empty. A purchase request was sent automatically.`);
+  }
+  if (res?.restock && !res.restock.created) {
+    return tt(`已回報「${name}」沒有了（已經有一筆補貨申請在處理中）`, `Reported ${name} empty. A restock request is already in progress.`);
+  }
+  return tt(`已回報「${name}」${statusLabel}`, `Reported ${name} as ${statusLabel.toLowerCase()}`);
+}

@@ -1,10 +1,7 @@
-import crypto from "crypto";
-import { NextRequest, NextResponse, after } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/pg";
 import { getSessionUser } from "@/lib/auth";
-import { notifyTeams } from "@/lib/notify";
-import { pushToUsers, roleUserIds } from "@/lib/push";
-import type { Part } from "@/lib/types";
+import { createPartRequest } from "@/lib/parts-db";
 
 // after() 背景通知要等 Power Automate 冷啟動，需要更長的函數壽命
 export const maxDuration = 60;
@@ -25,31 +22,19 @@ export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   const name = String(body?.name ?? "").trim();
   if (!name) return NextResponse.json({ error: "請填寫零件名稱" }, { status: 400 });
-  const token = randomToken();
-  await sql`
-    INSERT INTO parts (name, spec, link, qty, unit, est_price, purpose, subteam, status, requested_by, approve_token, approve_expires_at)
-    VALUES (${name}, ${String(body?.spec ?? "")}, ${String(body?.link ?? "")},
-            ${Math.max(1, Number(body?.qty) || 1)}, ${String(body?.unit ?? "個")},
-            ${Math.max(0, Number(body?.est_price) || 0)}, ${String(body?.purpose ?? "")},
-            ${String(body?.subteam ?? "general")}, 'pending', ${user.id}, ${token},
-            now() + interval '72 hours')`;
-  const origin = req.nextUrl.origin;
-  after(() => notifyTeams("teacher_parts",
-    `🛒 新零件申請「${name}」待批准`,
-    `申請人：${user.display_name}｜數量：${Math.max(1, Number(body?.qty) || 1)}｜預估：$${Math.max(0, Number(body?.est_price) || 0)}`,
-    `${origin}/approve/${token}`));
-  const qty = Math.max(1, Number(body?.qty) || 1);
-  const est = Math.max(0, Number(body?.est_price) || 0);
-  after(async () => {
-    const teachers = await roleUserIds("teacher");
-    await pushToUsers(teachers,
-      "🛒 有一份新的零件需求待批准",
-      `「${name}」× ${qty}（預估 $${est}）由 ${user.display_name} 提出`,
-      "/parts", user.id);
-  });
+  await createPartRequest(
+    {
+      name,
+      spec: String(body?.spec ?? ""),
+      link: String(body?.link ?? ""),
+      qty: Number(body?.qty),
+      unit: String(body?.unit ?? "個"),
+      est_price: Number(body?.est_price),
+      purpose: String(body?.purpose ?? ""),
+      subteam: String(body?.subteam ?? "general"),
+    },
+    user,
+    req.nextUrl.origin
+  );
   return NextResponse.json({ ok: true });
-}
-
-function randomToken() {
-  return crypto.randomUUID().replace(/-/g, "");
 }

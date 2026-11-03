@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { isInventoryStatus } from "@/lib/inventory";
-import { getInventoryItem, recordStatus } from "@/lib/inventory-db";
+import { autoRestockRequest, getInventoryItem, recordStatus } from "@/lib/inventory-db";
+
+// 自動補貨申請的背景通知需要較長的函數壽命
+export const maxDuration = 60;
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -19,5 +22,13 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   const note = String(body?.note ?? "").trim().slice(0, 300);
   await recordStatus(id, body.status, note, user.id);
   await logAudit(user.id, user.username, "inventory.report", `inventory:${id}`, `${body.status} ${note}`.trim());
-  return NextResponse.json({ ok: true });
+  // 沒有了 → 自動在採購申請開補貨需求（已有未到貨的申請就不重複）
+  let restock: { created: boolean; partId: number | null } | null = null;
+  if (body.status === "empty") {
+    restock = await autoRestockRequest(item, user, req.nextUrl.origin);
+    if (restock.created) {
+      await logAudit(user.id, user.username, "parts.auto_restock", `parts:${restock.partId}`, item.name);
+    }
+  }
+  return NextResponse.json({ ok: true, restock });
 }

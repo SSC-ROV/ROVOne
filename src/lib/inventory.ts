@@ -159,6 +159,10 @@ export interface InventoryItem {
   spec: string;
   category: string;
   note: string;
+  /** Where to buy it (used when it runs out). */
+  buy_link: string;
+  /** Estimated price per unit. */
+  unit_price: number;
   status: InventoryStatus;
   locations: string[];
   has_photo: boolean;
@@ -202,7 +206,7 @@ export function matchesSearch(item: InventoryItem, query: string): boolean {
 }
 
 /** 到零件採買頁開新需求的網址（預先帶入資料） */
-export function restockRequestHref(item: Pick<InventoryItem, "id" | "name" | "spec" | "status" | "locations">): string {
+export function restockRequestHref(item: Pick<InventoryItem, "id" | "name" | "spec" | "status" | "locations"> & Partial<Pick<InventoryItem, "buy_link" | "unit_price">>): string {
   const where = item.locations.join(", ");
   const statusText = item.status === "empty" ? tt("已用完", "empty") : tt("快用完", "running low");
   const purpose = tt(
@@ -210,5 +214,26 @@ export function restockRequestHref(item: Pick<InventoryItem, "id" | "name" | "sp
     `Restock: ${statusText} (location ${where || "not set"})`
   );
   const q = new URLSearchParams({ new: "1", name: item.name, spec: item.spec, purpose, from_inventory: String(item.id) });
+  if (item.buy_link) q.set("link", item.buy_link);
+  if (item.unit_price) q.set("est_price", String(item.unit_price));
   return `/parts?${q.toString()}`;
+}
+
+/** 購買連結必須是 http(s) 網址 */
+export function isValidBuyLink(v: string): boolean {
+  try {
+    const u = new URL(v.trim());
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+/** 新增物品時的必填檢查（規格、購買連結、單價），回傳錯誤訊息或 null */
+export function purchaseInfoError(v: { spec: string; buy_link: string; unit_price: number }): string | null {
+  if (!v.spec.trim()) return "請填寫規格 / 型號";
+  if (!v.buy_link.trim()) return "請填寫購買連結";
+  if (!isValidBuyLink(v.buy_link)) return "購買連結需以 http:// 或 https:// 開頭";
+  if (!Number.isFinite(v.unit_price) || v.unit_price <= 0) return "請填寫預估單價（大於 0）";
+  return null;
 }

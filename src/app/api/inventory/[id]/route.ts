@@ -4,6 +4,7 @@ import { getSessionUser } from "@/lib/auth";
 import { isStaff } from "@/lib/roles";
 import { logAudit } from "@/lib/audit";
 import { cleanLocations, cleanPhoto, getInventoryItem, replaceLocations } from "@/lib/inventory-db";
+import { purchaseInfoError } from "@/lib/inventory";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -37,6 +38,16 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   const photo = cleanPhoto(body.photo);
   if (photo && typeof photo === "object") return NextResponse.json({ error: photo.error }, { status: 400 });
 
+  // 規格、購買連結、單價：有送來就必須完整（舊物品補資料時也一樣）
+  const editsPurchase = body.spec !== undefined || body.buy_link !== undefined || body.unit_price !== undefined;
+  const spec = body.spec !== undefined ? String(body.spec).trim() : cur.spec;
+  const buyLink = body.buy_link !== undefined ? String(body.buy_link).trim() : cur.buy_link;
+  const unitPrice = body.unit_price !== undefined ? Number(body.unit_price) : cur.unit_price;
+  if (editsPurchase) {
+    const missing = purchaseInfoError({ spec, buy_link: buyLink, unit_price: unitPrice });
+    if (missing) return NextResponse.json({ error: missing }, { status: 400 });
+  }
+
   if (body.locations !== undefined) {
     const locs = cleanLocations(body.locations);
     if ("error" in locs) return NextResponse.json({ error: locs.error }, { status: 400 });
@@ -46,7 +57,9 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   await sql`
     UPDATE inventory_items SET
       name = ${name},
-      spec = ${body.spec !== undefined ? String(body.spec).trim() : cur.spec},
+      spec = ${spec},
+      buy_link = ${buyLink},
+      unit_price = ${unitPrice},
       category = ${body.category !== undefined ? String(body.category).trim() : cur.category},
       note = ${body.note !== undefined ? String(body.note).trim() : cur.note},
       photo = ${nextPhoto},
