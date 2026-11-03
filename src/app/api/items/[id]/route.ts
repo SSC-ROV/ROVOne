@@ -2,16 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/pg";
 import { getSessionUser } from "@/lib/auth";
 import { isStaff } from "@/lib/roles";
+import { isTaskAssignee } from "@/lib/db";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 async function canEdit(user: { id: number; role: string }, itemId: number): Promise<boolean> {
   const [row] = await sql`
-    SELECT t.assignee_id, t.created_by FROM checklist_items c
+    SELECT t.* FROM checklist_items c
     JOIN tasks t ON t.id = c.task_id WHERE c.id = ${itemId}`;
   if (!row) return false;
-  const r = row as { assignee_id: number | null; created_by: number | null };
-  return isStaff(user.role) || user.id === r.assignee_id || user.id === r.created_by;
+  const r = row as { assignee_id: number | null; assignee_ids?: number[] | null; created_by: number | null };
+  return isStaff(user.role) || isTaskAssignee(r, user.id) || user.id === r.created_by;
 }
 
 export async function PATCH(req: NextRequest, ctx: Ctx) {

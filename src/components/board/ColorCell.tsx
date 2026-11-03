@@ -100,12 +100,12 @@ export function ColorCell({
       >
         {face}
       </PopoverTrigger>
-      <PopoverContent className="w-48 gap-0.5 p-1" align="start" sideOffset={4}>
+      <PopoverContent className="max-h-80 w-56 max-w-[calc(100vw-2rem)] gap-0.5 overflow-y-auto p-1" align="start" sideOffset={4}>
         {options.map((option) => (
           <button
             key={option.value}
             type="button"
-            className="flex h-8 w-full items-center gap-2 rounded-[6px] px-2 text-left text-sm hover:bg-muted"
+            className="flex min-h-8 w-full shrink-0 items-center gap-2 rounded-[6px] px-2 py-1.5 text-left text-sm leading-snug hover:bg-muted"
             onClick={() => {
               onChange(option.value);
               setOpen(false);
@@ -116,8 +116,8 @@ export function ColorCell({
             ) : (
               <span className="size-2.5 shrink-0 rounded-full" style={{ background: option.color }} aria-hidden />
             )}
-            <span className="flex-1">{option.label}</span>
-            {option.value === value && <CheckIcon className="size-4 text-muted-foreground" />}
+            <span className="min-w-0 flex-1 break-words">{option.label}</span>
+            {option.value === value && <CheckIcon className="size-4 shrink-0 text-muted-foreground" />}
           </button>
         ))}
       </PopoverContent>

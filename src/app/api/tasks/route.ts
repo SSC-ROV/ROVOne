@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/pg";
 import { getSessionUser } from "@/lib/auth";
-import { getTaskWithItems } from "@/lib/db";
+import { getTaskWithItems, parseAssigneeIds, saveAssignees, withAssignees } from "@/lib/db";
 import { fmtDue, notifyDiscord } from "@/lib/notify";
 import type { ChecklistItem, Task } from "@/lib/types";
 
@@ -20,7 +20,8 @@ export async function GET() {
     arr.push(it);
     byTask.set(Number(it.task_id), arr);
   }
-  const tasks: Task[] = (rows as unknown as Omit<Task, "items">[]).map((r) => ({
+  const people = await withAssignees(rows as unknown as Record<string, unknown>[]);
+  const tasks: Task[] = (people as unknown as Omit<Task, "items">[]).map((r) => ({
     ...r,
     items: byTask.get(r.id) ?? [],
   }));
@@ -35,7 +36,10 @@ export async function POST(req: NextRequest) {
   if (!title) {
     return NextResponse.json({ error: "請填寫任務標題" }, { status: 400 });
   }
-  const assigneeId = (body?.assignee_id as number) || null;
+  const assigneeIds = Array.isArray(body?.assignee_ids)
+    ? parseAssigneeIds(body?.assignee_ids)
+    : body?.assignee_id ? parseAssigneeIds([body.assignee_id]) : [];
+  const assigneeId = assigneeIds[0] ?? null;
   const cycleId = (body?.cycle_id as number) || null;
   if (!cycleId) {
     return NextResponse.json({ error: "任務必須歸屬一個專案" }, { status: 400 });
@@ -53,11 +57,20 @@ export async function POST(req: NextRequest) {
             ${(body?.due_date as string) || null}, ${assigneeId}, ${user.id},
             ${cycleId})
     RETURNING id`;
+  if (assigneeIds.length > 1) await saveAssignees(Number(task.id), assigneeIds);
+  else if (assigneeId) {
+    try {
+      await sql`UPDATE tasks SET assignee_ids = ARRAY[${assigneeId}]::int[] WHERE id = ${Number(task.id)}`;
+    } catch {
+      /* multi-assignee migration not run yet */
+    }
+  }
   if (body?.start_date) await sql`UPDATE tasks SET start_date = ${String(body.start_date)} WHERE id = ${Number(task.id)}`;
   const created = await getTaskWithItems(Number(task.id));
-  if (created?.assignee_id && created.assignee_id !== user.id) {
+  const others = (created?.assignees ?? []).filter((person) => person.id !== user.id);
+  if (created && others.length) {
     notifyDiscord(
-      `📋 新任務指派給 ${created.assignee_name ?? "隊員"}：「${created.title}」${fmtDue(created.due_date)}`
+      `📋 新任務指派給 ${others.map((person) => person.display_name).join("、")}：「${created.title}」${fmtDue(created.due_date)}`
     ).catch(() => {});
   }
   return NextResponse.json({ task: created });

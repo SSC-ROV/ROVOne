@@ -562,10 +562,14 @@ export function TaskSheet({
               open={assigneeOpen}
               onOpenChange={setAssigneeOpen}
               face={
-                task.assignee_name ? (
-                  <span className="flex min-w-0 items-center gap-2">
-                    <Avatar name={task.assignee_name} size={22} />
-                    <span className="truncate font-semibold">{shortName(task.assignee_name)}</span>
+                task.assignees?.length ? (
+                  <span className="flex min-w-0 flex-col gap-1.5">
+                    {task.assignees.map((person) => (
+                      <span key={person.id} className="flex min-w-0 items-center gap-2">
+                        <Avatar name={person.display_name} size={22} />
+                        <span className="truncate font-semibold">{shortName(person.display_name)}</span>
+                      </span>
+                    ))}
                   </span>
                 ) : (
                   <span className="text-muted-foreground">{tt("尚未指派", "No one assigned")}</span>
@@ -574,16 +578,17 @@ export function TaskSheet({
             >
               <AssigneeList
                 people={people}
-                value={task.assignee_id}
-                onChange={(id) => {
-                  setAssigneeOpen(false);
-                  onPatch({ assignee_id: id });
-                }}
+                value={task.assignee_ids ?? []}
+                onChange={(ids) => onPatch({ assignee_ids: ids })}
               />
             </SidebarPicker>
-            {editable && !task.assignee_id && (
-              <button type="button" className="mx-2 mt-0.5 block text-xs text-[var(--c-blue)] hover:underline" onClick={() => onPatch({ assignee_id: me.id })}>
-                {tt("指派給自己", "Assign yourself")}
+            {editable && !(task.assignee_ids ?? []).includes(me.id) && (
+              <button
+                type="button"
+                className="mx-2 mt-0.5 block text-xs text-[var(--c-blue)] hover:underline"
+                onClick={() => onPatch({ assignee_ids: [...(task.assignee_ids ?? []), me.id] })}
+              >
+                {task.assignee_ids?.length ? tt("把自己加入", "Add yourself") : tt("指派給自己", "Assign yourself")}
               </button>
             )}
           </div>
@@ -793,8 +798,19 @@ function ChangeText({ entry, cycles }: { entry: Entry; cycles: Cycle[] }) {
           {tt("將優先級改為", "set priority to")} <Label color={PRIORITIES.find((p) => p.key === to)?.color ?? "var(--c-gray)"}>{priorityLabel(String(to))}</Label>
         </>
       );
-    case "assignee":
+    case "assignee": {
+      const added = (entry.meta.added as { name: string }[] | undefined) ?? null;
+      const removed = (entry.meta.removed as { name: string }[] | undefined) ?? [];
+      if (added) {
+        const names = (list: { name: string }[]) => (
+          <span className="font-semibold text-foreground">{list.map((person) => shortName(person.name)).join(", ")}</span>
+        );
+        if (added.length && removed.length) return <>{tt("指派給", "assigned")} {names(added)} {tt("並移除", "and removed")} {names(removed)}</>;
+        if (added.length) return <>{tt("指派給", "assigned")} {names(added)}</>;
+        return <>{tt("移除了負責人", "unassigned")} {names(removed)}</>;
+      }
       return to ? <>{tt("指派給", "assigned this to")} <span className="font-semibold text-foreground">{shortName(String(entry.meta.to_name ?? ""))}</span></> : <>{tt("取消了指派", "removed the assignee")}</>;
+    }
     case "due_date":
       return to ? <>{tt("將截止日設為", "set the due date to")} <span className="font-semibold text-foreground">{fmtMD(String(to))}</span></> : <>{tt("清除了截止日", "cleared the due date")}</>;
     case "start_date":

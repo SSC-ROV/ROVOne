@@ -78,14 +78,28 @@ export interface Task {
   /** Optional; null until the start-date migration has run. */
   start_date?: string | null;
   due_date: string | null;
+  /** First assignee (kept for older code); `assignees` holds everyone. */
   assignee_id: number | null;
   assignee_name: string | null;
+  assignee_ids: number[];
+  assignees: TaskAssignee[];
   created_by: number | null;
   cycle_id: number | null;
   version: number;
   sort_order: number;
   completed_at: string | null;
   items: ChecklistItem[];
+}
+
+export interface TaskAssignee {
+  id: number;
+  display_name: string;
+}
+
+/** Whether `userId` is one of the task's assignees. */
+export function isAssignedTo(task: Pick<Task, "assignee_id" | "assignee_ids">, userId: number | null | undefined) {
+  if (userId == null) return false;
+  return task.assignee_id === userId || (task.assignee_ids ?? []).includes(userId);
 }
 
 export interface TeamEvent {
