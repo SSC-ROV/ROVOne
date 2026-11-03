@@ -51,6 +51,15 @@ export default function PartsPage() {
   const bgReload = () => { load().catch(() => {}); };
   useEffect(() => {
     load().catch((err: Error) => setError(err.message));
+    // 從庫存頁「申請補貨」過來：預先帶入名稱、規格與用途
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("new") === "1") {
+      setName(params.get("name") ?? "");
+      setSpec(params.get("spec") ?? "");
+      setPurpose(params.get("purpose") ?? "");
+      setShowForm(true);
+      window.history.replaceState(null, "", window.location.pathname);
+    }
   }, []);
 
   if (error) return <PageError message={error} />;
