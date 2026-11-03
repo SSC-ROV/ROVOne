@@ -5,6 +5,7 @@ import {
   ArrowRightIcon,
   CalendarIcon,
   CalendarPlusIcon,
+  CheckIcon,
   FlagIcon,
   FolderIcon,
   LinkIcon,
@@ -58,6 +59,20 @@ export function timeAgo(iso: string) {
   if (day < 7) return tt(`${day} 天前`, `${day}d ago`);
   if (day < 60) return tt(`${Math.round(day / 7)} 週前`, `${Math.round(day / 7)}w ago`);
   return new Date(then).toLocaleDateString();
+}
+
+/** Square checklist box; the real <input type="checkbox"> sits before it as a visually hidden peer. */
+function ItemCheckbox({ checked, disabled }: { checked: boolean; disabled?: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className={`flex size-[18px] shrink-0 items-center justify-center rounded-[4px] border-[1.5px] transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-[color-mix(in_srgb,var(--c-blue)_45%,transparent)] ${
+        checked ? "border-[var(--c-green)] bg-[var(--c-green)] text-white" : "border-input bg-background"
+      } ${disabled ? "opacity-70" : "hover:border-[var(--c-green)]"}`}
+    >
+      {checked && <CheckIcon className="size-3.5" strokeWidth={3} />}
+    </span>
+  );
 }
 
 export function TaskSheet({
@@ -179,6 +194,11 @@ export function TaskSheet({
       toast(t((err as Error).message), "err");
       onReload().catch(() => {});
     }
+  }
+
+  function toggleItem(item: ChecklistItem) {
+    const done = item.done ? 0 : 1;
+    itemCall(item, { method: "PATCH", body: JSON.stringify({ done: !!done }) }, items.map((row) => (row.id === item.id ? { ...row, done } : row)));
   }
 
   function renameItem(item: ChecklistItem, text: string) {
@@ -386,42 +406,51 @@ export function TaskSheet({
             <ul className="flex flex-col">
               {items.map((item) => (
                 <li key={item.id} className="group flex min-h-10 items-center gap-2.5 border-b border-border px-3 transition-colors last:border-b-0 hover:bg-muted/50">
-                  <button
-                    type="button"
-                    disabled={!editable}
-                    onClick={() => itemCall(item, { method: "PATCH", body: JSON.stringify({ done: !item.done }) }, items.map((row) => (row.id === item.id ? { ...row, done: item.done ? 0 : 1 } : row)))}
-                    className="flex shrink-0 rounded-full transition-transform hover:scale-110 active:scale-95 disabled:pointer-events-none"
-                    aria-label={item.done ? tt("標記為未完成", "Mark incomplete") : tt("標記為完成", "Mark complete")}
-                  >
-                    <StatusIcon status={item.done ? "done" : "todo"} />
-                  </button>
                   {editingItem?.id === item.id ? (
-                    <input
-                      autoFocus
-                      value={editingItem.text}
-                      onChange={(event) => setEditingItem({ id: item.id, text: event.target.value })}
-                      onBlur={() => renameItem(item, editingItem.text)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") renameItem(item, editingItem.text);
-                        if (event.key === "Escape") setEditingItem(null);
-                      }}
-                      className="h-7 min-w-0 flex-1 rounded-[6px] border border-input bg-background px-2 text-sm outline-none focus-visible:border-ring"
-                    />
+                    <>
+                      <ItemCheckbox checked={!!item.done} disabled />
+                      <input
+                        autoFocus
+                        value={editingItem.text}
+                        onChange={(event) => setEditingItem({ id: item.id, text: event.target.value })}
+                        onBlur={() => renameItem(item, editingItem.text)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") renameItem(item, editingItem.text);
+                          if (event.key === "Escape") setEditingItem(null);
+                        }}
+                        className="h-7 min-w-0 flex-1 rounded-[6px] border border-input bg-background px-2 text-sm outline-none focus-visible:border-ring"
+                      />
+                    </>
                   ) : (
+                    <label className={`flex min-w-0 flex-1 items-center gap-2.5 py-1.5 ${editable ? "cursor-pointer" : ""}`}>
+                      <input
+                        type="checkbox"
+                        className="peer sr-only"
+                        checked={!!item.done}
+                        disabled={!editable}
+                        onChange={() => toggleItem(item)}
+                      />
+                      <ItemCheckbox checked={!!item.done} disabled={!editable} />
+                      <span className={`min-w-0 flex-1 text-sm break-words ${item.done ? "text-muted-foreground line-through" : ""}`}>
+                        {item.text}
+                      </span>
+                    </label>
+                  )}
+                  {editable && editingItem?.id !== item.id && (
                     <button
                       type="button"
-                      disabled={!editable}
                       onClick={() => setEditingItem({ id: item.id, text: item.text })}
-                      className={`min-w-0 flex-1 py-1 text-left text-sm ${item.done ? "text-muted-foreground line-through" : ""}`}
+                      className="flex size-7 shrink-0 items-center justify-center rounded-[6px] text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:bg-muted hover:text-foreground focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
+                      aria-label={tt("重新命名子任務", "Rename subtask")}
                     >
-                      {item.text}
+                      <PencilIcon className="size-3.5" />
                     </button>
                   )}
                   {editable && (
                     <button
                       type="button"
                       onClick={() => itemCall(item, { method: "DELETE" }, items.filter((row) => row.id !== item.id))}
-                      className="flex size-7 shrink-0 items-center justify-center rounded-[6px] text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:bg-muted hover:text-foreground focus-visible:opacity-100"
+                      className="flex size-7 shrink-0 items-center justify-center rounded-[6px] text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:bg-muted hover:text-foreground focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
                       aria-label={tt("刪除子任務", "Delete subtask")}
                     >
                       <XIcon className="size-3.5" />

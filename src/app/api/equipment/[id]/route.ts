@@ -19,6 +19,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   const body = (await req.json().catch(() => null)) as {
     action?: string;
     due_return?: string;
+    borrower_id?: number | null;
     name?: string;
     category?: string;
     note?: string;
@@ -33,6 +34,51 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
         UPDATE equipment SET status = 'borrowed', borrower_id = ${user.id},
                borrowed_at = ${new Date().toISOString()}, due_return = ${body.due_return || null}
         WHERE id = ${eqId}`;
+      return NextResponse.json({ ok: true });
+    }
+    if (body.action === "assign") {
+      // Pick (or change, or clear) the borrower, like a task's assignee.
+      const nextId = body.borrower_id == null ? null : Number(body.borrower_id);
+      if (nextId !== null && !Number.isInteger(nextId)) {
+        return NextResponse.json({ error: "借用人不正確" }, { status: 400 });
+      }
+      if (e.status === "maintenance") {
+        return NextResponse.json({ error: "設備維修中，無法借用" }, { status: 400 });
+      }
+      const staff = isStaff(user.role);
+      if (!staff) {
+        // Members can only sign an available item out to themselves, or clear their own loan.
+        const ownsLoan = e.status === "borrowed" && e.borrower_id === user.id;
+        const selfBorrow = e.status === "available" && nextId === user.id;
+        const selfReturn = ownsLoan && nextId === null;
+        if (!selfBorrow && !selfReturn && !(ownsLoan && nextId === user.id)) {
+          return NextResponse.json({ error: "只有隊長或老師可以指派借用人" }, { status: 403 });
+        }
+      }
+      if (nextId === null) {
+        await sql`
+          UPDATE equipment SET status = 'available', borrower_id = NULL,
+                 borrowed_at = NULL, due_return = NULL
+          WHERE id = ${eqId}`;
+        return NextResponse.json({ ok: true });
+      }
+      if (nextId === e.borrower_id) return NextResponse.json({ ok: true });
+      const [person] = await sql`SELECT id FROM users WHERE id = ${nextId}`;
+      if (!person) return NextResponse.json({ error: "找不到這位成員" }, { status: 400 });
+      if (e.status === "borrowed") {
+        // Hand the loan over to someone else; keep the due date.
+        await sql`
+          UPDATE equipment SET borrower_id = ${nextId}, borrowed_at = ${new Date().toISOString()}
+          WHERE id = ${eqId}`;
+      } else {
+        await sql`
+          UPDATE equipment SET status = 'borrowed', borrower_id = ${nextId},
+                 borrowed_at = ${new Date().toISOString()}, due_return = ${body.due_return || null}
+          WHERE id = ${eqId}`;
+      }
+      if (nextId !== user.id) {
+        await logAudit(user.id, user.username, "equipment.assign", `equipment:${eqId}`).catch(() => {});
+      }
       return NextResponse.json({ ok: true });
     }
     if (body.action === "return") {
@@ -72,6 +118,13 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   }
   if (body?.note !== undefined) {
     await sql`UPDATE equipment SET note = ${String(body.note)} WHERE id = ${eqId}`;
+  }
+  if (body?.due_return !== undefined && e.status === "borrowed") {
+    const due = body.due_return ? String(body.due_return) : null;
+    if (due && !/^\d{4}-\d{2}-\d{2}$/.test(due)) {
+      return NextResponse.json({ error: "日期格式不正確" }, { status: 400 });
+    }
+    await sql`UPDATE equipment SET due_return = ${due} WHERE id = ${eqId}`;
   }
   return NextResponse.json({ ok: true });
 }
