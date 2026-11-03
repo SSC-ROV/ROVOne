@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/pg";
 import { getSessionUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
-import { isInventoryStatus, purchaseInfoError } from "@/lib/inventory";
+import { cleanTags, isInventoryStatus, purchaseInfoError } from "@/lib/inventory";
 import {
   cleanLocations,
   cleanPhoto,
@@ -38,8 +38,8 @@ export async function POST(req: NextRequest) {
 
   await ensureInventorySchema();
   const [row] = await sql`
-    INSERT INTO inventory_items (name, spec, category, note, buy_link, unit_price, photo, created_by)
-    VALUES (${name}, ${spec}, ${String(body?.category ?? "").trim()},
+    INSERT INTO inventory_items (name, spec, tags, note, buy_link, unit_price, photo, created_by)
+    VALUES (${name}, ${spec}, ${cleanTags(body?.tags)},
             ${String(body?.note ?? "").trim()}, ${buyLink}, ${unitPrice}, ${photo ?? null}, ${user.id})
     RETURNING id`;
   const id = Number(row.id);

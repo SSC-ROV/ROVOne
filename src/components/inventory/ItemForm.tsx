@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { XIcon } from "lucide-react";
+import { CheckIcon, XIcon } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { tt } from "@/lib/i18n-core";
 import { BTN, BTN_GHOST, INPUT_CLS, SELECT_CLS } from "@/lib/ui";
 import {
   CABINETS,
   GRID_COLS,
-  INVENTORY_CATEGORIES,
+  INVENTORY_TAGS,
   INVENTORY_STATUSES,
   compareLocations,
   describeLocation,
@@ -17,13 +17,15 @@ import {
   purchaseInfoError,
   slotKindLabel,
   slotOptions,
+  cleanTags,
   type InventoryStatus,
+  type InventoryTag,
 } from "@/lib/inventory";
 
 export type ItemFormValue = {
   name: string;
   spec: string;
-  category: string;
+  tags: InventoryTag[];
   note: string;
   /** Where to buy more (required). */
   buy_link: string;
@@ -35,53 +37,26 @@ export type ItemFormValue = {
   photo?: string | null;
 };
 
-const CUSTOM = "__custom";
-
-/**
- * Category picker. A native <select> so phones show their own picker
- * (a <datalist> has no visible dropdown on most mobile browsers), with a
- * "Custom…" option that reveals a text field for anything not in the list.
- */
-function CategoryField({ value, onChange }: { value: string; onChange: (next: string) => void }) {
-  const { lang } = useI18n();
-  const preset = INVENTORY_CATEGORIES.find((c) => c.zh === value || c.en === value);
-  const [custom, setCustom] = useState(value !== "" && !preset);
-  const selected = custom ? CUSTOM : preset ? preset.en : "";
-
+/** 分類標籤：點選切換，可同時選多個 */
+export function TagPicker({ value, onChange }: { value: InventoryTag[]; onChange: (next: InventoryTag[]) => void }) {
   return (
-    <div className="grid gap-2">
-      <select
-        id="inv-category"
-        className={`${SELECT_CLS} w-full`}
-        value={selected}
-        onChange={(e) => {
-          const next = e.target.value;
-          if (next === CUSTOM) {
-            setCustom(true);
-            if (preset) onChange("");
-            return;
-          }
-          setCustom(false);
-          const picked = INVENTORY_CATEGORIES.find((c) => c.en === next);
-          onChange(picked ? (lang === "zh" ? picked.zh : picked.en) : "");
-        }}
-      >
-        <option value="">{tt("未分類", "No category")}</option>
-        {INVENTORY_CATEGORIES.map((c) => (
-          <option key={c.en} value={c.en}>{lang === "zh" ? c.zh : c.en}</option>
-        ))}
-        <option value={CUSTOM}>{tt("自訂…", "Custom…")}</option>
-      </select>
-      {custom && (
-        <input
-          autoFocus={value === ""}
-          className={INPUT_CLS}
-          placeholder={tt("輸入自訂分類", "Type a custom category")}
-          aria-label={tt("自訂分類", "Custom category")}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-        />
-      )}
+    <div className="flex flex-wrap gap-2" role="group" aria-label={tt("分類", "Categories")}>
+      {INVENTORY_TAGS.map((tag) => {
+        const on = value.includes(tag.key);
+        return (
+          <button
+            key={tag.key}
+            type="button"
+            aria-pressed={on}
+            className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-sm transition-colors ${on ? "text-white" : "border-border hover:bg-muted"}`}
+            style={on ? { background: tag.color, borderColor: tag.color } : undefined}
+            onClick={() => onChange(on ? value.filter((k) => k !== tag.key) : cleanTags([...value, tag.key]))}
+          >
+            {on ? <CheckIcon className="size-3.5" /> : <span className="size-2 rounded-full" style={{ background: tag.color }} />}
+            {tt(tag.zh, tag.en)}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -89,7 +64,7 @@ function CategoryField({ value, onChange }: { value: string; onChange: (next: st
 export const EMPTY_ITEM: ItemFormValue = {
   name: "",
   spec: "",
-  category: "",
+  tags: [],
   note: "",
   buy_link: "",
   unit_price: "",
@@ -342,14 +317,14 @@ export default function ItemForm({
             />
           </div>
         </label>
-        <div className="grid gap-1 text-sm">
-          <label htmlFor="inv-category" className="text-xs font-medium text-muted-foreground">{tt("分類", "Category")}</label>
-          <CategoryField value={v.category} onChange={(next) => set("category", next)} />
-        </div>
         <label className="grid gap-1 text-sm">
           <span className="text-xs font-medium text-muted-foreground">{tt("備註", "Note")}</span>
           <input id="inv-note" className={INPUT_CLS} placeholder={tt("選填", "Optional")} value={v.note} onChange={(e) => set("note", e.target.value)} />
         </label>
+        <div className="grid gap-1.5 text-sm sm:col-span-2">
+          <span className="text-xs font-medium text-muted-foreground">{tt("分類（可多選）", "Categories (pick any)")}</span>
+          <TagPicker value={v.tags} onChange={(next) => set("tags", next)} />
+        </div>
       </div>
 
       <div className="grid gap-1">

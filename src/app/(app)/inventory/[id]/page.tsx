@@ -23,7 +23,7 @@ import { PageError, PageLoading } from "@/components/PageState";
 import RoomMap, { CabinetFrontView } from "@/components/inventory/RoomMap";
 import ItemForm, { type ItemFormValue } from "@/components/inventory/ItemForm";
 import LocationEditor from "@/components/inventory/LocationEditor";
-import { LocationChip, MultiLocationFlag, StatusPill, reportToast, timeAgo, type ReportResponse } from "@/components/inventory/shared";
+import { LocationChip, MultiLocationFlag, StatusPill, TagList, reportToast, timeAgo, type ReportResponse } from "@/components/inventory/shared";
 
 export default function InventoryItemPage() {
   const { id } = useParams<{ id: string }>();
@@ -144,8 +144,9 @@ export default function InventoryItemPage() {
             <StatusPill status={item.status} />
           </div>
           <p className="text-sm text-muted-foreground">
-            {[item.spec, item.category].filter(Boolean).join(" · ") || tt("沒有規格資料", "No size or spec yet")}
+            {item.spec || tt("沒有規格資料", "No size or spec yet")}
           </p>
+          <TagList tags={item.tags} />
           {(item.buy_link || item.unit_price > 0) && (
             <p className="flex flex-wrap items-center gap-x-3 text-sm text-muted-foreground">
               {item.unit_price > 0 && <span>{tt("預估單價", "Est. unit price")}: ${item.unit_price}</span>}
@@ -171,7 +172,7 @@ export default function InventoryItemPage() {
       {editing && (
         <section className="rounded-[16px] border border-border bg-card p-5">
           <ItemForm
-            initial={{ name: item.name, spec: item.spec, category: item.category, note: item.note, buy_link: item.buy_link, unit_price: item.unit_price ? String(item.unit_price) : "", locations: item.locations, status: item.status }}
+            initial={{ name: item.name, spec: item.spec, tags: item.tags, note: item.note, buy_link: item.buy_link, unit_price: item.unit_price ? String(item.unit_price) : "", locations: item.locations, status: item.status }}
             initialPhoto={item.photo}
             submitLabel={tt("儲存", "Save")}
             busy={busy}

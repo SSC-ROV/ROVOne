@@ -10,12 +10,15 @@ import { BTN_GHOST, SELECT_CLS } from "@/lib/ui";
 import {
   CABINETS,
   INVENTORY_STATUSES,
+  INVENTORY_TAGS,
   describeLocation,
+  tagLabel,
   matchesSearch,
   parseLocation,
   restockRequestHref,
   type InventoryItem,
   type InventoryStatus,
+  type InventoryTag,
 } from "@/lib/inventory";
 import { useDialogs } from "@/components/ui/Dialogs";
 import { PageEmpty, PageError, PageLoading } from "@/components/PageState";
@@ -25,7 +28,7 @@ import RoomMap, { type CabinetBadge } from "@/components/inventory/RoomMap";
 import InventoryTabs from "@/components/inventory/InventoryTabs";
 import LocationEditor from "@/components/inventory/LocationEditor";
 import LocationDiagram from "@/components/inventory/LocationDiagram";
-import { LocationChip, MultiLocationFlag, StatusPill, reportToast, timeAgo, type ReportResponse } from "@/components/inventory/shared";
+import { LocationChip, MultiLocationFlag, StatusPill, TagList, reportToast, timeAgo, type ReportResponse } from "@/components/inventory/shared";
 
 type Filter = "all" | InventoryStatus | "multi";
 
@@ -82,16 +85,12 @@ export default function InventoryPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const categories = useMemo(
-    () => [...new Set((items ?? []).map((i) => i.category).filter(Boolean))].sort(),
-    [items]
-  );
 
   const visible = useMemo(() => {
     if (!items) return [];
     return items.filter((i) => {
       if (filter === "multi" ? i.locations.length < 2 : filter !== "all" && i.status !== filter) return false;
-      if (category !== "all" && i.category !== category) return false;
+      if (category !== "all" && !i.tags.includes(category as InventoryTag)) return false;
       if (cabinet && !i.locations.some((l) => parseLocation(l)?.cabinet === cabinet)) return false;
       return matchesSearch(i, q);
     });
@@ -243,7 +242,7 @@ export default function InventoryPage() {
               className="absolute inset-x-0 top-full z-30 mt-1.5 max-h-80 overflow-y-auto rounded-[12px] border border-border bg-popover p-1 text-popover-foreground shadow-lg"
             >
               {suggestions.map((s, idx) => {
-                const sub = [s.spec, s.category].filter(Boolean).join(" · ");
+                const sub = [s.spec, ...s.tags.map(tagLabel)].filter(Boolean).join(" · ");
                 return (
                   <li
                     key={s.id}
@@ -299,8 +298,8 @@ export default function InventoryPage() {
           </select>
           <select aria-label={tt("分類", "Category")} className={`${SELECT_CLS} w-36`} value={category} onChange={(e) => setCategory(e.target.value)}>
             <option value="all">{t("全部分類")}</option>
-            {categories.map((c) => (
-              <option key={c} value={c}>{c}</option>
+            {INVENTORY_TAGS.map((tag) => (
+              <option key={tag.key} value={tag.key}>{tt(tag.zh, tag.en)}</option>
             ))}
           </select>
         </div>
@@ -364,15 +363,8 @@ export default function InventoryPage() {
                         <StatusPill status={i.status} />
                       </div>
                     </div>
-                    {(i.spec || i.category) && (
-                      <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-                        {i.spec && <span>{i.spec}</span>}
-                        {i.spec && i.category && <span aria-hidden>·</span>}
-                        {i.category && (
-                          <span className="rounded-full border border-border px-2 py-px">{i.category}</span>
-                        )}
-                      </div>
-                    )}
+                    {i.spec && <div className="text-xs text-muted-foreground">{i.spec}</div>}
+                    <TagList tags={i.tags} />
                   </div>
 
                   {/* Where */}

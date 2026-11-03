@@ -141,23 +141,42 @@ export const inventoryStatus = (k: string) =>
 export const isInventoryStatus = (v: unknown): v is InventoryStatus =>
   v === "in_stock" || v === "low" || v === "empty";
 
-export const INVENTORY_CATEGORIES: { zh: string; en: string }[] = [
-  { zh: "螺絲五金", en: "Fasteners" },
-  { zh: "電子零件", en: "Electronics" },
-  { zh: "接頭端子", en: "Connectors" },
-  { zh: "線材", en: "Cables & wire" },
-  { zh: "防水密封", en: "Seals & waterproofing" },
-  { zh: "機構零件", en: "Mechanical parts" },
-  { zh: "工具", en: "Tools" },
-  { zh: "耗材", en: "Consumables" },
-  { zh: "其他", en: "Other" },
-];
+/** 分類標籤（可多選）。key 存進資料庫，顯示時再翻譯。 */
+export const INVENTORY_TAGS = [
+  { key: "props", zh: "推進器", en: "Props", color: "#0086c0" },
+  { key: "rov", zh: "ROV", en: "ROV", color: "#579bfc" },
+  { key: "float", zh: "浮標", en: "Float", color: "#00c875" },
+  { key: "ground_station", zh: "岸上控制站", en: "Ground station", color: "#a25ddc" },
+  { key: "logistics", zh: "後勤", en: "Logistics", color: "#ff642e" },
+  { key: "electronics", zh: "電子", en: "Electronics", color: "#fdab3d" },
+  { key: "mechanical", zh: "機構", en: "Mechanical", color: "#9d99b9" },
+] as const;
+
+export type InventoryTag = (typeof INVENTORY_TAGS)[number]["key"];
+
+export const isInventoryTag = (v: unknown): v is InventoryTag => INVENTORY_TAGS.some((t) => t.key === v);
+
+export function inventoryTag(key: string) {
+  return INVENTORY_TAGS.find((t) => t.key === key) ?? null;
+}
+
+export function tagLabel(key: string): string {
+  const t = inventoryTag(key);
+  return t ? tt(t.zh, t.en) : key;
+}
+
+/** 只留下認得的標籤，依固定順序排列、去重複 */
+export function cleanTags(raw: unknown): InventoryTag[] {
+  const list = Array.isArray(raw) ? raw : [];
+  return INVENTORY_TAGS.map((t) => t.key).filter((k) => list.includes(k));
+}
 
 export interface InventoryItem {
   id: number;
   name: string;
   spec: string;
-  category: string;
+  /** Category tags (keys from INVENTORY_TAGS); an item can have several. */
+  tags: InventoryTag[];
   note: string;
   /** Where to buy it (used when it runs out). */
   buy_link: string;
@@ -191,7 +210,11 @@ export function matchesSearch(item: InventoryItem, query: string): boolean {
   const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
   if (words.length === 0) return true;
   const normLocs = item.locations.map((l) => l.toLowerCase());
-  const text = [item.name, item.spec, item.category, item.note].join(" ").toLowerCase();
+  const tagText = item.tags.flatMap((k) => {
+    const t = inventoryTag(k);
+    return t ? [t.zh, t.en] : [];
+  });
+  const text = [item.name, item.spec, ...tagText, item.note].join(" ").toLowerCase();
   const hay = [text, ...normLocs].join(" ");
   const squash = (v: string) => v.replace(/[×*]/g, "x").replace(/[\s-]+/g, "");
   const hayCompact = squash(hay);

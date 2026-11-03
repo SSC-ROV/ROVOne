@@ -4,7 +4,7 @@ import { getSessionUser } from "@/lib/auth";
 import { isStaff } from "@/lib/roles";
 import { logAudit } from "@/lib/audit";
 import { cleanLocations, cleanPhoto, getInventoryItem, replaceLocations } from "@/lib/inventory-db";
-import { purchaseInfoError } from "@/lib/inventory";
+import { cleanTags, purchaseInfoError } from "@/lib/inventory";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -60,7 +60,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       spec = ${spec},
       buy_link = ${buyLink},
       unit_price = ${unitPrice},
-      category = ${body.category !== undefined ? String(body.category).trim() : cur.category},
+      tags = ${body.tags !== undefined ? cleanTags(body.tags) : cur.tags},
       note = ${body.note !== undefined ? String(body.note).trim() : cur.note},
       photo = ${nextPhoto},
       updated_at = now()

@@ -1,6 +1,7 @@
 import { sql } from "./pg";
 import { createPartRequest } from "./parts-db";
 import {
+  cleanTags,
   compareLocations,
   isInventoryStatus,
   normalizeLocation,
@@ -53,6 +54,8 @@ export function ensureInventorySchema(): Promise<void> {
       await sql`ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS buy_link TEXT NOT NULL DEFAULT ''`;
       await sql`ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS unit_price DOUBLE PRECISION NOT NULL DEFAULT 0`;
       await sql`ALTER TABLE parts ADD COLUMN IF NOT EXISTS inventory_id INTEGER`;
+      // 分類改為可多選的標籤；舊的單一 category 欄位不再使用
+      await sql`ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS tags TEXT[] NOT NULL DEFAULT '{}'`;
     })().catch((err) => {
       schemaReady = null; // 下次請求再試
       throw err;
@@ -69,7 +72,7 @@ function toItem(r: Row): InventoryItem {
     id: Number(r.id),
     name: String(r.name),
     spec: String(r.spec ?? ""),
-    category: String(r.category ?? ""),
+    tags: cleanTags(r.tags),
     note: String(r.note ?? ""),
     buy_link: String(r.buy_link ?? ""),
     unit_price: Number(r.unit_price ?? 0) || 0,
@@ -87,7 +90,7 @@ function toItem(r: Row): InventoryItem {
 export async function listInventory(): Promise<InventoryItem[]> {
   await ensureInventorySchema();
   const rows = await sql`
-    SELECT i.id, i.name, i.spec, i.category, i.note, i.buy_link, i.unit_price, i.status, i.status_note, i.status_at,
+    SELECT i.id, i.name, i.spec, i.tags, i.note, i.buy_link, i.unit_price, i.status, i.status_note, i.status_at,
            i.created_at, i.updated_at, (i.photo IS NOT NULL) AS has_photo,
            u.display_name AS status_by_name,
            COALESCE(array_agg(l.location) FILTER (WHERE l.location IS NOT NULL), '{}') AS locations

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { tt } from "@/lib/i18n-core";
-import { describeLocation, inventoryStatus, type InventoryStatus } from "@/lib/inventory";
+import { describeLocation, inventoryStatus, inventoryTag, type InventoryStatus } from "@/lib/inventory";
 
 export function StatusPill({ status }: { status: InventoryStatus }) {
   const s = inventoryStatus(status);
@@ -57,4 +57,23 @@ export function reportToast(name: string, statusLabel: string, res: ReportRespon
     return tt(`已回報「${name}」沒有了（已經有一筆補貨申請在處理中）`, `Reported ${name} empty. A restock request is already in progress.`);
   }
   return tt(`已回報「${name}」${statusLabel}`, `Reported ${name} as ${statusLabel.toLowerCase()}`);
+}
+
+/** 分類標籤（小圓角標籤，顏色點區分） */
+export function TagList({ tags, className = "" }: { tags: string[]; className?: string }) {
+  if (tags.length === 0) return null;
+  return (
+    <span className={`inline-flex flex-wrap items-center gap-1 ${className}`}>
+      {tags.map((k) => {
+        const t = inventoryTag(k);
+        if (!t) return null;
+        return (
+          <span key={k} className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-px text-xs text-muted-foreground">
+            <i className="size-1.5 rounded-full" style={{ background: t.color }} />
+            {tt(t.zh, t.en)}
+          </span>
+        );
+      })}
+    </span>
+  );
 }
