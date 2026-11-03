@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { MapIcon, MapPinIcon, PencilIcon, QrCodeIcon, SearchIcon, Trash2Icon, XIcon } from "lucide-react";
+import { Fragment, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { ArchiveIcon, CircleDotIcon, MapIcon, MapPinIcon, PanelRightOpenIcon, PlusIcon, QrCodeIcon, SearchIcon, TagIcon, Trash2Icon, XIcon } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { tt } from "@/lib/i18n-core";
 import { api } from "@/lib/api-client";
-import { BTN_GHOST, SELECT_CLS } from "@/lib/ui";
 import {
   CABINETS,
   INVENTORY_STATUSES,
@@ -16,28 +16,31 @@ import {
   parseLocation,
   type InventoryItem,
   type InventoryStatus,
-  type InventoryTag,
 } from "@/lib/inventory";
 import { useDialogs } from "@/components/ui/Dialogs";
-import { PageEmpty, PageError, PageLoading } from "@/components/PageState";
+import { PageError, PageLoading } from "@/components/PageState";
+import { Button } from "@/components/ui/button";
+import { MultiFilter } from "@/components/tasks/shared";
+import { Label, StatusCell } from "@/components/board/ColorCell";
+import { RowActions, StatusDot, TableEmpty, TitleCell } from "@/components/board/BoardTable";
 import { BoardGroup } from "@/components/board/BoardGroup";
 import { BoardHeader } from "@/components/board/BoardHeader";
 import RoomMap, { type CabinetBadge } from "@/components/inventory/RoomMap";
 import InventoryTabs from "@/components/inventory/InventoryTabs";
 import LocationEditor from "@/components/inventory/LocationEditor";
-import { LocationChip, MultiLocationFlag, StatusPill, TagList, reportToast, timeAgo, type ReportResponse } from "@/components/inventory/shared";
+import { LocationChip, MultiLocationFlag, StatusPill, reportToast, timeAgo, type ReportResponse } from "@/components/inventory/shared";
 
-type Filter = "all" | InventoryStatus | "multi";
 
 export default function InventoryPage() {
   const { t } = useI18n();
   const { confirm, toast } = useDialogs();
+  const router = useRouter();
   const [items, setItems] = useState<InventoryItem[] | null>(null);
   const [error, setError] = useState("");
   const [q, setQ] = useState("");
-  const [filter, setFilter] = useState<Filter>("all");
+  const [fStatus, setFStatus] = useState<string[]>([]);
   const [cabinet, setCabinet] = useState<string | null>(null);
-  const [category, setCategory] = useState("all");
+  const [fCategory, setFCategory] = useState<string[]>([]);
   const [showMap, setShowMap] = useState(true);
   const [editingId, setEditingId] = useState<number | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -62,7 +65,7 @@ export default function InventoryPage() {
         const initialQ = params.get("q");
         if (initialQ) setQ(initialQ);
         const f = params.get("status");
-        if (f === "low" || f === "empty" || f === "in_stock" || f === "multi") setFilter(f);
+        if (f === "low" || f === "empty" || f === "in_stock" || f === "multi") setFStatus([f]);
         try {
           if (localStorage.getItem("rov_inv_map") === "0") setShowMap(false);
         } catch { /* ignore */ }
@@ -86,12 +89,12 @@ export default function InventoryPage() {
   const visible = useMemo(() => {
     if (!items) return [];
     return items.filter((i) => {
-      if (filter === "multi" ? i.locations.length < 2 : filter !== "all" && i.status !== filter) return false;
-      if (category !== "all" && !i.tags.includes(category as InventoryTag)) return false;
+      if (fStatus.length && !fStatus.some((f) => (f === "multi" ? i.locations.length > 1 : i.status === f))) return false;
+      if (fCategory.length && !i.tags.some((tag) => fCategory.includes(tag))) return false;
       if (cabinet && !i.locations.some((l) => parseLocation(l)?.cabinet === cabinet)) return false;
       return matchesSearch(i, q);
     });
-  }, [items, filter, category, cabinet, q]);
+  }, [items, fStatus, fCategory, cabinet, q]);
 
   // 搜尋框下拉建議：輸入 M3 → M3 螺絲、M3 螺帽…
   const suggestions = useMemo(() => {
@@ -134,7 +137,8 @@ export default function InventoryPage() {
     empty: items.filter((i) => i.status === "empty").length,
     multi: items.filter((i) => i.locations.length > 1).length,
   };
-  const searching = q.trim().length > 0 || filter !== "all" || category !== "all";
+  const searching = q.trim().length > 0 || fStatus.length > 0 || fCategory.length > 0;
+  const narrowing = searching || cabinet != null;
   const highlight = searching ? visible.slice(0, 40).flatMap((i) => i.locations) : [];
 
   function toggleMap() {
@@ -178,11 +182,15 @@ export default function InventoryPage() {
     }
   }
 
-  const filterChips: { key: Filter; label: string; color?: string }[] = [
-    { key: "all", label: tt("全部", "All") },
-    ...INVENTORY_STATUSES.map((s) => ({ key: s.key as Filter, label: s.label, color: s.color })),
-    { key: "multi", label: tt("分散多處", "In several places"), color: "#ff642e" },
+  const statusFilter = [
+    ...INVENTORY_STATUSES.map((st) => ({ value: st.key, label: st.label, color: st.color, hint: counts[st.key] })),
+    { value: "multi", label: tt("分散多處", "In several places"), color: "#ff642e", hint: counts.multi },
   ];
+  const statusOptions = INVENTORY_STATUSES.map((st) => ({ value: st.key, label: st.label, color: st.color }));
+  const cabinetFilter = CABINETS.map((c) => ({ value: c.id, label: tt(`${c.id} 號櫃`, `Cabinet ${c.id}`) }));
+  const categoryFilter = INVENTORY_TAGS.map((tag) => ({ value: tag.key, label: tt(tag.zh, tag.en), color: tag.color }));
+  // Empty and low first: those are the ones that need attention.
+  const groupOrder: InventoryStatus[] = ["empty", "low", "in_stock"];
 
   return (
     <div className="space-y-4">
@@ -191,12 +199,15 @@ export default function InventoryPage() {
         subtitle={tt("找東西放哪、回報快用完或沒有了", "Find where things are, report what's low or out")}
         action={
           <>
-            <Link href="/inventory/qr" className={`${BTN_GHOST} gap-1.5 border border-border`}>
-              <QrCodeIcon className="size-4" /> {tt("QR 標籤", "QR labels")}
-            </Link>
-            <button type="button" className={`${BTN_GHOST} gap-1.5 border border-border`} onClick={toggleMap} aria-pressed={showMap}>
-              <MapIcon className="size-4" /> {showMap ? tt("隱藏地圖", "Hide map") : tt("顯示地圖", "Show map")}
-            </button>
+            <Button variant="outline" render={<Link href="/inventory/qr" />} nativeButton={false}>
+              <QrCodeIcon /> {tt("QR 標籤", "QR labels")}
+            </Button>
+            <Button variant="outline" onClick={toggleMap} aria-pressed={showMap}>
+              <MapIcon /> {showMap ? tt("隱藏地圖", "Hide map") : tt("顯示地圖", "Show map")}
+            </Button>
+            <Button render={<Link href="/inventory/manage" />} nativeButton={false}>
+              <PlusIcon /> {tt("新物品", "New item")}
+            </Button>
           </>
         }
       />
@@ -288,36 +299,18 @@ export default function InventoryPage() {
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {filterChips.map((c) => {
-            const on = filter === c.key;
-            const n = counts[c.key];
-            return (
-              <button
-                key={c.key}
-                type="button"
-                aria-pressed={on}
-                onClick={() => setFilter(c.key)}
-                className={`inline-flex h-8 items-center gap-2 rounded-full border px-3 text-sm transition-colors ${on ? "border-foreground bg-foreground text-background" : "border-border bg-card hover:bg-muted"}`}
-              >
-                {c.color && <span className="size-2.5 rounded-full" style={{ background: c.color }} />}
-                {c.label}
-                <span className={`tabular-nums text-xs ${on ? "opacity-80" : "text-muted-foreground"}`}>{n}</span>
-              </button>
-            );
-          })}
-          <select aria-label={tt("櫃號", "Cabinet")} className={`${SELECT_CLS} ml-auto w-32`} value={cabinet ?? ""} onChange={(e) => setCabinet(e.target.value || null)}>
-            <option value="">{tt("全部櫃子", "All cabinets")}</option>
-            {CABINETS.map((c) => (
-              <option key={c.id} value={c.id}>{tt(`${c.id} 號櫃`, `Cabinet ${c.id}`)}</option>
-            ))}
-          </select>
-          <select aria-label={tt("分類", "Category")} className={`${SELECT_CLS} w-36`} value={category} onChange={(e) => setCategory(e.target.value)}>
-            <option value="all">{t("全部分類")}</option>
-            {INVENTORY_TAGS.map((tag) => (
-              <option key={tag.key} value={tag.key}>{tt(tag.zh, tag.en)}</option>
-            ))}
-          </select>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <MultiFilter label={tt("狀態", "Status")} icon={<CircleDotIcon className="size-3.5" />} value={fStatus} onChange={setFStatus} options={statusFilter} />
+          <MultiFilter label={tt("櫃號", "Cabinet")} icon={<ArchiveIcon className="size-3.5" />} value={cabinet ? [cabinet] : []} onChange={(v) => setCabinet(v.length ? v[v.length - 1] : null)} options={cabinetFilter} />
+          <MultiFilter label={tt("分類", "Category")} icon={<TagIcon className="size-3.5" />} value={fCategory} onChange={setFCategory} options={categoryFilter} />
+          {narrowing && (
+            <Button variant="ghost" size="sm" onClick={() => { setQ(""); setFStatus([]); setFCategory([]); setCabinet(null); }}>
+              <XIcon /> {tt("清除篩選", "Clear filters")}
+            </Button>
+          )}
+          <span className="ml-auto pr-1 text-xs text-muted-foreground tabular-nums">
+            {tt(`顯示 ${visible.length} / ${items.length} 項`, `${visible.length} of ${items.length} items`)}
+          </span>
         </div>
       </div>
 
@@ -340,134 +333,128 @@ export default function InventoryPage() {
         </section>
       )}
 
-      <BoardGroup title={searching ? tt("搜尋結果", "Results") : tt("庫存物品", "Items")} color="#579bfc" count={visible.length}>
-        {visible.length === 0 ? (
-          <div className="p-4">
-            <PageEmpty>
-              {items.length === 0 ? (
-                <>
-                  {tt("還沒有任何物品。", "No items yet.")}{" "}
-                  <Link href="/inventory/manage" className="text-primary hover:underline">
-                    {tt("新增第一個", "Add the first one")}
-                  </Link>
-                </>
-              ) : (
-                <>
-                  {tt("沒有符合的物品。", "Nothing matches.")}{" "}
-                  <Link href={`/inventory/manage${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ""}`} className="text-primary hover:underline">
-                    {tt("新增這個物品", "Add it as a new item")}
-                  </Link>
-                </>
-              )}
-            </PageEmpty>
-          </div>
-        ) : (
-          <ul className="divide-y divide-border">
-            {visible.map((i) => {
-              const editing = editingId === i.id;
-              return (
-                <li
-                  key={i.id}
-                  id={`inv-item-${i.id}`}
-                  className={`flex scroll-mt-24 flex-col gap-3 px-3 py-4 transition-colors duration-500 sm:px-4 lg:flex-row lg:items-start lg:gap-6 ${pickedId === i.id ? "bg-[#cce5ff]/50 dark:bg-[#0073ea]/15" : ""}`}
-                >
-                  {/* What */}
-                  <div className="min-w-0 space-y-1 lg:w-56 lg:shrink-0">
-                    <div className="flex items-start justify-between gap-2 lg:block">
-                      <Link href={`/inventory/${i.id}`} className="block text-[15px] leading-snug font-semibold break-words hover:underline">{i.name}</Link>
-                      <div className="shrink-0 lg:mt-1.5">
-                        <StatusPill status={i.status} />
-                      </div>
-                    </div>
-                    {i.spec && <div className="text-xs text-muted-foreground">{i.spec}</div>}
-                    <TagList tags={i.tags} />
-                  </div>
-
-                  {/* Where */}
-                  <div className="min-w-0 flex-1 space-y-2">
-                    {editing ? (
-                      <LocationEditor
-                        item={i}
-                        onCancel={() => setEditingId(null)}
-                        onSaved={async (locations) => {
-                          setItems((prev) => prev!.map((x) => (x.id === i.id ? { ...x, locations } : x)));
-                          setEditingId(null);
-                          load().catch(() => {});
-                        }}
-                      />
-                    ) : (
-                      <div className="flex flex-col gap-3">
-                        <div className="min-w-0 flex-1 space-y-2">
-                          {i.locations.length === 0 ? (
-                            <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                              <MapPinIcon className="size-4 shrink-0" /> {tt("還沒指定位置", "No location set yet")}
-                            </p>
-                          ) : (
-                            <ul className="space-y-1.5">
-                              {i.locations.map((l) => (
-                                <li key={l} className="flex items-center gap-2">
-                                  <MapPinIcon className="size-5 shrink-0 text-[#0073ea]" />
-                                  <LocationChip code={l} size="lg" />
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                            <MultiLocationFlag count={i.locations.length} />
-                            <span className="text-xs text-muted-foreground">
-                              {i.locations.length === 0 ? tt("知道它在哪？", "Know where it is?") : tt("不在這裡？", "Not here?")}
-                            </span>
-                            <button
-                              type="button"
-                              className="inline-flex h-7 items-center gap-1 rounded-[4px] border border-border px-2 text-xs font-medium hover:bg-muted"
-                              onClick={() => setEditingId(i.id)}
-                            >
-                              <PencilIcon className="size-3.5" />
-                              {i.locations.length === 0 ? tt("加上位置", "Add location") : tt("編輯位置", "Edit location")}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Stock */}
-                  <div className="flex flex-wrap items-center gap-2 text-xs lg:w-60 lg:shrink-0 lg:justify-end">
-                    {i.status === "in_stock" ? (
-                      <>
-                        <button type="button" className="rounded-[4px] border border-[#fdab3d]/60 px-2 py-1 font-medium text-[#b86e00] hover:bg-[#fdab3d]/15 dark:text-[#ffc56b]" onClick={() => report(i, "low")}>
-                          {tt("回報快用完", "Report low")}
-                        </button>
-                        <button type="button" className="rounded-[4px] border border-[#df2f4a]/60 px-2 py-1 font-medium text-[#c0233b] hover:bg-[#df2f4a]/10 dark:text-[#ff8597]" onClick={() => report(i, "empty")}>
-                          {tt("回報沒有了", "Report empty")}
-                        </button>
-                      </>
-                    ) : (
-                      <button type="button" className="rounded-[4px] bg-primary px-2 py-1 font-medium text-primary-foreground hover:bg-[#0060b9]" onClick={() => report(i, "in_stock")}>
-                        {tt("已補貨", "Restocked")}
-                      </button>
-                    )}
-                    {i.status_at && (
-                      <span className="w-full text-muted-foreground lg:text-right" title={new Date(i.status_at).toLocaleString()}>
-                        {tt("最後回報", "Last report")}: {i.status_by_name ?? "—"} · {timeAgo(i.status_at)}
-                      </span>
-                    )}
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-1 rounded-[4px] px-1.5 py-1 text-muted-foreground hover:bg-[#df2f4a]/10 hover:text-[#c0233b] dark:hover:text-[#ff8597]"
-                      onClick={() => remove(i)}
-                      aria-label={tt(`刪除「${i.name}」`, `Delete ${i.name}`)}
-                    >
-                      <Trash2Icon className="size-3.5" />
-                      {tt("刪除", "Delete")}
-                    </button>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </BoardGroup>
+      {visible.length === 0 && (
+        <div className="rounded-[8px] border border-dashed border-border bg-card">
+          <TableEmpty>
+            {items.length === 0 ? (
+              <>
+                {tt("還沒有任何物品。", "No items yet.")}{" "}
+                <Link href="/inventory/manage" className="text-primary hover:underline">{tt("新增第一個", "Add the first one")}</Link>
+              </>
+            ) : (
+              <>
+                {tt("沒有符合的物品。", "Nothing matches.")}{" "}
+                <Link href={`/inventory/manage${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ""}`} className="text-primary hover:underline">
+                  {tt("新增這個物品", "Add it as a new item")}
+                </Link>
+              </>
+            )}
+          </TableEmpty>
+        </div>
+      )}
+      {groupOrder.map((statusKey) => {
+        const st = INVENTORY_STATUSES.find((x) => x.key === statusKey)!;
+        const rows = visible.filter((i) => i.status === statusKey);
+        if (rows.length === 0) return null;
+        return (
+          <BoardGroup key={statusKey} title={st.label} color={st.color} icon={<StatusDot color={st.color} />} count={rows.length}>
+            <table className="board-table is-interactive table-fixed" style={{ minWidth: 1080 }}>
+              <colgroup>
+                <col />
+                <col style={{ width: 130 }} />
+                <col style={{ width: 230 }} />
+                <col style={{ width: 170 }} />
+                <col style={{ width: 190 }} />
+                <col style={{ width: 40 }} />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th><span className="pl-8">{tt("物品", "Item")}</span></th>
+                  <th className="color-cell">{tt("狀態", "Status")}</th>
+                  <th>{tt("位置", "Location")}</th>
+                  <th>{tt("分類", "Category")}</th>
+                  <th>{tt("最後回報", "Last report")}</th>
+                  <th aria-label={tt("動作", "Actions")} />
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((i, index) => {
+                  const editing = editingId === i.id;
+                  return (
+                    <Fragment key={i.id}>
+                      <tr id={`inv-item-${i.id}`} className="group/row scroll-mt-24" data-selected={pickedId === i.id || editing ? "true" : undefined}>
+                        <td><TitleCell index={index} title={i.name} sub={i.spec} href={`/inventory/${i.id}`} /></td>
+                        <td className="color-cell">
+                          <StatusCell value={i.status} options={statusOptions} onChange={(value) => report(i, value as InventoryStatus)} />
+                        </td>
+                        <td>
+                          <button
+                            type="button"
+                            className="flex w-full min-w-0 items-center gap-1.5 overflow-hidden rounded-[4px] text-left"
+                            onClick={() => setEditingId(editing ? null : i.id)}
+                            title={i.locations.length ? tt("編輯位置", "Edit location") : tt("加上位置", "Add location")}
+                          >
+                            {i.locations.length === 0 ? (
+                              <span className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground">
+                                <MapPinIcon className="size-3.5" /> {tt("加上位置", "Add location")}
+                              </span>
+                            ) : (
+                              <>
+                                <LocationChip code={i.locations[0]} />
+                                {i.locations.length > 1 && <MultiLocationFlag count={i.locations.length} />}
+                              </>
+                            )}
+                          </button>
+                        </td>
+                        <td>
+                          <span className="flex min-w-0 gap-1 overflow-hidden">
+                            {i.tags.map((k) => {
+                              const tag = INVENTORY_TAGS.find((x) => x.key === k);
+                              return tag ? <Label key={k} color={tag.color}>{tt(tag.zh, tag.en)}</Label> : null;
+                            })}
+                            {i.tags.length === 0 && <span className="text-muted-foreground">—</span>}
+                          </span>
+                        </td>
+                        <td className="truncate text-xs text-muted-foreground" title={i.status_at ? new Date(i.status_at).toLocaleString() : undefined}>
+                          {i.status_at ? `${i.status_by_name ?? "—"} · ${timeAgo(i.status_at)}` : "—"}
+                        </td>
+                        <td>
+                          <RowActions
+                            label={i.name}
+                            actions={[
+                              { label: tt("開啟詳情", "Open details"), icon: <PanelRightOpenIcon />, onSelect: () => router.push(`/inventory/${i.id}`) },
+                              { label: i.locations.length ? tt("編輯位置", "Edit location") : tt("加上位置", "Add location"), icon: <MapPinIcon />, onSelect: () => setEditingId(i.id) },
+                              { label: tt("回報快用完", "Report low"), icon: <CircleDotIcon />, onSelect: () => report(i, "low"), hidden: i.status === "low", separator: true },
+                              { label: tt("回報沒有了", "Report empty"), icon: <CircleDotIcon />, onSelect: () => report(i, "empty"), hidden: i.status === "empty" },
+                              { label: tt("已補貨", "Restocked"), icon: <CircleDotIcon />, onSelect: () => report(i, "in_stock"), hidden: i.status === "in_stock" },
+                              { label: tt("刪除", "Delete"), icon: <Trash2Icon />, onSelect: () => remove(i), destructive: true, separator: true },
+                            ]}
+                          />
+                        </td>
+                      </tr>
+                      {editing && (
+                        <tr>
+                          <td colSpan={6} className="!h-auto !whitespace-normal !p-4">
+                            <LocationEditor
+                              item={i}
+                              onCancel={() => setEditingId(null)}
+                              onSaved={async (locations) => {
+                                setItems((prev) => prev!.map((x) => (x.id === i.id ? { ...x, locations } : x)));
+                                setEditingId(null);
+                                load().catch(() => {});
+                              }}
+                            />
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </BoardGroup>
+        );
+      })}
     </div>
   );
 }
