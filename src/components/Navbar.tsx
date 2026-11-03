@@ -81,7 +81,7 @@ export default function Navbar({
         <p className="px-4 pb-2 text-xs font-semibold text-muted-foreground">{t("頁面")}</p>
         <nav aria-label={t("頁面")} className="flex flex-1 flex-col gap-0.5 px-2 pb-2">
           {links.map((item) => {
-            const active = pathname === item.href;
+            const active = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href + "/"));
             return (
               <Link
                 key={item.href}
@@ -189,7 +189,7 @@ export default function Navbar({
             href={item.href}
             onClick={() => setOpen(false)}
             className={`flex h-10 items-center gap-2 rounded-[4px] px-2 text-sm ${
-              pathname === item.href ? "bg-[#cce5ff] text-[#0073ea]" : ""
+              pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href + "/")) ? "bg-[#cce5ff] text-[#0073ea]" : ""
             }`}
           >
             <item.icon className="size-4" />

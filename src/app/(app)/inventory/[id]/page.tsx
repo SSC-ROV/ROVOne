@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowLeftIcon, QrCodeIcon } from "lucide-react";
+import { ArrowLeftIcon, PencilIcon, QrCodeIcon } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { tt } from "@/lib/i18n-core";
 import { api } from "@/lib/api-client";
@@ -22,6 +22,7 @@ import { useDialogs } from "@/components/ui/Dialogs";
 import { PageError, PageLoading } from "@/components/PageState";
 import RoomMap, { CabinetFrontView } from "@/components/inventory/RoomMap";
 import ItemForm, { type ItemFormValue } from "@/components/inventory/ItemForm";
+import LocationEditor from "@/components/inventory/LocationEditor";
 import { LocationChip, MultiLocationFlag, StatusPill, timeAgo } from "@/components/inventory/shared";
 
 export default function InventoryItemPage() {
@@ -33,6 +34,7 @@ export default function InventoryItemPage() {
   const [me, setMe] = useState<Me | null>(null);
   const [error, setError] = useState("");
   const [editing, setEditing] = useState(false);
+  const [editingLoc, setEditingLoc] = useState(false);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
 
@@ -182,11 +184,36 @@ export default function InventoryItemPage() {
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="font-semibold">{tt("放在哪裡", "Where to find it")}</h2>
             <MultiLocationFlag count={item.locations.length} />
+            {!editingLoc && (
+              <span className="ml-auto flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">
+                  {item.locations.length === 0 ? tt("知道它在哪？", "Know where it is?") : tt("不在這裡？", "Not here?")}
+                </span>
+                <button
+                  type="button"
+                  className="inline-flex h-7 items-center gap-1 rounded-[4px] border border-border px-2 text-xs font-medium hover:bg-muted"
+                  onClick={() => setEditingLoc(true)}
+                >
+                  <PencilIcon className="size-3.5" />
+                  {item.locations.length === 0 ? tt("加上位置", "Add location") : tt("編輯位置", "Edit location")}
+                </button>
+              </span>
+            )}
           </div>
+          {editingLoc && (
+            <LocationEditor
+              item={item}
+              onCancel={() => setEditingLoc(false)}
+              onSaved={async () => {
+                setEditingLoc(false);
+                await load();
+              }}
+            />
+          )}
           {item.locations.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               {tt("還沒指定位置。", "No location set yet.")}{" "}
-              <button type="button" className="text-primary hover:underline" onClick={() => setEditing(true)}>{tt("加上位置", "Add one")}</button>
+              <button type="button" className="text-primary hover:underline" onClick={() => setEditingLoc(true)}>{tt("加上位置", "Add one")}</button>
             </p>
           ) : (
             <ul className="space-y-1">
