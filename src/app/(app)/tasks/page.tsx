@@ -64,7 +64,7 @@ const LEGACY_PREFS_KEY = "rov-tasks-prefs";
 
 type View = "table" | "board";
 type GroupBy = "cycle" | "status" | "assignee" | "priority" | "subteam" | "due" | "none";
-type SortBy = "manual" | "due" | "priority" | "title" | "status";
+type SortBy = "manual" | "due" | "start" | "priority" | "title" | "status";
 type SortDir = "asc" | "desc";
 type Prefs = { view: View; groupBy: GroupBy; sort: SortBy; sortDir: SortDir; cycleId: string };
 type Filters = {
@@ -283,6 +283,13 @@ export default function TasksPage() {
             // Tasks without a due date always sink to the bottom.
             if (!a.due_date || !b.due_date) return (a.due_date ? 0 : 1) - (b.due_date ? 0 : 1) || byManual(a, b);
             return dir * a.due_date.localeCompare(b.due_date) || byManual(a, b);
+          });
+          break;
+        case "start":
+          sorted.sort((a, b) => {
+            // Tasks without a start date always sink to the bottom.
+            if (!a.start_date || !b.start_date) return (a.start_date ? 0 : 1) - (b.start_date ? 0 : 1) || byManual(a, b);
+            return dir * a.start_date.localeCompare(b.start_date) || byManual(a, b);
           });
           break;
         case "priority":
@@ -592,10 +599,15 @@ export default function TasksPage() {
   const sortOptions: { value: SortBy; label: string }[] = [
     { value: "manual", label: tt("排序：手動", "Sort: Manual") },
     { value: "due", label: tt("排序：截止日", "Sort: Due date") },
+    { value: "start", label: tt("排序：開始日", "Sort: Start date") },
     { value: "priority", label: tt("排序：優先級", "Sort: Priority") },
     { value: "status", label: tt("排序：狀態", "Sort: Status") },
     { value: "title", label: tt("排序：名稱", "Sort: Name") },
   ];
+  // Clicking a date column header sorts by it; clicking again flips the direction.
+  const toggleSort = (key: SortBy) =>
+    updatePrefs(prefs.sort === key ? { sortDir: prefs.sortDir === "asc" ? "desc" : "asc" } : { sort: key, sortDir: "asc" });
+  const sortState = (key: SortBy) => (prefs.sort === key ? prefs.sortDir : null);
   const sortDirOptions: { value: SortDir; label: string }[] = [
     { value: "asc", label: tt("遞增", "Ascending") },
     { value: "desc", label: tt("遞減", "Descending") },
@@ -823,8 +835,15 @@ export default function TasksPage() {
                         <th><ColumnHead label={t("負責人")} options={assigneeFilter} value={filters.assignees} onChange={setFilter("assignees")} /></th>
                         <th className="color-cell"><ColumnHead label={t("狀態")} options={statusFilter} value={filters.statuses} onChange={setFilter("statuses")} /></th>
                         <th className="color-cell"><ColumnHead label={t("優先級")} options={priorityFilter} value={filters.priorities} onChange={setFilter("priorities")} /></th>
-                        <th>{tt("開始日", "Start")}</th>
-                        <th><ColumnHead label={t("截止日")} options={dueFilter} value={filters.due} onChange={setFilter("due")} /></th>
+                        <th>
+                          <SortHead label={tt("開始日", "Start")} dir={sortState("start")} onClick={() => toggleSort("start")} />
+                        </th>
+                        <th>
+                          <span className="flex items-center justify-between gap-1">
+                            <SortHead label={t("截止日")} dir={sortState("due")} onClick={() => toggleSort("due")} />
+                            <MultiFilter variant="icon" label={t("截止日")} options={dueFilter} value={filters.due} onChange={setFilter("due")} />
+                          </span>
+                        </th>
                         <th>{tt("子任務", "Subtasks")}</th>
                         {showSubteam && <th><ColumnHead label={t("組別")} options={subteamFilter} value={filters.subteams} onChange={setFilter("subteams")} /></th>}
                         <th><ColumnHead label={tt("專案", "Project")} options={projectFilter} value={filters.cycles} onChange={setFilter("cycles")} /></th>
@@ -1295,5 +1314,22 @@ function ColumnHead({ label, options, value, onChange }: { label: string; option
       <span className="truncate">{label}</span>
       <MultiFilter variant="icon" label={label} options={options} value={value} onChange={onChange} />
     </span>
+  );
+}
+
+function SortHead({ label, dir, onClick }: { label: string; dir: SortDir | null; onClick: () => void }) {
+  const next = dir === "asc" ? tt("改為遞減", "Sort descending") : tt("改為遞增", "Sort ascending");
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={next}
+      aria-label={`${label}: ${next}`}
+      className="flex min-w-0 items-center gap-1 hover:text-foreground"
+    >
+      <span className="truncate">{label}</span>
+      {dir === "asc" && <ArrowUpIcon className="size-3 shrink-0" />}
+      {dir === "desc" && <ArrowDownIcon className="size-3 shrink-0" />}
+    </button>
   );
 }
