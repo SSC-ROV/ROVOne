@@ -86,18 +86,25 @@ type Group = {
 };
 
 const EMPTY_FILTERS: Filters = { query: "", assignees: [], statuses: [], priorities: [], subteams: [], cycles: [], due: [] };
-const DEFAULT_PREFS: Prefs = { view: "table", groupBy: "subteam", sort: "manual", sortDir: "asc", cycleId: "" };
+const DEFAULT_PREFS: Prefs = { view: "table", groupBy: "subteam", sort: "due", sortDir: "asc", cycleId: "" };
 
 function readPrefs(): Prefs {
   if (typeof window === "undefined") return DEFAULT_PREFS;
   try {
     const raw = window.localStorage.getItem(PREFS_KEY);
-    if (raw) return { ...DEFAULT_PREFS, ...(JSON.parse(raw) as Partial<Prefs>) };
+    if (raw) {
+      const saved = JSON.parse(raw) as Partial<Prefs>;
+      // Prefs saved before sort direction existed carry the old "manual" default;
+      // drop that so the soonest-due-first default applies.
+      if (!saved.sortDir) delete saved.sort;
+      return { ...DEFAULT_PREFS, ...saved };
+    }
     // Carry over older prefs, but let the new subteam grouping default take effect.
     const legacy = window.localStorage.getItem(LEGACY_PREFS_KEY);
     if (!legacy) return DEFAULT_PREFS;
-    const { groupBy: _ignored, ...rest } = JSON.parse(legacy) as Partial<Prefs>;
+    const { groupBy: _ignored, sort: _oldSort, ...rest } = JSON.parse(legacy) as Partial<Prefs>;
     void _ignored;
+    void _oldSort;
     return { ...DEFAULT_PREFS, ...rest };
   } catch {
     return DEFAULT_PREFS;
