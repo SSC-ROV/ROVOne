@@ -317,3 +317,95 @@ export function Kbd({ children }: { children: ReactNode }) {
     </kbd>
   );
 }
+
+/** Plain date picker cell (used for start dates): quick picks, custom date, clear. */
+export function DateCell({
+  value,
+  today,
+  disabled,
+  onChange,
+  rowLabel,
+  label = tt("開始日", "Start date"),
+}: {
+  value: string | null | undefined;
+  today: string;
+  disabled?: boolean;
+  onChange?: (value: string | null) => void;
+  rowLabel?: string;
+  label?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const face = (
+    <span className={`inline-flex items-center gap-1.5 text-sm tabular-nums ${value ? "text-foreground" : "text-muted-foreground"}`}>
+      <CalendarIcon className="size-3.5 shrink-0 opacity-70" aria-hidden />
+      <span>{value ? fmtMD(value) : rowLabel ? tt("未設定", "No date") : "—"}</span>
+    </span>
+  );
+  const rowClass = "grid min-h-9 w-full grid-cols-[5.5rem_1fr] items-center gap-x-2 px-2 text-left text-sm";
+  if (disabled || !onChange) {
+    return rowLabel ? (
+      <div className={rowClass}>
+        <span className="text-muted-foreground">{rowLabel}</span>
+        {face}
+      </div>
+    ) : (
+      face
+    );
+  }
+  const pick = (next: string | null) => {
+    onChange(next);
+    setOpen(false);
+  };
+  const quick = [
+    { label: tt("今天", "Today"), value: today },
+    { label: tt("明天", "Tomorrow"), value: addDaysStr(today, 1) },
+    { label: tt("下週", "Next week"), value: addDaysStr(today, 7) },
+  ];
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      {rowLabel ? (
+        <PopoverTrigger
+          type="button"
+          className={`${rowClass} cursor-pointer rounded-[6px] transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none data-popup-open:bg-muted`}
+        >
+          <span className="text-muted-foreground">{rowLabel}</span>
+          {face}
+        </PopoverTrigger>
+      ) : (
+        <PopoverTrigger type="button" className="inline-flex h-7 items-center rounded-[4px] px-1.5 hover:bg-muted" aria-label={label}>
+          {face}
+        </PopoverTrigger>
+      )}
+      <PopoverContent className="w-56 gap-1 p-1.5" align="start">
+        {quick.map((option) => (
+          <button
+            key={option.label}
+            type="button"
+            className="flex h-8 items-center justify-between rounded-[4px] px-2 text-sm hover:bg-muted"
+            onClick={() => pick(option.value)}
+          >
+            <span>{option.label}</span>
+            <span className="text-xs tabular-nums text-muted-foreground">{fmtMD(option.value)}</span>
+          </button>
+        ))}
+        <div className="my-1 h-px bg-border" />
+        <input
+          type="date"
+          value={value ?? ""}
+          onChange={(event) => pick(event.target.value || null)}
+          className="h-8 rounded-[4px] border border-input bg-background px-2 text-sm outline-none focus-visible:border-ring"
+          aria-label={tt("自訂日期", "Custom date")}
+        />
+        {value && (
+          <button
+            type="button"
+            className="flex h-8 items-center gap-1.5 rounded-[4px] px-2 text-sm text-muted-foreground hover:bg-muted"
+            onClick={() => pick(null)}
+          >
+            <XIcon className="size-3.5" /> {tt("清除", "Clear")}
+          </button>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}

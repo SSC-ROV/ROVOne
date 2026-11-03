@@ -47,7 +47,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Choice, DueCell, Kbd, MultiFilter, Pill, PRIORITY_RANK, Progress, dueState, type DueState, type FilterOption } from "@/components/tasks/shared";
+import { Choice, DateCell, DueCell, Kbd, MultiFilter, Pill, PRIORITY_RANK, Progress, dueState, type DueState, type FilterOption } from "@/components/tasks/shared";
 import { TaskSheet } from "@/components/tasks/TaskSheet";
 import { NewTaskSheet, type NewTaskInput } from "@/components/tasks/NewTaskSheet";
 import type { ChecklistItem, Cycle, Me, Member, Task } from "@/lib/types";
@@ -371,7 +371,7 @@ export default function TasksPage() {
   async function patch(task: Task, body: Record<string, unknown>) {
     // Optimistic update for simple fields so the UI feels instant.
     const optimistic: Partial<Task> = {};
-    for (const key of ["status", "priority", "subteam", "due_date", "title", "description", "cycle_id"] as const) {
+    for (const key of ["status", "priority", "subteam", "due_date", "title", "description", "cycle_id", "start_date"] as const) {
       if (key in body) (optimistic as Record<string, unknown>)[key] = body[key];
     }
     if ("assignee_id" in body) {
@@ -733,13 +733,14 @@ export default function TasksPage() {
                 {group.tasks.length === 0 ? (
                   <p className="px-4 py-5 text-sm text-muted-foreground">{tt("尚未新增任務，用下方輸入快速加入", "No tasks yet — add one below")}</p>
                 ) : (
-                  <table className="board-table is-interactive">
+                  <table className="board-table is-interactive table-fixed" style={{ minWidth: showSubteam ? 1300 : 1180 }}>
                     {/* Fixed column widths keep every group's columns aligned */}
                     <colgroup>
                       <col />
                       <col style={{ width: 140 }} />
                       <col style={{ width: 120 }} />
                       <col style={{ width: 96 }} />
+                      <col style={{ width: 110 }} />
                       <col style={{ width: 130 }} />
                       <col style={{ width: 110 }} />
                       {showSubteam && <col style={{ width: 120 }} />}
@@ -766,6 +767,7 @@ export default function TasksPage() {
                         <th><ColumnHead label={t("負責人")} options={assigneeFilter} value={filters.assignees} onChange={setFilter("assignees")} /></th>
                         <th className="color-cell"><ColumnHead label={t("狀態")} options={statusFilter} value={filters.statuses} onChange={setFilter("statuses")} /></th>
                         <th className="color-cell"><ColumnHead label={t("優先級")} options={priorityFilter} value={filters.priorities} onChange={setFilter("priorities")} /></th>
+                        <th>{tt("開始日", "Start")}</th>
                         <th><ColumnHead label={t("截止日")} options={dueFilter} value={filters.due} onChange={setFilter("due")} /></th>
                         <th>{tt("子任務", "Subtasks")}</th>
                         {showSubteam && <th><ColumnHead label={t("組別")} options={subteamFilter} value={filters.subteams} onChange={setFilter("subteams")} /></th>}
@@ -824,6 +826,9 @@ export default function TasksPage() {
                             </td>
                             <td className="color-cell">
                               <PriorityCell value={task.priority} disabled={!editable} options={priorityOptions} onChange={(value) => patch(task, { priority: value })} />
+                            </td>
+                            <td>
+                              <DateCell value={task.start_date} today={today} disabled={!editable} onChange={(value) => patch(task, { start_date: value })} />
                             </td>
                             <td>
                               <DueCell task={task} today={today} disabled={!editable} onChange={(value) => patch(task, { due_date: value })} />

@@ -26,7 +26,7 @@ import { Avatar, shortName } from "@/components/board/PersonCell";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SheetDescription, SheetTitle } from "@/components/ui/sheet";
-import { DueCell, Progress } from "./shared";
+import { DateCell, DueCell, Progress } from "./shared";
 import { AssigneeList, FieldRow, LabelList, OptionList, SidebarPicker } from "./Pickers";
 import type { ChecklistItem, Cycle, Task, TeamEvent } from "@/lib/types";
 
@@ -652,6 +652,7 @@ export function TaskSheet({
                     />
                   )}
                 </FieldRow>
+                <DateCell rowLabel={tt("開始日", "Start")} value={task.start_date} today={today} disabled={!editable} onChange={(value) => onPatch({ start_date: value })} />
                 <DueCell rowLabel={tt("截止日", "Due")} task={task} today={today} disabled={!editable} onChange={(value) => onPatch({ due_date: value })} />
                 <FieldRow
                   label={tt("組別", "Subteam")}
@@ -767,6 +768,7 @@ function ChangeIcon({ entry }: { entry: Entry }) {
     case "priority":
       return <FlagIcon />;
     case "due_date":
+    case "start_date":
       return <CalendarIcon />;
     case "project":
       return <FolderIcon />;
@@ -795,6 +797,8 @@ function ChangeText({ entry, cycles }: { entry: Entry; cycles: Cycle[] }) {
       return to ? <>{tt("指派給", "assigned this to")} <span className="font-semibold text-foreground">{shortName(String(entry.meta.to_name ?? ""))}</span></> : <>{tt("取消了指派", "removed the assignee")}</>;
     case "due_date":
       return to ? <>{tt("將截止日設為", "set the due date to")} <span className="font-semibold text-foreground">{fmtMD(String(to))}</span></> : <>{tt("清除了截止日", "cleared the due date")}</>;
+    case "start_date":
+      return to ? <>{tt("將開始日設為", "set the start date to")} <span className="font-semibold text-foreground">{fmtMD(String(to))}</span></> : <>{tt("清除了開始日", "cleared the start date")}</>;
     case "project":
       return <>{tt("移到專案", "moved this to project")} <span className="font-semibold text-foreground">{cycles.find((c) => c.id === Number(to))?.title ?? "—"}</span></>;
     case "title":

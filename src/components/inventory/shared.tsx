@@ -13,9 +13,10 @@ export function StatusPill({ status }: { status: InventoryStatus }) {
   );
 }
 
-export function LocationChip({ code, href }: { code: string; href?: string }) {
-  const cls =
-    "inline-flex items-center rounded-[4px] bg-[#cce5ff] px-1.5 py-0.5 font-mono text-[13px] font-semibold text-[#0060b9] dark:bg-[#0073ea]/25 dark:text-[#cce5ff]";
+export function LocationChip({ code, href, size = "sm" }: { code: string; href?: string; size?: "sm" | "lg" }) {
+  const cls = `inline-flex items-center rounded-[4px] bg-[#cce5ff] font-mono font-semibold text-[#0060b9] dark:bg-[#0073ea]/25 dark:text-[#cce5ff] ${
+    size === "lg" ? "px-2.5 py-1 text-lg leading-none" : "px-1.5 py-0.5 text-[13px]"
+  }`;
   return href ? (
     <Link href={href} className={`${cls} hover:underline`} title={describeLocation(code)}>{code}</Link>
   ) : (
