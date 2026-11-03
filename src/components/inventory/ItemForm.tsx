@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckIcon, XIcon } from "lucide-react";
+import { CheckIcon, PlusIcon, XIcon } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { tt } from "@/lib/i18n-core";
 import { BTN, BTN_GHOST, INPUT_CLS, SELECT_CLS } from "@/lib/ui";
@@ -12,7 +12,6 @@ import {
   INVENTORY_STATUSES,
   compareLocations,
   describeLocation,
-  normalizeLocation,
   isValidBuyLink,
   purchaseInfoError,
   slotKindLabel,
@@ -72,7 +71,7 @@ export const EMPTY_ITEM: ItemFormValue = {
   status: "in_stock",
 };
 
-/** 位置挑選器：選櫃號，再選層/抽屜/收納盒；也能直接輸入代碼（例如 4-A-14） */
+/** 位置挑選器：選櫃號，再選層/抽屜/收納盒 */
 export function LocationPicker({
   value,
   onChange,
@@ -93,8 +92,6 @@ export function LocationPicker({
   const [slot, setSlot] = useState("1-1");
   const [col, setCol] = useState("A");
   const [row, setRow] = useState("1");
-  const [typed, setTyped] = useState("");
-  const [typedErr, setTypedErr] = useState(false);
   const def = CABINETS.find((c) => c.id === cab)!;
 
   function add(code: string | null) {
@@ -155,32 +152,12 @@ export function LocationPicker({
           </select>
         ) : null}
         {!hideAddButton && (
-          <button type="button" className={BTN_GHOST + " border border-border"} onClick={() => add(def.slots === 1 ? `${cab}-1` : current)}>
-            {tt("＋ 加入", "+ Add")} {def.slots === 1 ? `${cab}-1` : current}
+          <button type="button" className={`${BTN} gap-1`} onClick={() => add(def.slots === 1 ? `${cab}-1` : current)}>
+            <PlusIcon className="size-4" />
+            {tt("加入", "Add")} <span className="font-mono">{def.slots === 1 ? `${cab}-1` : current}</span>
           </button>
         )}
-        <span className="text-xs text-muted-foreground">{tt("或輸入", "or type")}</span>
-        <input
-          className={`${INPUT_CLS.replace("w-full", "w-28")} ${typedErr ? "border-danger" : ""}`}
-          placeholder="4-A-14"
-          aria-label={tt("輸入位置代碼", "Type a location code")}
-          value={typed}
-          onChange={(e) => {
-            setTyped(e.target.value);
-            setTypedErr(false);
-            const code = normalizeLocation(e.target.value);
-            if (code) onPendingChange?.(code);
-          }}
-          onKeyDown={(e) => {
-            if (e.key !== "Enter") return;
-            e.preventDefault();
-            const code = normalizeLocation(typed);
-            if (!code) { setTypedErr(true); return; }
-            add(code); setTyped("");
-          }}
-        />
       </div>
-      {typedErr && <p className="text-xs text-danger">{tt("沒有這個位置。格式：7-12、8-1、4-A-14", "That location doesn't exist. Use 7-12, 8-1 or 4-A-14")}</p>}
       {!hideAddButton && (
       <div className="flex flex-wrap gap-1.5">
           {value.length === 0 && <span className="text-xs text-muted-foreground">{tt("還沒選位置", "No location yet")}</span>}
@@ -302,7 +279,7 @@ export default function ItemForm({
         <label className="grid gap-1 text-sm">
           <span className="text-xs font-medium text-muted-foreground">{tt("預估單價 *", "Est. unit price *")}</span>
           <div className="relative">
-            <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+            <span className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-sm text-muted-foreground">$</span>
             <input
               id="inv-price"
               type="number"
@@ -310,7 +287,7 @@ export default function ItemForm({
               min="0"
               step="any"
               required
-              className={`${INPUT_CLS} pl-7${showErr(!(Number(v.unit_price) > 0))}`}
+              className={`${INPUT_CLS} pl-6 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${showErr(!(Number(v.unit_price) > 0))}`}
               placeholder="0"
               value={v.unit_price}
               onChange={(e) => set("unit_price", e.target.value)}
