@@ -22,7 +22,7 @@ import { BoardGroup } from "@/components/board/BoardGroup";
 import { BoardHeader } from "@/components/board/BoardHeader";
 import { StatusCell } from "@/components/board/ColorCell";
 import RoomMap, { type CabinetBadge } from "@/components/inventory/RoomMap";
-import ItemForm, { EMPTY_ITEM, type ItemFormValue } from "@/components/inventory/ItemForm";
+import ItemPanel from "@/components/inventory/ItemPanel";
 import { LocationChip, MultiLocationFlag, timeAgo } from "@/components/inventory/shared";
 
 type Filter = "all" | InventoryStatus | "multi";
@@ -38,7 +38,6 @@ export default function InventoryPage() {
   const [category, setCategory] = useState("all");
   const [showMap, setShowMap] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [busy, setBusy] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
   async function load() {
@@ -140,20 +139,6 @@ export default function InventoryPage() {
     }
   }
 
-  async function create(v: ItemFormValue) {
-    setBusy(true);
-    try {
-      await api("/api/inventory", { method: "POST", body: JSON.stringify(v) });
-      toast(tt(`已新增「${v.name}」`, `Added ${v.name}`));
-      setShowForm(false);
-      await load();
-    } catch (err) {
-      toast(t((err as Error).message), "err");
-    } finally {
-      setBusy(false);
-    }
-  }
-
   const statusOptions = INVENTORY_STATUSES.map((s) => ({ value: s.key, label: s.label, color: s.color }));
   const filterChips: { key: Filter; label: string; color?: string }[] = [
     { key: "all", label: tt("全部", "All") },
@@ -175,17 +160,14 @@ export default function InventoryPage() {
               <MapIcon className="size-4" /> {showMap ? tt("隱藏地圖", "Hide map") : tt("顯示地圖", "Show map")}
             </button>
             <button type="button" className={BTN} onClick={() => setShowForm((v) => !v)}>
-              {tt("＋ 新增物品", "+ Add item")}
+              {tt("＋ 新增 / 放置物品", "+ Add or place item")}
             </button>
           </>
         }
       />
 
       {showForm && (
-        <section className="rounded-[16px] border border-border bg-card p-5">
-          <h2 className="mb-3 font-bold">{tt("新增庫存物品", "Add an inventory item")}</h2>
-          <ItemForm initial={EMPTY_ITEM} showStatus submitLabel={tt("新增", "Add item")} busy={busy} onSubmit={create} onCancel={() => setShowForm(false)} />
-        </section>
+        <ItemPanel items={items} onChanged={load} onClose={() => setShowForm(false)} />
       )}
 
       {/* 搜尋 + 篩選 */}

@@ -100,7 +100,7 @@ export function LocationPicker({
         </button>
         <span className="text-xs text-muted-foreground">{tt("或輸入", "or type")}</span>
         <input
-          className={`${INPUT_CLS} w-28 ${typedErr ? "border-danger" : ""}`}
+          className={`${INPUT_CLS.replace("w-full", "w-28")} ${typedErr ? "border-danger" : ""}`}
           placeholder="4-A-14"
           aria-label={tt("輸入位置代碼", "Type a location code")}
           value={typed}

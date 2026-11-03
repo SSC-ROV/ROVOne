@@ -70,7 +70,8 @@ export default function InventoryItemPage() {
   }
   if (!item || !me) return <PageLoading label={t("載入中…")} />;
 
-  const cabinets = [...new Set(item.locations.map((l) => parseLocation(l)?.cabinet).filter(Boolean) as string[])];
+  // 正面圖：7 號抽屜在平面圖上就看得到，不另外畫
+  const cabinets = [...new Set(item.locations.map((l) => parseLocation(l)?.cabinet).filter(Boolean) as string[])].filter((c) => c !== "7");
 
   async function report(status: InventoryStatus) {
     if (!item) return;
@@ -208,7 +209,7 @@ export default function InventoryItemPage() {
               {cabinets.map((c) => (
                 <figure key={c} className="min-w-0 flex-1 basis-56 space-y-1.5">
                   <figcaption className="text-xs font-semibold text-muted-foreground">
-                    {c === "7" ? tt("7 號櫃抽屜（俯視）", "Cabinet 7 drawers (top view)") : tt(`${c} 號櫃正面`, `Cabinet ${c}, front view`)}
+                    {tt(`${c} 號櫃正面`, `Cabinet ${c}, front view`)}
                   </figcaption>
                   <CabinetFrontView cabinetId={c} highlight={item.locations} />
                 </figure>

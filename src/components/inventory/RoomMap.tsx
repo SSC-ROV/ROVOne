@@ -34,13 +34,14 @@ function sevenDrawer(n: number): Rect {
   return { x: SEVEN_RUN.x + w * (n - 4), y: SEVEN_RUN.y, w, h: SEVEN_RUN.h };
 }
 
-// 8 號與 9/10/11 號收納盒櫃在手繪圖中位於 7 號左下角附近；
-// 畫在 7 號前方以免遮住抽屜編號（寬度依 4:2:4 比例）
+// 8、9、10、11 號放在 7 號櫃「上面」：俯視圖畫成虛線半透明方塊疊在 7 號上，
+// 底下的抽屜編號仍看得到（9/10/11 寬度依 4:2:4 比例）
+const ON_TOP_OF_7 = ["8", "9", "10", "11"];
 const SMALL_RECTS: Record<string, Rect> = {
-  "8": { x: 104, y: 436, w: 70, h: 64 },
-  "9": { x: 186, y: 446, w: 96, h: 54 },
-  "10": { x: 286, y: 446, w: 52, h: 54 },
-  "11": { x: 342, y: 446, w: 96, h: 54 },
+  "8": { x: 6, y: 530, w: 78, h: 64 },
+  "9": { x: 98, y: 516, w: 104, h: 78 },
+  "10": { x: 206, y: 516, w: 54, h: 78 },
+  "11": { x: 264, y: 516, w: 104, h: 78 },
 };
 
 const DOORS = [
@@ -172,27 +173,35 @@ export default function RoomMap({
             </g>
           );
         })}
-        <text x={SEVEN_RUN.x + 30} y={SEVEN_RUN.y + 20} fontSize="18" fontWeight="700" fill={hlCabinets.has("7") ? HL : "var(--foreground)"} pointerEvents="none">
+        <text x={SMALL_RECTS["11"].x + SMALL_RECTS["11"].w + 14} y={SEVEN_RUN.y + 22} fontSize="18" fontWeight="700" fill={hlCabinets.has("7") ? HL : "var(--foreground)"} pointerEvents="none">
           7
         </text>
         {badge("7", { x: SEVEN_RUN.x, y: SEVEN_RUN.y, w: SEVEN_RUN.w, h: SEVEN_RUN.h })}
       </g>
 
-      {/* 8–11 號 */}
-      {Object.entries(SMALL_RECTS).map(([id, r]) => (
-        <g key={id} {...clickable(id)}>
-          <rect x={r.x} y={r.y} width={r.w} height={r.h} rx={3} fill={hlCabinets.has(id) || selectedCabinet === id ? "rgba(0,115,234,0.85)" : "var(--card)"} stroke={strokeFor(id)} strokeWidth={2} />
-          <text x={r.x + r.w / 2} y={r.y + (slotText(id) ? 18 : r.h / 2)} textAnchor="middle" dominantBaseline="central" fontSize={slotText(id) ? 18 : 22} fontWeight="700" fill={hlCabinets.has(id) || selectedCabinet === id ? "#fff" : "var(--foreground)"}>
-            {id}
-          </text>
-          {slotText(id) && (
-            <text x={r.x + r.w / 2} y={r.y + r.h - 14} textAnchor="middle" dominantBaseline="central" fontSize="13" fontWeight="600" fill="#fff">
-              {slotText(id)}
+      {/* 8–11 號（放在 7 號上面） */}
+      {Object.entries(SMALL_RECTS).map(([id, r]) => {
+        const on = hlCabinets.has(id) || selectedCabinet === id;
+        // 7 號抽屜被標示時，上面的櫃子變得更透明，讓底下的抽屜看得見
+        const opacity = on ? 0.9 : hlDrawers7.length ? 0.3 : 0.8;
+        return (
+          <g key={id} {...clickable(id)}>
+            <rect x={r.x} y={r.y} width={r.w} height={r.h} rx={4} fill={on ? HL : "var(--card)"} fillOpacity={opacity} stroke={on ? HL : "var(--foreground)"} strokeWidth={2.5} strokeDasharray="7 4" />
+            <text x={r.x + r.w / 2} y={r.y + (slotText(id) ? 22 : r.h / 2)} textAnchor="middle" dominantBaseline="central" fontSize={slotText(id) ? 18 : 22} fontWeight="700" fill={on ? "#fff" : "var(--foreground)"}>
+              {id}
             </text>
-          )}
-          {badge(id, r)}
-        </g>
-      ))}
+            {slotText(id) && (
+              <text x={r.x + r.w / 2} y={r.y + r.h - 16} textAnchor="middle" dominantBaseline="central" fontSize="13" fontWeight="600" fill="#fff">
+                {slotText(id)}
+              </text>
+            )}
+            {badge(id, r)}
+          </g>
+        );
+      })}
+      <text x={SMALL_RECTS["11"].x + SMALL_RECTS["11"].w + 10} y={SEVEN_RUN.y - 10} fontSize="13" fill="var(--muted-foreground)" pointerEvents="none">
+        {tt(`虛線：${ON_TOP_OF_7.join("、")} 號放在 7 號上面`, `Dashed: ${ON_TOP_OF_7.join(", ")} sit on top of 7`)}
+      </text>
 
       {/* 牆、門、窗 */}
       <rect x={0} y={0} width={ROOM.w} height={ROOM.h} fill="none" stroke="var(--foreground)" strokeWidth={8} />
@@ -211,7 +220,7 @@ export default function RoomMap({
   );
 }
 
-/** 單一櫃子的正面圖：層架由上往下、收納盒格（4/9/10/11）、7 號 L 形抽屜 */
+/** 單一櫃子的正面圖：層架由上往下、收納盒格（4/9/10/11）。7 號只看平面圖。 */
 export function CabinetFrontView({ cabinetId, highlight = [] }: { cabinetId: string; highlight?: string[] }) {
   const cab = cabinetById(cabinetId);
   if (!cab) return null;
@@ -242,26 +251,8 @@ export function CabinetFrontView({ cabinetId, highlight = [] }: { cabinetId: str
     );
   }
 
-  if (cab.id === "7") {
-    // L 形：左段 1–3 由上往下，底段 4–18 由左到右
-    const u = 26;
-    const w = u + 15 * u, h = 4 * u;
-    const rect = (n: number) => (n <= 3 ? { x: 0, y: (n - 1) * u } : { x: u + (n - 4) * u, y: 3 * u });
-    return (
-      <svg viewBox={`-2 -2 ${w + 4} ${h + 4}`} className="block h-auto w-full max-w-[460px]" role="img" aria-label={tt("7 號櫃抽屜配置（俯視）", "Cabinet 7 drawer layout (top view)")}>
-        {Array.from({ length: 18 }, (_, i) => {
-          const n = i + 1, r = rect(n);
-          const on = hits.some((p) => p?.slot === n);
-          return (
-            <g key={n}>
-              <rect x={r.x + 1} y={r.y + 1} width={u - 2} height={u - 2} rx={2} fill={on ? HL : "var(--muted)"} stroke={on ? HL : "var(--border)"} />
-              <text x={r.x + u / 2} y={r.y + u / 2} textAnchor="middle" dominantBaseline="central" fontSize="11" fontWeight={on ? 700 : 500} fill={on ? "#fff" : "var(--muted-foreground)"}>{n}</text>
-            </g>
-          );
-        })}
-      </svg>
-    );
-  }
+  // 7 號抽屜已在平面圖上標示，不另外畫
+  if (cab.id === "7") return null;
 
   // 層架 / 單格
   const rowH = 30, w = 160;
