@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Task } from "@/lib/types";
+import { Label } from "@/components/board/ColorCell";
 
 export const PRIORITY_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 };
 
@@ -42,8 +43,8 @@ export function dueText(due: string | null, today: string): string {
 }
 
 const DUE_TONE: Record<DueState, string> = {
-  overdue: "text-[#df2f4a] font-medium",
-  today: "text-[#fdab3d] font-medium",
+  overdue: "text-destructive font-medium",
+  today: "text-warning font-medium",
   soon: "text-foreground",
   later: "text-foreground",
   none: "text-muted-foreground",
@@ -136,7 +137,7 @@ export function Progress({ done, total, label = true, className = "" }: { done: 
   return (
     <span className={`inline-flex items-center gap-2 ${className}`} title={`${done}/${total}`}>
       <span className="h-1.5 w-full min-w-12 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
-        <span className="block h-full rounded-full transition-[width] duration-300" style={{ width: `${pct}%`, background: pct === 100 ? "#00c875" : "#0073ea" }} />
+        <span className="block h-full rounded-full transition-[width] duration-300" style={{ width: `${pct}%`, background: "var(--c-purple)" }} />
       </span>
       {label && <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{done}/{total}</span>}
     </span>
@@ -203,8 +204,8 @@ export function MultiFilter({
         type="button"
         className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-sm transition-colors ${
           active
-            ? "border-[#0073ea] bg-[#cce5ff] text-[#0060b9] dark:bg-[#0073ea]/20 dark:text-[#9ccbff]"
-            : "border-border bg-card text-foreground hover:bg-muted"
+            ? "border-transparent bg-primary-soft text-primary-soft-foreground"
+            : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
         }`}
       >
         {icon}
@@ -235,7 +236,7 @@ export function MultiFilter({
               >
                 <span
                   className={`flex size-4 shrink-0 items-center justify-center rounded-[3px] border ${
-                    checked ? "border-[#0073ea] bg-[#0073ea] text-white" : "border-input"
+                    checked ? "border-primary bg-primary text-primary-foreground" : "border-input"
                   }`}
                 >
                   {checked && <CheckIcon className="size-3" />}
@@ -261,14 +262,9 @@ export function MultiFilter({
   );
 }
 
-/** Small colored pill used on cards for priority. */
+/** Small coloured label used on cards (priority, subteam). */
 export function Pill({ color, children }: { color: string; children: ReactNode }) {
-  const dark = color.toLowerCase() === "#c4c4c4";
-  return (
-    <span className="inline-flex h-5 items-center rounded-[4px] px-1.5 text-xs font-medium" style={{ background: color, color: dark ? "#323338" : "#fff" }}>
-      {children}
-    </span>
-  );
+  return <Label color={color}>{children}</Label>;
 }
 
 export function Kbd({ children }: { children: ReactNode }) {

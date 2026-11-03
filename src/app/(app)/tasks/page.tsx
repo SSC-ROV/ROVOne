@@ -10,12 +10,10 @@ import {
   CircleDotIcon,
   ClipboardListIcon,
   EyeOffIcon,
-  FileTextIcon,
   FlagIcon,
   KanbanSquareIcon,
   LayersIcon,
   LinkIcon,
-  ListChecksIcon,
   MoreHorizontalIcon,
   PanelRightOpenIcon,
   PlusIcon,
@@ -38,8 +36,8 @@ import { PageError, PageLoading } from "@/components/PageState";
 import { PRIORITIES, STATUSES, groupColor, priorityLabel, subteamLabel } from "@/lib/ui";
 import { BoardGroup } from "@/components/board/BoardGroup";
 import { BoardHeader } from "@/components/board/BoardHeader";
-import { PriorityCell, StatusCell } from "@/components/board/ColorCell";
-import { PersonCell, personColor } from "@/components/board/PersonCell";
+import { ColorCell, PriorityCell, StatusCell, StatusIcon } from "@/components/board/ColorCell";
+import { Avatar, PersonCell, personColor } from "@/components/board/PersonCell";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -56,7 +54,13 @@ import { NewTaskSheet, type NewTaskInput } from "@/components/tasks/NewTaskSheet
 import type { ChecklistItem, Cycle, Me, Member, Task } from "@/lib/types";
 
 const OPEN_STATUSES = new Set(["active", "late", "approved", "pending_leader", "pending_teacher"]);
-const PREFS_KEY = "rov-tasks-prefs";
+const PREFS_KEY = "rov-tasks-prefs-v2";
+const STATUS_HINT: Record<string, string> = {
+  get todo() { return tt("尚未開始", "This item hasn't been started"); },
+  get doing() { return tt("正在進行", "This is actively being worked on"); },
+  get done() { return tt("已經完成", "This has been completed"); },
+};
+const LEGACY_PREFS_KEY = "rov-tasks-prefs";
 
 type View = "table" | "board";
 type GroupBy = "cycle" | "status" | "assignee" | "priority" | "subteam" | "due" | "none";
@@ -81,13 +85,19 @@ type Group = {
 };
 
 const EMPTY_FILTERS: Filters = { query: "", assignees: [], statuses: [], priorities: [], subteams: [], cycles: [], due: [] };
-const DEFAULT_PREFS: Prefs = { view: "table", groupBy: "cycle", sort: "manual", hideDone: false, cycleId: "" };
+const DEFAULT_PREFS: Prefs = { view: "table", groupBy: "subteam", sort: "manual", hideDone: false, cycleId: "" };
 
 function readPrefs(): Prefs {
   if (typeof window === "undefined") return DEFAULT_PREFS;
   try {
     const raw = window.localStorage.getItem(PREFS_KEY);
-    return raw ? { ...DEFAULT_PREFS, ...(JSON.parse(raw) as Partial<Prefs>) } : DEFAULT_PREFS;
+    if (raw) return { ...DEFAULT_PREFS, ...(JSON.parse(raw) as Partial<Prefs>) };
+    // Carry over older prefs, but let the new subteam grouping default take effect.
+    const legacy = window.localStorage.getItem(LEGACY_PREFS_KEY);
+    if (!legacy) return DEFAULT_PREFS;
+    const { groupBy: _ignored, ...rest } = JSON.parse(legacy) as Partial<Prefs>;
+    void _ignored;
+    return { ...DEFAULT_PREFS, ...rest };
   } catch {
     return DEFAULT_PREFS;
   }
@@ -317,22 +327,22 @@ export default function TasksPage() {
             { assignee_id: member.id }
           )
         );
-        out.push(make("none", tt("未指派", "Unassigned"), "#c4c4c4", filtered.filter((task) => task.assignee_id == null)));
+        out.push(make("none", tt("未指派", "Unassigned"), "var(--c-gray)", filtered.filter((task) => task.assignee_id == null)));
         return out;
       }
       case "due": {
         const buckets: { key: DueState; title: string; color: string; preset: Partial<NewTaskInput> }[] = [
-          { key: "overdue", title: tt("已逾期", "Overdue"), color: "#df2f4a", preset: {} },
-          { key: "today", title: tt("今天到期", "Due today"), color: "#fdab3d", preset: { due_date: today } },
-          { key: "soon", title: tt("七天內", "Next 7 days"), color: "#579bfc", preset: { due_date: addDaysStr(today, 7) } },
-          { key: "later", title: tt("之後", "Later"), color: "#a25ddc", preset: {} },
-          { key: "none", title: tt("無截止日", "No date"), color: "#c4c4c4", preset: {} },
-          { key: "done", title: tt("已完成", "Done"), color: "#00c875", preset: { status: "done" } },
+          { key: "overdue", title: tt("已逾期", "Overdue"), color: "var(--c-red)", preset: {} },
+          { key: "today", title: tt("今天到期", "Due today"), color: "var(--c-yellow)", preset: { due_date: today } },
+          { key: "soon", title: tt("七天內", "Next 7 days"), color: "var(--c-blue)", preset: { due_date: addDaysStr(today, 7) } },
+          { key: "later", title: tt("之後", "Later"), color: "var(--c-purple)", preset: {} },
+          { key: "none", title: tt("無截止日", "No date"), color: "var(--c-gray)", preset: {} },
+          { key: "done", title: tt("已完成", "Done"), color: "var(--c-green)", preset: { status: "done" } },
         ];
         return buckets.map((b) => make(b.key, b.title, b.color, filtered.filter((task) => dueState(task, today) === b.key), b.preset));
       }
       case "none":
-        return [make("all", tt("全部任務", "All tasks"), "#0073ea", filtered)];
+        return [make("all", tt("全部任務", "All tasks"), "var(--c-blue)", filtered)];
       default: {
         const ordered = [...cycles].sort(
           (a, b) => Number(OPEN_STATUSES.has(b.status)) - Number(OPEN_STATUSES.has(a.status)) || b.start_date.localeCompare(a.start_date) || a.title.localeCompare(b.title)
@@ -348,7 +358,7 @@ export default function TasksPage() {
           )
         );
         const loose = filtered.filter((task) => task.cycle_id == null || !cycles.some((cycle) => cycle.id === task.cycle_id));
-        if (loose.length) out.push(make("none", tt("未分專案", "No project"), "#c4c4c4", loose, {}, false));
+        if (loose.length) out.push(make("none", tt("未分專案", "No project"), "var(--c-gray)", loose, {}, false));
         return out;
       }
     }
@@ -479,12 +489,13 @@ export default function TasksPage() {
   const openTask = tasks.find((task) => task.id === openId) ?? null;
   const narrowing = !sameFilters(filters, EMPTY_FILTERS);
   const hiddenByToggle = prefs.hideDone && !filters.statuses.length;
-  const shownGroups = groups.filter((group) => group.tasks.length > 0 || (!narrowing && !hiddenByToggle && group.addable && (prefs.groupBy === "cycle" || prefs.groupBy === "status")));
+  const shownGroups = groups.filter((group) => group.tasks.length > 0 || (!narrowing && !hiddenByToggle && group.addable && (prefs.groupBy === "cycle" || prefs.groupBy === "status" || prefs.groupBy === "subteam")));
 
   const statusOptions = STATUSES.map((item) => ({ value: item.key, label: item.label, color: item.color }));
   const priorityOptions = PRIORITIES.map((item) => ({ value: item.key, label: item.label, color: item.color }));
   const people = [{ value: "none", label: "—" }, ...members.map((member) => ({ value: String(member.id), label: member.display_name }))];
   const subteamOptions = subteams.map((item) => ({ value: item.key, label: item.label }));
+  const subteamColorOptions = subteams.map((item, i) => ({ value: item.key, label: item.label, color: groupColor(i) }));
   const reorderable = prefs.sort === "manual" && prefs.groupBy === "cycle";
 
   // Summary numbers over every task (not just the filtered view).
@@ -498,24 +509,14 @@ export default function TasksPage() {
     mine: openTasks.filter((task) => task.assignee_id === me.id).length,
     donePct: tasks.length ? Math.round((doneCount / tasks.length) * 100) : 0,
   };
-  const tiles: { key: string; label: string; value: ReactNode; icon: ReactNode; color: string; preset: Filters }[] = [
-    { key: "mine", label: tt("我的待辦", "My open tasks"), value: stats.mine, icon: <UserIcon />, color: "#0073ea", preset: { ...EMPTY_FILTERS, assignees: ["me"], statuses: ["todo", "doing"] } },
-    { key: "open", label: tt("未完成", "Open"), value: stats.open, icon: <CircleDotIcon />, color: "#676879", preset: { ...EMPTY_FILTERS, statuses: ["todo", "doing"] } },
-    { key: "doing", label: tt("進行中", "In progress"), value: stats.doing, icon: <ClipboardListIcon />, color: "#fdab3d", preset: { ...EMPTY_FILTERS, statuses: ["doing"] } },
-    { key: "week", label: tt("七天內到期", "Due this week"), value: stats.week, icon: <CalendarClockIcon />, color: "#579bfc", preset: { ...EMPTY_FILTERS, due: ["today", "soon"] } },
-    { key: "overdue", label: tt("已逾期", "Overdue"), value: stats.overdue, icon: <AlertTriangleIcon />, color: "#df2f4a", preset: { ...EMPTY_FILTERS, due: ["overdue"] } },
-    {
-      key: "done",
-      label: tt("完成率", "Completed"),
-      value: (
-        <span className="flex items-baseline gap-1">
-          {stats.donePct}%<span className="text-xs font-normal text-muted-foreground">{doneCount}/{tasks.length}</span>
-        </span>
-      ),
-      icon: <CheckCircle2Icon />,
-      color: "#00c875",
-      preset: { ...EMPTY_FILTERS, statuses: ["done"] },
-    },
+  // Quick views: one click applies a preset filter; clicking again clears it.
+  const views: { key: string; label: string; value: number; icon: ReactNode; alert?: boolean; preset: Filters }[] = [
+    { key: "all", label: tt("全部", "All"), value: tasks.length, icon: <ClipboardListIcon />, preset: EMPTY_FILTERS },
+    { key: "mine", label: tt("我的待辦", "My open"), value: stats.mine, icon: <UserIcon />, preset: { ...EMPTY_FILTERS, assignees: ["me"], statuses: ["todo", "doing"] } },
+    { key: "doing", label: tt("進行中", "In progress"), value: stats.doing, icon: <CircleDotIcon />, preset: { ...EMPTY_FILTERS, statuses: ["doing"] } },
+    { key: "week", label: tt("七天內到期", "Due this week"), value: stats.week, icon: <CalendarClockIcon />, preset: { ...EMPTY_FILTERS, due: ["today", "soon"] } },
+    { key: "overdue", label: tt("已逾期", "Overdue"), value: stats.overdue, icon: <AlertTriangleIcon />, alert: stats.overdue > 0, preset: { ...EMPTY_FILTERS, due: ["overdue"] } },
+    { key: "done", label: tt("已完成", "Done"), value: doneCount, icon: <CheckCircle2Icon />, preset: { ...EMPTY_FILTERS, statuses: ["done"] } },
   ];
 
   const countBy = (fn: (task: Task) => boolean) => tasks.filter(fn).length;
@@ -546,7 +547,13 @@ export default function TasksPage() {
     <div className="flex w-full flex-col pb-24">
       <BoardHeader
         title={t("任務")}
-        subtitle={tt(`${stats.open} 項未完成 · 完成 ${stats.donePct}%`, `${stats.open} open · ${stats.donePct}% complete`)}
+        subtitle={
+          <span className="flex items-center gap-2.5">
+            <span>{tt(`${stats.open} 項未完成`, `${stats.open} open`)}</span>
+            <Progress done={doneCount} total={tasks.length} label={false} className="w-24" />
+            <span className="tabular-nums">{tt(`完成 ${stats.donePct}%`, `${stats.donePct}% done`)}</span>
+          </span>
+        }
         action={
           <>
             <Button variant="ghost" size="icon" onClick={refresh} disabled={refreshing} aria-label={tt("重新整理", "Refresh")} title={tt("重新整理", "Refresh")}>
@@ -554,38 +561,37 @@ export default function TasksPage() {
             </Button>
             <Button onClick={() => setCreating(newTaskDefaults())}>
               <PlusIcon /> {tt("新任務", "New task")}
-              <span className="ml-1 hidden rounded-[3px] bg-white/20 px-1 text-[11px] sm:inline">N</span>
+              <span className="ml-1 hidden rounded-[4px] bg-white/20 px-1 text-[11px] sm:inline">N</span>
             </Button>
           </>
         }
       />
 
-      {/* Summary tiles double as one-click quick filters */}
-      <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
-        {tiles.map((tile) => {
-          const active = sameFilters(filters, tile.preset);
+      {/* Quick views double as one-click filters */}
+      <div className="mb-4 flex gap-1 overflow-x-auto border-b border-border" role="tablist" aria-label={tt("快速檢視", "Quick views")}>
+        {views.map((view) => {
+          const active = sameFilters(filters, view.preset);
           return (
             <button
-              key={tile.key}
+              key={view.key}
               type="button"
-              aria-pressed={active}
-              onClick={() => setFilters(active ? EMPTY_FILTERS : tile.preset)}
-              className={`flex flex-col gap-1 rounded-[8px] border bg-card px-3 py-2.5 text-left transition-colors hover:border-[#d0d4e4] dark:hover:border-[#2a2e35] ${
-                active ? "border-[#0073ea] ring-1 ring-[#0073ea]" : "border-border"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setFilters(active && view.key !== "all" ? EMPTY_FILTERS : view.preset)}
+              className={`relative -mb-px inline-flex h-10 shrink-0 items-center gap-2 border-b-2 px-3 text-sm transition-colors [&_svg]:size-4 [&_svg]:text-muted-foreground ${
+                active ? "border-[var(--underline)] font-semibold text-foreground" : "border-transparent text-muted-foreground hover:border-border hover:text-foreground"
               }`}
             >
-              <span className="flex items-center gap-1.5 text-xs text-muted-foreground [&_svg]:size-3.5">
-                <span style={{ color: tile.color }} className="flex">{tile.icon}</span>
-                {tile.label}
-              </span>
-              <span className="text-2xl leading-tight font-medium tabular-nums">{tile.value}</span>
+              {view.icon}
+              {view.label}
+              <span className={`rounded-full px-1.5 text-xs leading-5 font-medium tabular-nums ${view.alert ? "bg-destructive/15 text-destructive" : "bg-muted text-muted-foreground"}`}>{view.value}</span>
             </button>
           );
         })}
       </div>
 
       {/* Toolbar: view switch, search, filters, display options */}
-      <div className="mb-3 flex flex-col gap-2 rounded-[8px] border border-border bg-card p-2">
+      <div className="mb-4 flex flex-col gap-2.5">
         <div className="flex flex-wrap items-center gap-2">
           <Tabs value={prefs.view} onValueChange={(value) => updatePrefs({ view: value as View })}>
             <TabsList>
@@ -593,7 +599,7 @@ export default function TasksPage() {
               <TabsTrigger value="board"><KanbanSquareIcon className="size-3.5" /> {t("看板")}</TabsTrigger>
             </TabsList>
           </Tabs>
-          <label className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-full border border-border bg-background px-3 text-muted-foreground focus-within:border-ring sm:max-w-sm">
+          <label className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-[8px] border border-border bg-card px-3 text-muted-foreground focus-within:border-ring sm:max-w-sm">
             <SearchIcon className="size-4 shrink-0" />
             <input
               ref={searchRef}
@@ -664,11 +670,11 @@ export default function TasksPage() {
             value={filters.due}
             onChange={(due) => setFilters((prev) => ({ ...prev, due }))}
             options={[
-              { value: "overdue", label: tt("已逾期", "Overdue"), color: "#df2f4a" },
-              { value: "today", label: tt("今天", "Today"), color: "#fdab3d" },
-              { value: "soon", label: tt("七天內", "Next 7 days"), color: "#579bfc" },
-              { value: "later", label: tt("之後", "Later"), color: "#a25ddc" },
-              { value: "none", label: tt("無截止日", "No date"), color: "#c4c4c4" },
+              { value: "overdue", label: tt("已逾期", "Overdue"), color: "var(--c-red)" },
+              { value: "today", label: tt("今天", "Today"), color: "var(--c-yellow)" },
+              { value: "soon", label: tt("七天內", "Next 7 days"), color: "var(--c-blue)" },
+              { value: "later", label: tt("之後", "Later"), color: "var(--c-purple)" },
+              { value: "none", label: tt("無截止日", "No date"), color: "var(--c-gray)" },
             ].map((option) => ({ ...option, hint: countBy((task) => dueState(task, today) === option.value) }))}
           />
           <MultiFilter
@@ -703,28 +709,31 @@ export default function TasksPage() {
             const allChecked = ids.length > 0 && ids.every((id) => selected.has(id));
             const someChecked = ids.some((id) => selected.has(id));
             const groupDone = group.tasks.filter((task) => task.status === "done").length;
+            const showSubteam = prefs.groupBy !== "subteam";
             return (
               <BoardGroup
                 key={`${prefs.groupBy}-${group.id}`}
                 title={group.title}
                 color={group.color}
+                icon={prefs.groupBy === "status" ? <StatusIcon status={group.id} /> : undefined}
+                description={prefs.groupBy === "status" ? STATUS_HINT[group.id] : undefined}
                 count={group.tasks.length}
                 meta={group.tasks.length > 0 ? <Progress done={groupDone} total={group.tasks.length} className="hidden w-36 sm:inline-flex" /> : null}
                 footer={group.addable ? <AddTaskRow onCreate={(title) => createTask({ ...group.preset, title })} /> : null}
               >
                 {group.tasks.length === 0 ? (
-                  <p className="px-4 py-6 text-sm text-muted-foreground">{tt("尚未新增任務，用下方輸入快速加入", "No tasks yet — add one below")}</p>
+                  <p className="px-4 py-5 text-sm text-muted-foreground">{tt("尚未新增任務，用下方輸入快速加入", "No tasks yet — add one below")}</p>
                 ) : (
                   <table className="board-table is-interactive">
                     {/* Fixed column widths keep every group's columns aligned */}
                     <colgroup>
                       <col />
-                      <col style={{ width: 150 }} />
                       <col style={{ width: 140 }} />
-                      <col style={{ width: 140 }} />
-                      <col style={{ width: 150 }} />
-                      <col style={{ width: 110 }} />
+                      <col style={{ width: 120 }} />
+                      <col style={{ width: 96 }} />
                       <col style={{ width: 130 }} />
+                      <col style={{ width: 110 }} />
+                      {showSubteam && <col style={{ width: 120 }} />}
                       <col style={{ width: 40 }} />
                     </colgroup>
                     <thead>
@@ -733,7 +742,7 @@ export default function TasksPage() {
                           <span className="flex items-center gap-2.5">
                             <input
                               type="checkbox"
-                              className="size-4 accent-[#0073ea]"
+                              className="ml-2 size-4 accent-[var(--c-blue)]"
                               checked={allChecked}
                               ref={(el) => {
                                 if (el) el.indeterminate = !allChecked && someChecked;
@@ -741,7 +750,7 @@ export default function TasksPage() {
                               onChange={() => toggleSelect(ids, !allChecked)}
                               aria-label={tt("全選", "Select all")}
                             />
-                            {t("任務")}
+                            {tt("標題", "Title")}
                           </span>
                         </th>
                         <th>{t("負責人")}</th>
@@ -749,7 +758,7 @@ export default function TasksPage() {
                         <th className="color-cell">{t("優先級")}</th>
                         <th>{t("截止日")}</th>
                         <th>{tt("子任務", "Subtasks")}</th>
-                        <th>{t("組別")}</th>
+                        {showSubteam && <th>{t("組別")}</th>}
                         <th aria-label={tt("動作", "Actions")} />
                       </tr>
                     </thead>
@@ -762,26 +771,31 @@ export default function TasksPage() {
                           <tr key={task.id} data-selected={checked ? "true" : undefined} className="group/row">
                             <td>
                               <span className="flex min-w-0 items-center gap-2.5">
-                                <input
-                                  type="checkbox"
-                                  className="size-4 shrink-0 accent-[#0073ea]"
-                                  checked={checked}
-                                  onChange={() => toggleSelect([task.id], !checked)}
-                                  aria-label={task.title}
-                                />
+                                {/* Row number; becomes a checkbox on hover or when selected */}
+                                <span className="relative flex w-6 shrink-0 justify-end">
+                                  <span className={`text-xs tabular-nums text-muted-foreground group-hover/row:invisible ${checked ? "invisible" : ""}`}>{index + 1}</span>
+                                  <input
+                                    type="checkbox"
+                                    className={`absolute top-1/2 right-0 size-4 -translate-y-1/2 accent-[var(--c-blue)] group-hover/row:visible focus-visible:visible ${checked ? "visible" : "invisible"}`}
+                                    checked={checked}
+                                    onChange={() => toggleSelect([task.id], !checked)}
+                                    aria-label={task.title}
+                                  />
+                                </span>
+                                <StatusIcon status={task.status} />
                                 <button
                                   type="button"
-                                  className={`min-w-0 truncate text-left hover:text-[#0073ea] ${task.status === "done" ? "text-muted-foreground line-through" : ""}`}
+                                  className={`min-w-0 truncate text-left hover:text-[var(--c-blue)] hover:underline hover:underline-offset-4 ${task.status === "done" ? "text-muted-foreground" : "text-foreground"}`}
                                   onClick={() => setOpenId(task.id)}
                                   title={task.title}
                                 >
                                   {task.title}
                                 </button>
-                                {task.description.trim() && <FileTextIcon className="size-3.5 shrink-0 text-muted-foreground" aria-label={tt("有描述", "Has description")} />}
+                                <span className="shrink-0 text-[13px] text-muted-foreground tabular-nums">#{task.id}</span>
                                 <button
                                   type="button"
                                   onClick={() => setOpenId(task.id)}
-                                  className="ml-auto flex h-6 shrink-0 items-center gap-1 rounded-[4px] border border-border px-1.5 text-xs text-muted-foreground opacity-0 group-hover/row:opacity-100 hover:bg-muted hover:text-foreground focus-visible:opacity-100"
+                                  className="ml-auto flex h-6 shrink-0 translate-x-1 items-center gap-1 rounded-[6px] border border-border bg-card px-1.5 text-xs text-muted-foreground opacity-0 transition-all duration-150 group-hover/row:translate-x-0 group-hover/row:opacity-100 hover:bg-muted hover:text-foreground focus-visible:opacity-100"
                                 >
                                   <PanelRightOpenIcon className="size-3.5" /> {tt("開啟", "Open")}
                                 </button>
@@ -807,16 +821,17 @@ export default function TasksPage() {
                             <td>
                               <Progress done={itemsDone} total={task.items.length} />
                             </td>
+                            {showSubteam && (
                             <td>
-                              <Choice
+                              <ColorCell
+                                kind="priority"
                                 value={task.subteam}
                                 disabled={!editable}
                                 onChange={(value) => patch(task, { subteam: value })}
-                                options={subteamOptions.length ? subteamOptions : [{ value: task.subteam, label: subteamLabel(task.subteam) }]}
-                                className="border-transparent bg-transparent shadow-none hover:bg-muted"
-                                ariaLabel={t("組別")}
+                                options={subteamColorOptions.length ? subteamColorOptions : [{ value: task.subteam, label: subteamLabel(task.subteam), color: "var(--c-gray)" }]}
                               />
                             </td>
+                            )}
                             <td>
                               <RowMenu
                                 task={task}
@@ -851,14 +866,15 @@ export default function TasksPage() {
           )}
         </div>
       ) : (
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid items-start gap-3 md:grid-cols-3">
           {STATUSES.map((column) => {
             const columnTasks = sortTasks(filtered.filter((task) => task.status === column.key));
-            const dark = column.color === "#c4c4c4";
             return (
               <section
                 key={column.key}
-                className={`flex min-h-64 flex-col gap-2 rounded-[8px] p-1.5 transition-colors ${dragOver === column.key ? "bg-[#cce5ff] dark:bg-[#0073ea]/20" : "bg-transparent"}`}
+                className={`flex max-h-[calc(100dvh-14rem)] min-h-64 flex-col rounded-[8px] border bg-background transition-colors duration-200 ${
+                  dragOver === column.key ? "border-[var(--c-blue)] bg-primary-soft" : "border-border"
+                }`}
                 onDragOver={(event) => {
                   event.preventDefault();
                   if (dragOver !== column.key) setDragOver(column.key);
@@ -873,57 +889,65 @@ export default function TasksPage() {
                   if (task && canEdit(task) && task.status !== column.key) patch(task, { status: column.key });
                 }}
               >
-                <div className="flex h-9 items-center justify-between rounded-[4px] px-3 text-sm" style={{ background: column.color, color: dark ? "#323338" : "#fff" }}>
-                  <h2 className="font-medium">{column.label}</h2>
-                  <span className="rounded-full bg-black/10 px-2 text-xs tabular-nums">{columnTasks.length}</span>
-                </div>
-                {columnTasks.map((task) => {
-                  const editable = canEdit(task);
-                  const itemsDone = task.items.filter((item) => item.done).length;
-                  const priority = PRIORITIES.find((item) => item.key === task.priority);
-                  return (
-                    <article
-                      key={task.id}
-                      draggable={editable}
-                      onDragStart={(event) => {
-                        event.dataTransfer.setData("text/plain", String(task.id));
-                        event.dataTransfer.effectAllowed = "move";
-                      }}
-                      onDragEnd={() => setDragOver(null)}
-                      onClick={() => setOpenId(task.id)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") setOpenId(task.id);
-                      }}
-                      tabIndex={0}
-                      className={`flex cursor-pointer flex-col gap-2 rounded-[8px] border border-border bg-card p-3 outline-none transition-colors hover:border-[#d0d4e4] focus-visible:ring-2 focus-visible:ring-ring dark:hover:border-[#2a2e35] ${editable ? "active:cursor-grabbing" : ""}`}
-                    >
-                      <div className="flex items-start gap-2">
-                        <p className={`min-w-0 flex-1 text-sm font-medium break-words ${task.status === "done" ? "text-muted-foreground line-through" : ""}`}>{task.title}</p>
-                        {task.description.trim() && <FileTextIcon className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />}
-                      </div>
-                      <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-                        {priority && <Pill color={priority.color}>{priorityLabel(task.priority)}</Pill>}
-                        <span className="rounded-[4px] bg-muted px-1.5 py-0.5">{subteamLabel(task.subteam)}</span>
+                <header className="px-3 pt-3 pb-2">
+                  <div className="flex items-center gap-2">
+                    <StatusIcon status={column.key} />
+                    <h2 className="text-[15px] font-semibold">{column.label}</h2>
+                    <span className="rounded-full bg-muted px-2 text-xs leading-5 font-medium tabular-nums text-muted-foreground">{columnTasks.length}</span>
+                  </div>
+                  <p className="mt-0.5 text-[13px] text-muted-foreground">{STATUS_HINT[column.key]}</p>
+                </header>
+                <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2">
+                  {columnTasks.map((task) => {
+                    const editable = canEdit(task);
+                    const itemsDone = task.items.filter((item) => item.done).length;
+                    const priority = PRIORITIES.find((item) => item.key === task.priority);
+                    const project = cycles.find((cycle) => cycle.id === task.cycle_id)?.title;
+                    return (
+                      <article
+                        key={task.id}
+                        draggable={editable}
+                        onDragStart={(event) => {
+                          event.dataTransfer.setData("text/plain", String(task.id));
+                          event.dataTransfer.effectAllowed = "move";
+                        }}
+                        onDragEnd={() => setDragOver(null)}
+                        onClick={() => setOpenId(task.id)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") setOpenId(task.id);
+                        }}
+                        tabIndex={0}
+                        className={`group/card flex cursor-pointer flex-col gap-2 rounded-[6px] border border-border bg-card p-3 outline-none transition-[border-color,transform,box-shadow] duration-150 hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--c-gray)_60%,transparent)] hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring ${editable ? "active:cursor-grabbing" : ""}`}
+                      >
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <StatusIcon status={task.status} size={14} />
+                          <span className="min-w-0 truncate">{project ?? tt("無專案", "No project")}</span>
+                          <span className="shrink-0 tabular-nums">#{task.id}</span>
+                          <span className="ml-auto">{task.assignee_name && <Avatar name={task.assignee_name} size={20} />}</span>
+                        </div>
+                        <p className="text-sm leading-snug font-medium break-words group-hover/card:text-[var(--c-blue)]">{task.title}</p>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {priority && <Pill color={priority.color}>{priorityLabel(task.priority)}</Pill>}
+                          <Pill color={subteamColorOptions.find((item) => item.value === task.subteam)?.color ?? "var(--c-gray)"}>{subteamOptions.find((item) => item.value === task.subteam)?.label ?? subteamLabel(task.subteam)}</Pill>
+                          {task.due_date && task.status !== "done" && <DueCell task={task} today={today} className="[&_*]:text-xs" />}
+                        </div>
                         {task.items.length > 0 && (
-                          <span className="inline-flex items-center gap-1 tabular-nums">
-                            <ListChecksIcon className="size-3.5" /> {itemsDone}/{task.items.length}
+                          <span className="flex items-center gap-2 text-xs text-muted-foreground tabular-nums">
+                            {itemsDone} / {task.items.length}
+                            <Progress done={itemsDone} total={task.items.length} label={false} className="flex-1" />
+                            {Math.round((itemsDone / task.items.length) * 100)}%
                           </span>
                         )}
-                      </div>
-                      {task.items.length > 0 && <Progress done={itemsDone} total={task.items.length} label={false} />}
-                      <div className="flex items-center justify-between gap-2 text-xs">
-                        <DueCell task={task} today={today} />
-                        <PersonCell name={task.assignee_name} />
-                      </div>
-                    </article>
-                  );
-                })}
-                {columnTasks.length === 0 && (
-                  <p className="rounded-[8px] border border-dashed border-border px-3 py-6 text-center text-xs text-muted-foreground">
-                    {tt("拖曳任務到這裡", "Drag tasks here")}
-                  </p>
-                )}
-                {defaultCycleId != null && <AddTaskRow compact onCreate={(title) => createTask({ title, status: column.key })} />}
+                      </article>
+                    );
+                  })}
+                  {columnTasks.length === 0 && (
+                    <p className="rounded-[6px] border border-dashed border-border px-3 py-6 text-center text-xs text-muted-foreground">
+                      {tt("拖曳任務到這裡", "Drag tasks here")}
+                    </p>
+                  )}
+                  {defaultCycleId != null && <AddTaskRow compact onCreate={(title) => createTask({ title, status: column.key })} />}
+                </div>
               </section>
             );
           })}
@@ -932,7 +956,7 @@ export default function TasksPage() {
 
       {/* Bulk actions bar */}
       {selected.size > 0 && (
-        <div className="fixed bottom-5 left-1/2 z-40 flex w-[calc(100%-2rem)] max-w-max -translate-x-1/2 flex-wrap items-center gap-1 rounded-[8px] border border-border bg-popover p-1.5 pl-3 text-sm shadow-lg">
+        <div className="fixed bottom-5 left-1/2 z-40 flex w-[calc(100%-2rem)] max-w-max -translate-x-1/2 flex-wrap items-center gap-1 rounded-[12px] border border-border bg-popover p-1.5 pl-3 text-sm shadow-xl">
           <span className="mr-1 font-medium tabular-nums">{tt(`已選 ${selected.size} 項`, `${selected.size} selected`)}</span>
           <BulkMenu label={tt("狀態", "Status")} icon={<CircleDotIcon />}>
             {STATUSES.map((item) => (
@@ -966,7 +990,7 @@ export default function TasksPage() {
             <DropdownMenuItem onClick={() => bulkPatch({ due_date: null })}>{tt("清除截止日", "Clear date")}</DropdownMenuItem>
           </BulkMenu>
           {staff && (
-            <Button variant="ghost" size="sm" className="text-[#df2f4a] hover:text-[#df2f4a]" onClick={() => confirmDelete(tasks.filter((task) => selected.has(task.id)))}>
+            <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => confirmDelete(tasks.filter((task) => selected.has(task.id)))}>
               <Trash2Icon /> {tt("刪除", "Delete")}
             </Button>
           )}
@@ -977,7 +1001,7 @@ export default function TasksPage() {
       )}
 
       <Sheet open={openTask != null} onOpenChange={(open) => { if (!open) setOpenId(null); }}>
-        <SheetContent className="w-full gap-0 sm:max-w-[640px]" style={{ width: "min(640px, 100%)", maxWidth: 640 }}>
+        <SheetContent className="w-full gap-0 sm:max-w-[1040px]" style={{ width: "min(1040px, 100%)", maxWidth: 1040 }}>
           {openTask && (
             <TaskSheet
               key={openTask.id}
@@ -985,6 +1009,7 @@ export default function TasksPage() {
               today={today}
               editable={canEdit(openTask)}
               staff={staff}
+              me={me}
               cycles={cycles}
               people={people}
               subteams={subteamOptions}
@@ -1029,8 +1054,8 @@ function AddTaskRow({ onCreate, compact }: { onCreate: (title: string) => Promis
     <form
       className={
         compact
-          ? "flex h-9 items-center gap-2 rounded-[8px] px-2 text-muted-foreground hover:bg-card focus-within:bg-card focus-within:ring-1 focus-within:ring-ring"
-          : "flex h-9 items-center gap-2 border-t border-border px-3 text-muted-foreground focus-within:bg-muted/40"
+          ? "group/add flex h-10 items-center gap-2 rounded-[8px] border border-dashed border-input px-2 text-muted-foreground transition-colors hover:border-primary/60 hover:bg-primary-soft focus-within:border-solid focus-within:border-primary focus-within:bg-card"
+          : "group/add flex h-11 items-center gap-2 border-t border-border px-3 text-muted-foreground transition-colors hover:bg-primary-soft focus-within:bg-primary-soft"
       }
       onSubmit={async (event) => {
         event.preventDefault();
@@ -1042,7 +1067,9 @@ function AddTaskRow({ onCreate, compact }: { onCreate: (title: string) => Promis
         if (ok) setDraft("");
       }}
     >
-      <PlusIcon className="size-4 shrink-0 text-[#0073ea]" aria-hidden />
+      <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary-soft-foreground group-hover/add:bg-primary group-hover/add:text-primary-foreground group-focus-within/add:bg-primary group-focus-within/add:text-primary-foreground" aria-hidden>
+        <PlusIcon className="size-4" />
+      </span>
       <input
         value={draft}
         disabled={busy}
@@ -1053,10 +1080,24 @@ function AddTaskRow({ onCreate, compact }: { onCreate: (title: string) => Promis
             event.currentTarget.blur();
           }
         }}
-        placeholder={tt("新增任務，按 Enter 加入", "Add task, press Enter")}
+        placeholder={tt("新增任務⋯", "Add a task…")}
         aria-label={tt("新增任務", "Add task")}
-        className="h-8 min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+        className="h-8 min-w-0 flex-1 bg-transparent text-sm font-medium text-foreground outline-none placeholder:text-primary-soft-foreground focus:placeholder:text-muted-foreground"
       />
+      {draft.trim() ? (
+        <button
+          type="submit"
+          disabled={busy}
+          className="flex h-7 shrink-0 items-center gap-1 rounded-[6px] bg-primary px-2.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+        >
+          {tt("新增", "Add")}
+          <kbd className="rounded-[3px] bg-white/20 px-1 font-sans text-[10px]">↵</kbd>
+        </button>
+      ) : (
+        <kbd className="hidden shrink-0 rounded-[4px] border border-border px-1.5 py-0.5 font-sans text-[10px] text-muted-foreground group-focus-within/add:inline-block">
+          Enter ↵
+        </kbd>
+      )}
     </form>
   );
 }

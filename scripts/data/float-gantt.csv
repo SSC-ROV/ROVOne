@@ -1,0 +1,68 @@
+,Float Team Gantt Chart (MATE ROV),,Today,,Tue 3 Nov 2026,This week,"Wk 2,  2 Nov to 8 Nov",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,"Edit the white cells: Task lead, Members, Status, Start, Due, Done on, Notes. Members: type names separated by commas. Grey cells calculate themselves. Department sits in hidden column A.",,,,,,,,,◆ Deadline,,Planned work,,Done,,Overdue / clash,,No-work week,,This week,,,,,,,,,,,,,,,,,
+,,,,,,,,,Month,Oct 2026,Nov 2026,,,,Dec 2026,,,,,Jan 2027,,,,Feb 2027,,,,Mar 2027,,,,Apr 2027,,,,,
+,,,,,,,,,Week,Wk 1,NOW,Wk 3,Wk 4,Wk 5,Wk 6,Wk 7,Wk 8,Wk 9,Wk 10,Wk 11,Wk 12,Wk 13,Wk 14,Wk 15,Wk 16,Wk 17,Wk 18,Wk 19,Wk 20,Wk 21,Wk 22,Wk 23,Wk 24,Wk 25,Wk 26,,
+,,,,,,,,,Week starts,26 Oct,2 Nov,9 Nov,16 Nov,23 Nov,30 Nov,7 Dec,14 Dec,21 Dec,28 Dec,4 Jan,11 Jan,18 Jan,25 Jan,1 Feb,8 Feb,15 Feb,22 Feb,1 Mar,8 Mar,15 Mar,22 Mar,29 Mar,5 Apr,12 Apr,19 Apr,,
+,,,,,,,,,No-work,,,,,,Exam stop,Exam stop,Exam stop,Exam stop,Exam stop,,,,,CNY,CNY,,,Mid-term stop,Mid-term stop,Mid-term stop,Easter,Easter,,,,,
+,,,,,,,,,Day off / event,,,,,,,,,,,,,,,,,,Mon off 22/2,Mon off 1/3,,,,,,,MATE contest,,
+Department,Component,Task,Task lead,Members,Status,Start,Due,Health (auto),Days left (auto),2 due,3 due,6 due,7 due,10 due,,,,,,13 due,1 due,1 due,4 due,,,5 due,,,,,,,,,,Done on,Notes
+,,WHOLE TEAM,"0 of 1 done, 0 overdue",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Whole team,Float,Water leak test (whole float),Jude,,Not started,Mon 26 Oct,Thu 26 Nov,On track,23d,,,,,◆ Thu 26,,,,,,,,,,,,,,,,,,,,,,,
+,,MECHANICAL,"0 of 24 done, 0 overdue",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Mechanical,Top plate,Design finish,Kaden,,Not started,Mon 26 Oct,Tue 10 Nov,Behind,7d,,,◆ Tue 10,,,,,,,,,,,,,,,,,,,,,,,,,
+Mechanical,Top plate,1st assembly,Kaden,,Not started,Wed 11 Nov,Fri 20 Nov,Upcoming,17d,,,,◆ Fri 20,,,,,,,,,,,,,,,,,,,,,,,,
+Mechanical,Top plate,1st assembly fallback,Kaden,,Not started,Sat 21 Nov,Thu 26 Nov,Upcoming,23d,,,,,◆ Thu 26,,,,,,,,,,,,,,,,,,,,,,,Fallback date: redo the 1st assembly by this date if it fails. Same day as the water leak test.
+Mechanical,Top plate,Final assembly,Kaden,,Not started,Fri 27 Nov,Sun 10 Jan,Upcoming,68d,,,,,,,,,,,◆ Sun 10,,,,,,,,,,,,,,,,,
+Mechanical,Top plate,3 floats fully assembled,Kaden,,Not started,Mon 11 Jan,Sat 20 Feb,Upcoming,109d,,,,,,,,,,,,,,,,,◆ Sat 20,,,,,,,,,,,
+Mechanical,Bottom plate,Design finish,Kaden,,Not started,Mon 26 Oct,Tue 10 Nov,Behind,7d,,,◆ Tue 10,,,,,,,,,,,,,,,,,,,,,,,,,
+Mechanical,Bottom plate,1st assembly,Kaden,,Not started,Wed 11 Nov,Fri 20 Nov,Upcoming,17d,,,,◆ Fri 20,,,,,,,,,,,,,,,,,,,,,,,,
+Mechanical,Bottom plate,1st assembly fallback,Kaden,,Not started,Sat 21 Nov,Thu 26 Nov,Upcoming,23d,,,,,◆ Thu 26,,,,,,,,,,,,,,,,,,,,,,,Fallback date: redo the 1st assembly by this date if it fails. Same day as the water leak test.
+Mechanical,Bottom plate,Final assembly,Kaden,,Not started,Fri 27 Nov,Sun 10 Jan,Upcoming,68d,,,,,,,,,,,◆ Sun 10,,,,,,,,,,,,,,,,,
+Mechanical,Bottom plate,3 floats fully assembled,Kaden,,Not started,Mon 11 Jan,Sat 20 Feb,Upcoming,109d,,,,,,,,,,,,,,,,,◆ Sat 20,,,,,,,,,,,
+Mechanical,Motor housing,Design finish,Kaden,,Not started,Mon 26 Oct,Tue 10 Nov,Behind,7d,,,◆ Tue 10,,,,,,,,,,,,,,,,,,,,,,,,,
+Mechanical,Motor housing,1st assembly,Kaden,,Not started,Wed 11 Nov,Wed 25 Nov,Upcoming,22d,,,,,◆ Wed 25,,,,,,,,,,,,,,,,,,,,,,,
+Mechanical,Motor housing,2nd assembly,Kaden,,Not started,Thu 26 Nov,Sun 10 Jan,Upcoming,68d,,,,,,,,,,,◆ Sun 10,,,,,,,,,,,,,,,,,
+Mechanical,Motor housing,Final assembly,Kaden,,Not started,Mon 11 Jan,Sun 31 Jan,Upcoming,89d,,,,,,,,,,,,,,◆ Sun 31,,,,,,,,,,,,,,
+Mechanical,Motor housing,3 floats fully assembled,Kaden,,Not started,Mon 1 Feb,Sat 20 Feb,Upcoming,109d,,,,,,,,,,,,,,,,,◆ Sat 20,,,,,,,,,,,
+Mechanical,Electrical housing,PCB housing finish (3D model),Kaden,,Not started,Mon 26 Oct,Tue 10 Nov,Behind,7d,,,◆ Tue 10,,,,,,,,,,,,,,,,,,,,,,,,,
+Mechanical,Electrical housing,1st assembly,Kaden,,Not started,Wed 11 Nov,Wed 25 Nov,Upcoming,22d,,,,,◆ Wed 25,,,,,,,,,,,,,,,,,,,,,,,Needs the 1st soldered PCB (due 19 Nov).
+Mechanical,Electrical housing,2nd assembly,Kaden,,Not started,Thu 26 Nov,Sun 10 Jan,Upcoming,68d,,,,,,,,,,,◆ Sun 10,,,,,,,,,,,,,,,,,
+Mechanical,Electrical housing,Final assembly,Kaden,,Not started,Mon 11 Jan,Sun 31 Jan,Upcoming,89d,,,,,,,,,,,,,,◆ Sun 31,,,,,,,,,,,,,,
+Mechanical,Electrical housing,3 floats fully assembled,Kaden,,Not started,Mon 1 Feb,Sat 20 Feb,Upcoming,109d,,,,,,,,,,,,,,,,,◆ Sat 20,,,,,,,,,,,
+Mechanical,Battery compartment,Design finish (Zhang voltage module),Kaden,,Not started,Mon 26 Oct,Tue 10 Nov,Behind,7d,,,◆ Tue 10,,,,,,,,,,,,,,,,,,,,,,,,,
+Mechanical,Battery compartment,1st assembly,Kaden,,Not started,Wed 11 Nov,Wed 25 Nov,Upcoming,22d,,,,,◆ Wed 25,,,,,,,,,,,,,,,,,,,,,,,
+Mechanical,Battery compartment,Final assembly,Kaden,,Not started,Thu 26 Nov,Sun 10 Jan,Upcoming,68d,,,,,,,,,,,◆ Sun 10,,,,,,,,,,,,,,,,,Needs 6 soldered batteries (due 8 Jan).
+Mechanical,Battery compartment,3 floats fully assembled,Kaden,,Not started,Mon 11 Jan,Sat 20 Feb,Upcoming,109d,,,,,,,,,,,,,,,,,◆ Sat 20,,,,,,,,,,,
+,,ELECTRICAL,"2 of 9 done, 0 overdue",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Electrical,PCB design,Schematic finish,Jude,,Done,,,Done,,,,,,,,,,,,,,,,,,,,,,,,,,,,,No date given yet.
+Electrical,PCB design,1st PCB design finish,Jude,,Done,Mon 26 Oct,Sun 1 Nov,Done,,◆ Sun 1,,,,,,,,,,,,,,,,,,,,,,,,,,,"Feedback from Chan sir, Alvin, Ryan Yeung and Ms Tang."
+Electrical,PCB design,PCB order,Jude,,Not started,Mon 2 Nov,Tue 3 Nov,Behind,today,,◆ Tue 3,,,,,,,,,,,,,,,,,,,,,,,,,,
+Electrical,PCB design,PCB fallback (buy again),Jude,,Not started,Fri 20 Nov,Fri 20 Nov,Upcoming,17d,,,,◆ Fri 20,,,,,,,,,,,,,,,,,,,,,,,,Buy again on this date if the PCB turns out to have problems.
+Electrical,Soldering: PCB,1st PCB soldered (testing and feedback),Kaden,,Not started,Wed 4 Nov,Thu 19 Nov,Upcoming,16d,,,,◆ Thu 19,,,,,,,,,,,,,,,,,,,,,,,,Moved from 27 Nov so Software can test the PCB on 20 Nov. Benchmark to be decided. Original due date: 27 Nov.
+Electrical,Soldering: PCB,5 PCBs soldered (testing and feedback),Kaden,,Not started,Fri 20 Nov,Fri 15 Jan,Upcoming,73d,,,,,,,,,,,,◆ Fri 15,,,,,,,,,,,,,,,,Moved out of the exam stop (30 Nov to 2 Jan). Benchmark to be decided. Original due date: 11 Dec.
+Electrical,Soldering: PCB,8 PCBs soldered,Kaden,,Not started,Sat 16 Jan,Fri 22 Jan,Upcoming,80d,,,,,,,,,,,,,◆ Fri 22,,,,,,,,,,,,,,,Moved out of the exam stop (30 Nov to 2 Jan). Original due date: 18 Dec.
+Electrical,Soldering: position switch,6 position switches soldered,Kaden,,Not started,Fri 20 Nov,Fri 8 Jan,Upcoming,66d,,,,,,,,,,,◆ Fri 8,,,,,,,,,,,,,,,,,Moved out of the exam stop (30 Nov to 2 Jan). Original due date: 4 Dec.
+Electrical,Soldering: battery,6 batteries soldered,Kaden,,Not started,Fri 20 Nov,Fri 8 Jan,Upcoming,66d,,,,,,,,,,,◆ Fri 8,,,,,,,,,,,,,,,,,Moved out of the exam stop (30 Nov to 2 Jan). Original due date: 4 Dec.
+,,SOFTWARE,"3 of 22 done, 0 overdue",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Software,Core code,Individual parts test: motor,Jude,,Done,Mon 26 Oct,Thu 5 Nov,Done,,,◆ Thu 5,,,,,,,,,,,,,,,,,,,,,,,,,,
+Software,Core code,Individual parts test: pressure sensor,Jude,,Done,Mon 26 Oct,Thu 5 Nov,Done,,,◆ Thu 5,,,,,,,,,,,,,,,,,,,,,,,,,,
+Software,Core code,"Individual parts test: misc (position switch, IMU, resistor and cap)",Jude,,Done,Mon 26 Oct,Fri 30 Oct,Done,,◆ Fri 30,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Software,Core code,PCB test,Jude,,Not started,Fri 20 Nov,Fri 20 Nov,Upcoming,17d,,,,◆ Fri 20,,,,,,,,,,,,,,,,,,,,,,,,
+Software,Core code,Water test,Jude,,Not started,Sat 21 Nov,Thu 7 Jan,Upcoming,65d,,,,,,,,,,,◆ Thu 7,,,,,,,,,,,,,,,,,Moved out of the exam stop (30 Nov to 2 Jan). Original due date: 3 Dec.
+Software,Core code,Final,Jude,,Not started,Fri 8 Jan,Sun 10 Jan,Upcoming,68d,,,,,,,,,,,◆ Sun 10,,,,,,,,,,,,,,,,,
+Software,PID,Water test,Jude,,Not started,Sat 21 Nov,Thu 26 Nov,Upcoming,23d,,,,,◆ Thu 26,,,,,,,,,,,,,,,,,,,,,,,
+Software,PID,Hold >10 s at 40 cm,Jude,,Not started,Fri 27 Nov,Thu 7 Jan,Upcoming,65d,,,,,,,,,,,◆ Thu 7,,,,,,,,,,,,,,,,,Moved out of the exam stop (30 Nov to 2 Jan). Original due date: 3 Dec.
+Software,PID,Hold >30 s at 40 cm,Jude,,Not started,Fri 8 Jan,Sun 10 Jan,Upcoming,68d,,,,,,,,,,,◆ Sun 10,,,,,,,,,,,,,,,,,
+Software,PID,Hold >60 s at 40 cm,Jude,,Not started,Mon 11 Jan,Mon 25 Jan,Upcoming,83d,,,,,,,,,,,,,,◆ Mon 25,,,,,,,,,,,,,,
+Software,Pressure sensor calibration,Land test,Jude,,Not started,Fri 6 Nov,Sun 15 Nov,Upcoming,12d,,,◆ Sun 15,,,,,,,,,,,,,,,,,,,,,,,,,
+Software,Pressure sensor calibration,Water test,Jude,,Not started,Mon 16 Nov,Thu 26 Nov,Upcoming,23d,,,,,◆ Thu 26,,,,,,,,,,,,,,,,,,,,,,,
+Software,Pressure sensor calibration,Final finish,Jude,,Not started,Fri 27 Nov,Thu 7 Jan,Upcoming,65d,,,,,,,,,,,◆ Thu 7,,,,,,,,,,,,,,,,,Moved out of the exam stop (30 Nov to 2 Jan). Original due date: 3 Dec.
+Software,Reading filtering and accuracy,Theory test,Jude,,In progress,Mon 26 Oct,Fri 20 Nov,On track,17d,,,,◆ Fri 20,,,,,,,,,,,,,,,,,,,,,,,,
+Software,Reading filtering and accuracy,Water test,Jude,,Not started,Sat 21 Nov,Thu 26 Nov,Upcoming,23d,,,,,◆ Thu 26,,,,,,,,,,,,,,,,,,,,,,,
+Software,Reading filtering and accuracy,Final finish,Jude,,Not started,Fri 27 Nov,Sun 10 Jan,Upcoming,68d,,,,,,,,,,,◆ Sun 10,,,,,,,,,,,,,,,,,
+Software,External weight calc system,External weight calc system,Jude,,Not started,,,No date,,,,,,,,,,,,,,,,,,,,,,,,,,,,,No dates given yet.
+Software,Control system (ground app),Land test,Jude,,In progress,Mon 26 Oct,Fri 20 Nov,On track,17d,,,,◆ Fri 20,,,,,,,,,,,,,,,,,,,,,,,,
+Software,Control system (ground app),Water test,Jude,,Not started,Sat 21 Nov,Thu 26 Nov,Upcoming,23d,,,,,◆ Thu 26,,,,,,,,,,,,,,,,,,,,,,,
+Software,Control system (ground app),Final finish,Jude,,Not started,Fri 27 Nov,Mon 25 Jan,Upcoming,83d,,,,,,,,,,,,,,◆ Mon 25,,,,,,,,,,,,,,Benchmark to be decided.
+Software,Future,AI agent PID tuning,Jude,,Not started,,,No date,,,,,,,,,,,,,,,,,,,,,,,,,,,,,"Future idea, no date."
+Software,Future,INA226 voltage module,Jude,,Not started,,,No date,,,,,,,,,,,,,,,,,,,,,,,,,,,,,"Future idea, no date."
