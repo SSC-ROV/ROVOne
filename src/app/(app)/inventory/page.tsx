@@ -361,8 +361,8 @@ export default function InventoryPage() {
             <table className="board-table is-interactive table-fixed" style={{ minWidth: 1080 }}>
               <colgroup>
                 <col />
-                <col style={{ width: 130 }} />
                 <col style={{ width: 230 }} />
+                <col style={{ width: 130 }} />
                 <col style={{ width: 170 }} />
                 <col style={{ width: 190 }} />
                 <col style={{ width: 40 }} />
@@ -370,8 +370,8 @@ export default function InventoryPage() {
               <thead>
                 <tr>
                   <th><span className="pl-8">{tt("物品", "Item")}</span></th>
-                  <th className="color-cell">{tt("狀態", "Status")}</th>
                   <th>{tt("位置", "Location")}</th>
+                  <th className="color-cell">{tt("狀態", "Status")}</th>
                   <th>{tt("分類", "Category")}</th>
                   <th>{tt("最後回報", "Last report")}</th>
                   <th aria-label={tt("動作", "Actions")} />
@@ -384,9 +384,6 @@ export default function InventoryPage() {
                     <Fragment key={i.id}>
                       <tr id={`inv-item-${i.id}`} className="group/row scroll-mt-24" data-selected={pickedId === i.id || editing ? "true" : undefined}>
                         <td><TitleCell index={index} title={i.name} sub={i.spec} href={`/inventory/${i.id}`} /></td>
-                        <td className="color-cell">
-                          <StatusCell value={i.status} options={statusOptions} onChange={(value) => report(i, value as InventoryStatus)} />
-                        </td>
                         <td>
                           <button
                             type="button"
@@ -405,6 +402,9 @@ export default function InventoryPage() {
                               </>
                             )}
                           </button>
+                        </td>
+                        <td className="color-cell">
+                          <StatusCell value={i.status} options={statusOptions} onChange={(value) => report(i, value as InventoryStatus)} />
                         </td>
                         <td>
                           <span className="flex min-w-0 gap-1 overflow-hidden">
