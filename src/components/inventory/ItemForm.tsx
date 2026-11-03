@@ -1,81 +1,62 @@
 "use client";
 
 import { useState } from "react";
-import { XIcon } from "lucide-react";
+import { CheckIcon, XIcon } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { tt } from "@/lib/i18n-core";
 import { BTN, BTN_GHOST, INPUT_CLS, SELECT_CLS } from "@/lib/ui";
 import {
   CABINETS,
   GRID_COLS,
-  INVENTORY_CATEGORIES,
+  INVENTORY_TAGS,
   INVENTORY_STATUSES,
   compareLocations,
   describeLocation,
   normalizeLocation,
+  isValidBuyLink,
+  purchaseInfoError,
   slotKindLabel,
   slotOptions,
+  cleanTags,
   type InventoryStatus,
+  type InventoryTag,
 } from "@/lib/inventory";
 
 export type ItemFormValue = {
   name: string;
   spec: string;
-  category: string;
+  tags: InventoryTag[];
   note: string;
+  /** Where to buy more (required). */
+  buy_link: string;
+  /** Estimated price per unit, as typed (required, > 0). */
+  unit_price: string;
   locations: string[];
   status: InventoryStatus;
   /** undefined = 不變；null = 移除；字串 = 新照片 */
   photo?: string | null;
 };
 
-const CUSTOM = "__custom";
-
-/**
- * Category picker. A native <select> so phones show their own picker
- * (a <datalist> has no visible dropdown on most mobile browsers), with a
- * "Custom…" option that reveals a text field for anything not in the list.
- */
-function CategoryField({ value, onChange }: { value: string; onChange: (next: string) => void }) {
-  const { lang } = useI18n();
-  const preset = INVENTORY_CATEGORIES.find((c) => c.zh === value || c.en === value);
-  const [custom, setCustom] = useState(value !== "" && !preset);
-  const selected = custom ? CUSTOM : preset ? preset.en : "";
-
+/** 分類標籤：點選切換，可同時選多個 */
+export function TagPicker({ value, onChange }: { value: InventoryTag[]; onChange: (next: InventoryTag[]) => void }) {
   return (
-    <div className="grid gap-2">
-      <select
-        id="inv-category"
-        className={`${SELECT_CLS} w-full`}
-        value={selected}
-        onChange={(e) => {
-          const next = e.target.value;
-          if (next === CUSTOM) {
-            setCustom(true);
-            if (preset) onChange("");
-            return;
-          }
-          setCustom(false);
-          const picked = INVENTORY_CATEGORIES.find((c) => c.en === next);
-          onChange(picked ? (lang === "zh" ? picked.zh : picked.en) : "");
-        }}
-      >
-        <option value="">{tt("未分類", "No category")}</option>
-        {INVENTORY_CATEGORIES.map((c) => (
-          <option key={c.en} value={c.en}>{lang === "zh" ? c.zh : c.en}</option>
-        ))}
-        <option value={CUSTOM}>{tt("自訂…", "Custom…")}</option>
-      </select>
-      {custom && (
-        <input
-          autoFocus={value === ""}
-          className={INPUT_CLS}
-          placeholder={tt("輸入自訂分類", "Type a custom category")}
-          aria-label={tt("自訂分類", "Custom category")}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-        />
-      )}
+    <div className="flex flex-wrap gap-2" role="group" aria-label={tt("分類", "Categories")}>
+      {INVENTORY_TAGS.map((tag) => {
+        const on = value.includes(tag.key);
+        return (
+          <button
+            key={tag.key}
+            type="button"
+            aria-pressed={on}
+            className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-sm transition-colors ${on ? "text-white" : "border-border hover:bg-muted"}`}
+            style={on ? { background: tag.color, borderColor: tag.color } : undefined}
+            onClick={() => onChange(on ? value.filter((k) => k !== tag.key) : cleanTags([...value, tag.key]))}
+          >
+            {on ? <CheckIcon className="size-3.5" /> : <span className="size-2 rounded-full" style={{ background: tag.color }} />}
+            {tt(tag.zh, tag.en)}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -83,8 +64,10 @@ function CategoryField({ value, onChange }: { value: string; onChange: (next: st
 export const EMPTY_ITEM: ItemFormValue = {
   name: "",
   spec: "",
-  category: "",
+  tags: [],
   note: "",
+  buy_link: "",
+  unit_price: "",
   locations: [],
   status: "in_stock",
 };
@@ -263,6 +246,10 @@ export default function ItemForm({
   const [preview, setPreview] = useState<string | null>(initialPhoto ?? null);
   const [photoErr, setPhotoErr] = useState("");
   const [pending, setPending] = useState<string | null>(null);
+  const [tried, setTried] = useState(false);
+  const purchaseErr = purchaseInfoError({ spec: v.spec, buy_link: v.buy_link, unit_price: Number(v.unit_price) });
+  const nameErr = !v.name.trim();
+  const showErr = (bad: boolean) => (tried && bad ? " border-danger" : "");
   const set = <K extends keyof ItemFormValue>(k: K, val: ItemFormValue[K]) => setV((p) => ({ ...p, [k]: val }));
 
   async function pickPhoto(file: File | undefined) {
@@ -279,10 +266,12 @@ export default function ItemForm({
 
   return (
     <form
+      noValidate
       className="space-y-4"
       onSubmit={(e) => {
         e.preventDefault();
-        if (!v.name.trim()) return;
+        setTried(true);
+        if (nameErr || purchaseErr) return;
         // A spot picked in the dropdowns but never "+ Add"-ed still counts.
         const locations = pending && !v.locations.includes(pending) ? [...v.locations, pending].sort(compareLocations) : v.locations;
         onSubmit({ ...v, locations });
@@ -291,20 +280,51 @@ export default function ItemForm({
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="grid gap-1 text-sm">
           <span className="text-xs font-medium text-muted-foreground">{tt("名稱 *", "Name *")}</span>
-          <input id="inv-name" className={INPUT_CLS} placeholder={tt("例如：M3 內六角螺絲", "e.g. M3 hex socket screw")} value={v.name} onChange={(e) => set("name", e.target.value)} />
+          <input id="inv-name" className={INPUT_CLS + showErr(nameErr)} placeholder={tt("例如：M3 內六角螺絲", "e.g. M3 hex socket screw")} value={v.name} onChange={(e) => set("name", e.target.value)} />
         </label>
         <label className="grid gap-1 text-sm">
-          <span className="text-xs font-medium text-muted-foreground">{tt("規格 / 尺寸", "Size / spec")}</span>
-          <input id="inv-spec" className={INPUT_CLS} placeholder={tt("例如：M3 × 10 mm 不鏽鋼", "e.g. M3 × 10 mm, stainless")} value={v.spec} onChange={(e) => set("spec", e.target.value)} />
+          <span className="text-xs font-medium text-muted-foreground">{tt("規格 / 型號 *", "Specs / model *")}</span>
+          <input id="inv-spec" required className={INPUT_CLS + showErr(!v.spec.trim())} placeholder={tt("例如：M3 × 10 mm 不鏽鋼、BlueRobotics T200", "e.g. M3 × 10 mm stainless, BlueRobotics T200")} value={v.spec} onChange={(e) => set("spec", e.target.value)} />
         </label>
-        <div className="grid gap-1 text-sm">
-          <label htmlFor="inv-category" className="text-xs font-medium text-muted-foreground">{tt("分類", "Category")}</label>
-          <CategoryField value={v.category} onChange={(next) => set("category", next)} />
-        </div>
+        <label className="grid gap-1 text-sm">
+          <span className="text-xs font-medium text-muted-foreground">{tt("購買連結 *", "Buy link *")}</span>
+          <input
+            id="inv-link"
+            type="url"
+            inputMode="url"
+            required
+            className={INPUT_CLS + showErr(!isValidBuyLink(v.buy_link))}
+            placeholder="https://…"
+            value={v.buy_link}
+            onChange={(e) => set("buy_link", e.target.value)}
+          />
+        </label>
+        <label className="grid gap-1 text-sm">
+          <span className="text-xs font-medium text-muted-foreground">{tt("預估單價 *", "Est. unit price *")}</span>
+          <div className="relative">
+            <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+            <input
+              id="inv-price"
+              type="number"
+              inputMode="decimal"
+              min="0"
+              step="any"
+              required
+              className={`${INPUT_CLS} pl-7${showErr(!(Number(v.unit_price) > 0))}`}
+              placeholder="0"
+              value={v.unit_price}
+              onChange={(e) => set("unit_price", e.target.value)}
+            />
+          </div>
+        </label>
         <label className="grid gap-1 text-sm">
           <span className="text-xs font-medium text-muted-foreground">{tt("備註", "Note")}</span>
           <input id="inv-note" className={INPUT_CLS} placeholder={tt("選填", "Optional")} value={v.note} onChange={(e) => set("note", e.target.value)} />
         </label>
+        <div className="grid gap-1.5 text-sm sm:col-span-2">
+          <span className="text-xs font-medium text-muted-foreground">{tt("分類（可多選）", "Categories (pick any)")}</span>
+          <TagPicker value={v.tags} onChange={(next) => set("tags", next)} />
+        </div>
       </div>
 
       <div className="grid gap-1">
@@ -355,8 +375,15 @@ export default function ItemForm({
         </div>
       </div>
 
+      <p className="text-xs text-muted-foreground">
+        {tt("規格、購買連結和單價是必填的：標成或回報「沒有了」時，會自動用這些資料送出採購申請。", "Specs, buy link and price are required: whenever it is marked or reported empty, a purchase request is sent automatically with these details.")}
+      </p>
+      {tried && (nameErr || purchaseErr) && (
+        <p role="alert" className="text-sm text-danger">{nameErr ? t("請填寫物品名稱") : t(purchaseErr!)}</p>
+      )}
+
       <div className="flex items-center gap-2">
-        <button className={BTN} disabled={busy || !v.name.trim()}>{busy ? tt("儲存中…", "Saving…") : submitLabel}</button>
+        <button className={BTN} disabled={busy}>{busy ? tt("儲存中…", "Saving…") : submitLabel}</button>
         {onCancel && (
           <button type="button" className={BTN_GHOST} onClick={onCancel}>{t("取消")}</button>
         )}

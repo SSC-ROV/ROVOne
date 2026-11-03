@@ -3,11 +3,10 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowLeftIcon, PencilIcon, QrCodeIcon } from "lucide-react";
+import { ArrowLeftIcon, PencilIcon, QrCodeIcon, Trash2Icon } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { tt } from "@/lib/i18n-core";
 import { api } from "@/lib/api-client";
-import { isStaff } from "@/lib/roles";
 import { BTN_GHOST, INPUT_CLS } from "@/lib/ui";
 import {
   INVENTORY_STATUSES,
@@ -23,7 +22,7 @@ import { PageError, PageLoading } from "@/components/PageState";
 import RoomMap, { CabinetFrontView } from "@/components/inventory/RoomMap";
 import ItemForm, { type ItemFormValue } from "@/components/inventory/ItemForm";
 import LocationEditor from "@/components/inventory/LocationEditor";
-import { LocationChip, MultiLocationFlag, StatusPill, timeAgo } from "@/components/inventory/shared";
+import { LocationChip, MultiLocationFlag, StatusPill, TagList, reportToast, timeAgo, type ReportResponse } from "@/components/inventory/shared";
 
 export default function InventoryItemPage() {
   const { id } = useParams<{ id: string }>();
@@ -79,10 +78,10 @@ export default function InventoryItemPage() {
     if (!item) return;
     setBusy(true);
     try {
-      await api(`/api/inventory/${item.id}/report`, { method: "POST", body: JSON.stringify({ status, note }) });
+      const res = await api<ReportResponse>(`/api/inventory/${item.id}/report`, { method: "POST", body: JSON.stringify({ status, note }) });
       setNote("");
       const label = INVENTORY_STATUSES.find((s) => s.key === status)!.label;
-      toast(tt(`已回報：${label}`, `Reported: ${label}`));
+      toast(reportToast(item.name, label, res));
       await load();
     } catch (err) {
       toast(t((err as Error).message), "err");
@@ -97,7 +96,7 @@ export default function InventoryItemPage() {
     try {
       const { status: _status, ...rest } = v;
       void _status;
-      await api(`/api/inventory/${item.id}`, { method: "PATCH", body: JSON.stringify(rest) });
+      await api(`/api/inventory/${item.id}`, { method: "PATCH", body: JSON.stringify({ ...rest, unit_price: Number(rest.unit_price) }) });
       toast(tt("已儲存", "Saved"));
       setEditing(false);
       await load();
@@ -144,8 +143,19 @@ export default function InventoryItemPage() {
             <StatusPill status={item.status} />
           </div>
           <p className="text-sm text-muted-foreground">
-            {[item.spec, item.category].filter(Boolean).join(" · ") || tt("沒有規格資料", "No size or spec yet")}
+            {item.spec || tt("沒有規格資料", "No size or spec yet")}
           </p>
+          <TagList tags={item.tags} />
+          {(item.buy_link || item.unit_price > 0) && (
+            <p className="flex flex-wrap items-center gap-x-3 text-sm text-muted-foreground">
+              {item.unit_price > 0 && <span>{tt("預估單價", "Est. unit price")}: ${item.unit_price}</span>}
+              {item.buy_link && (
+                <a href={item.buy_link} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                  {tt("購買連結 ↗", "Buy link ↗")}
+                </a>
+              )}
+            </p>
+          )}
           {item.note && <p className="text-sm">{item.note}</p>}
         </div>
         <div className="flex flex-wrap gap-2">
@@ -155,26 +165,22 @@ export default function InventoryItemPage() {
           <button type="button" className={`${BTN_GHOST} border border-border`} onClick={() => setEditing((v) => !v)}>
             {editing ? t("取消") : tt("編輯", "Edit")}
           </button>
+          <button type="button" className={`${BTN_GHOST} gap-1.5 border border-[#df2f4a]/60 text-[#c0233b] hover:bg-[#df2f4a]/10 dark:text-[#ff8597]`} onClick={remove}>
+            <Trash2Icon className="size-4" /> {tt("刪除", "Delete")}
+          </button>
         </div>
       </header>
 
       {editing && (
         <section className="rounded-[16px] border border-border bg-card p-5">
           <ItemForm
-            initial={{ name: item.name, spec: item.spec, category: item.category, note: item.note, locations: item.locations, status: item.status }}
+            initial={{ name: item.name, spec: item.spec, tags: item.tags, note: item.note, buy_link: item.buy_link, unit_price: item.unit_price ? String(item.unit_price) : "", locations: item.locations, status: item.status }}
             initialPhoto={item.photo}
             submitLabel={tt("儲存", "Save")}
             busy={busy}
             onSubmit={save}
             onCancel={() => setEditing(false)}
           />
-          {isStaff(me.role) && (
-            <div className="mt-4 border-t border-border pt-4">
-              <button type="button" className="text-sm text-rose-500 hover:underline" onClick={remove}>
-                {tt("刪除這個物品", "Delete this item")}
-              </button>
-            </div>
-          )}
         </section>
       )}
 
