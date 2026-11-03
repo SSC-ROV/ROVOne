@@ -13,7 +13,7 @@ export async function GET() {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "未登入" }, { status: 401 });
 
-  // 已核准的週期到了開始日期 → 自動轉為進行中（香港時區）
+  // 已核准的專案到了開始日期 → 自動轉為進行中（香港時區）
   await sql`
     UPDATE cycles SET status = 'active'
     WHERE status = 'approved' AND start_date <= ((now() AT TIME ZONE 'Asia/Hong_Kong')::date)::text`;
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
   const title = String(body?.title ?? "").trim();
   const start = String(body?.start_date ?? "");
   const end = String(body?.end_date ?? "");
-  if (!title) return NextResponse.json({ error: "請填寫週期名稱" }, { status: 400 });
+  if (!title) return NextResponse.json({ error: "請填寫專案名稱" }, { status: 400 });
   if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end)) {
     return NextResponse.json({ error: "請填寫開始與結束日期" }, { status: 400 });
   }
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
   const status =
     user.role === "teacher" ? "approved" : isStaff(user.role) ? "pending_teacher" : "pending_leader";
 
-  // 「可認領」週期僅幹部可開；可選擇是否計入隊長自己的統計
+  // 「可認領」專案僅幹部可開；可選擇是否計入隊長自己的統計
   const claimable = isStaff(user.role) && body?.claimable === true;
   const countForLeader = body?.count_for_leader !== false;
 
@@ -114,12 +114,12 @@ export async function POST(req: NextRequest) {
   // after()：回應先返回，通知在背景發送（Power Automate 冷啟動慢也不拖慢提案）
   if (status === "pending_leader") {
     after(() => notifyTeams("leader_cycle",
-      `📋 新週期提案「${title}」待隊長批准`,
+      `📋 新專案提案「${title}」待隊長批准`,
       `提案人：${user.display_name}｜期間：${start} ~ ${end}`,
       `${origin}/cycles`));
   } else if (status === "pending_teacher") {
     after(() => notifyTeams("teacher_cycle",
-      `📋 新週期提案「${title}」待老師批准`,
+      `📋 新專案提案「${title}」待老師批准`,
       `提案人：${user.display_name}｜期間：${start} ~ ${end}`,
       `${origin}/cycles`));
   }
@@ -129,12 +129,12 @@ export async function POST(req: NextRequest) {
     if (status === "pending_leader") {
       after(async () => {
         const leaders = await roleUserIds("leader");
-        await pushToUsers(leaders, "📋 有新的週期提案待你審批", summary, "/cycles", user.id);
+        await pushToUsers(leaders, "📋 有新的專案提案待你審批", summary, "/cycles", user.id);
       });
     } else if (status === "pending_teacher") {
       after(async () => {
         const teachers = await roleUserIds("teacher");
-        await pushToUsers(teachers, "📋 有新的週期提案待老師審批", summary, "/cycles", user.id);
+        await pushToUsers(teachers, "📋 有新的專案提案待老師審批", summary, "/cycles", user.id);
       });
     }
   }

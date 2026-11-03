@@ -51,7 +51,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 
   if (body.reorder === "up" || body.reorder === "down") {
     if (!current.cycle_id) {
-      return NextResponse.json({ error: "任務必須歸屬一個開發週期" }, { status: 400 });
+      return NextResponse.json({ error: "任務必須歸屬一個專案" }, { status: 400 });
     }
     const siblings = await sql`
       SELECT id, sort_order FROM tasks

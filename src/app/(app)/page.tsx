@@ -55,7 +55,7 @@ export default function DashboardPage() {
 
   const today = todayStr();
   const isTeacher = me.role === "teacher";
-  // 老師看全隊；其他成員看自己參與的週期
+  // 老師看全隊；其他成員看自己參與的專案
   const mine = isTeacher
     ? cycles
     : cycles.filter(
@@ -123,7 +123,7 @@ export default function DashboardPage() {
         <div className="mb-4 flex flex-wrap gap-2">
           {pendingCycles.map((c) => (
             <Link key={c.id} href="/cycles" className="rounded-[4px] bg-[#fdab3d] px-2 py-1 text-sm text-white">
-              {t("待審週期")}：{c.title}
+              {t("待審專案")}：{c.title}
             </Link>
           ))}
           {pendingParts.map((p) => (
@@ -169,12 +169,12 @@ export default function DashboardPage() {
 
       <section className="mb-6">
         <div className="mb-2 flex items-center justify-between">
-          <h2 className="group-title text-foreground">{isTeacher ? t("全隊週期進度") : t("我的開發週期進度")}</h2>
-          <Button variant="link" nativeButton={false} render={<Link href="/cycles" />}>{t("開發週期")} →</Button>
+          <h2 className="group-title text-foreground">{isTeacher ? t("全隊專案進度") : t("我的專案進度")}</h2>
+          <Button variant="link" nativeButton={false} render={<Link href="/cycles" />}>{t("專案")} →</Button>
         </div>
         <div className="flex flex-col gap-2">
           {mine.filter((c) => c.status === "active" || c.status === "approved" || c.status === "late").length === 0 ? (
-            <PageEmpty>{t("目前沒有參與中的週期，到「開發週期」提案一個吧")}</PageEmpty>
+            <PageEmpty>{t("目前沒有參與中的專案，到「專案」提案一個吧")}</PageEmpty>
           ) : (
             mine
               .filter((c) => c.status === "active" || c.status === "approved" || c.status === "late")

@@ -94,12 +94,12 @@ export function NewTaskSheet({
     >
       <SheetHeader className="border-b border-border px-5">
         <SheetTitle className="text-lg">{tt("新任務", "New task")}</SheetTitle>
-        <SheetDescription>{tt("任務需歸屬一個進行中的開發週期", "Tasks belong to an open development cycle")}</SheetDescription>
+        <SheetDescription>{tt("任務需歸屬一個進行中的專案", "Tasks belong to an open project")}</SheetDescription>
       </SheetHeader>
 
       {cycles.length === 0 ? (
         <p className="m-5 rounded-[8px] bg-muted p-4 text-sm text-muted-foreground">
-          {tt("目前沒有進行中的開發週期，請先在「開發週期」頁提案", "No active development cycle right now. Propose one on the Development Cycles page first.")}
+          {tt("目前沒有進行中的專案，請先在「專案」頁提案", "No active project right now. Propose one on the Projects page first.")}
         </p>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-4">
@@ -124,12 +124,12 @@ export function NewTaskSheet({
           </label>
           <div className="grid grid-cols-2 gap-x-4 gap-y-4 text-sm">
             <div className="col-span-2 flex flex-col gap-1.5">
-              <span className="font-medium">{tt("開發週期", "Cycle")}</span>
+              <span className="font-medium">{tt("專案", "Project")}</span>
               <Choice
                 value={form.cycle}
                 onChange={(value) => set("cycle", value)}
                 options={cycles.map((cycle) => ({ value: String(cycle.id), label: cycle.title }))}
-                ariaLabel={tt("開發週期", "Cycle")}
+                ariaLabel={tt("專案", "Project")}
                 className="w-full"
               />
             </div>

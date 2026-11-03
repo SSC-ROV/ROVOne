@@ -7,7 +7,7 @@ export interface SubteamDef {
   en: string;
 }
 
-// ---- 開發週期 ----
+// ---- 專案 ----
 export type CycleStatus =
   | "pending_leader"
   | "pending_teacher"

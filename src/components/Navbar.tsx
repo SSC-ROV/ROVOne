@@ -55,7 +55,7 @@ export default function Navbar({
     { href: "/", label: t("總覽"), icon: HomeIcon },
     { href: "/tasks", label: t("任務"), icon: LayoutListIcon },
     { href: "/calendar", label: t("行事曆"), icon: CalendarIcon },
-    { href: "/cycles", label: t("開發週期"), icon: RefreshCwIcon },
+    { href: "/cycles", label: t("專案"), icon: RefreshCwIcon },
     { href: "/parts", label: t("採購申請"), icon: ShoppingCartIcon },
     { href: "/inventory", label: t("庫存"), icon: PackageSearchIcon },
     { href: "/equipment", label: t("設備借用"), icon: WrenchIcon },
@@ -67,7 +67,7 @@ export default function Navbar({
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-    <div className="flex h-svh w-full overflow-hidden bg-[#f6f7fb] text-foreground dark:bg-[#090a0c]">
+    <div className="fixed inset-0 flex overflow-hidden overscroll-none pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] bg-[#f6f7fb] text-foreground dark:bg-[#090a0c]">
       <aside className="hidden w-[240px] shrink-0 flex-col overflow-y-auto bg-white dark:bg-[#121418] md:flex">
         <div className="flex items-center gap-2 px-4 pt-4 pb-3">
           <span
@@ -176,7 +176,7 @@ export default function Navbar({
             </Link>
           </div>
         </header>
-        <div className="min-h-0 flex-1 overflow-auto bg-white px-4 py-4 md:px-6 dark:bg-[#121418]">{children}</div>
+        <div className="min-h-0 flex-1 overflow-auto overscroll-contain bg-white px-4 py-4 md:px-6 dark:bg-[#121418]">{children}</div>
       </div>
 
       <SheetContent side="left" className="w-[280px] gap-1 bg-white p-3 md:hidden dark:bg-[#121418]">

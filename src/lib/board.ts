@@ -25,7 +25,7 @@ export type BoardData = {
 export async function getBoardData(): Promise<BoardData> {
   const today = hkToday();
 
-  // 與週期頁一致：已核准的週期到了開始日 → 自動轉為進行中
+  // 與專案頁一致：已核准的專案到了開始日 → 自動轉為進行中
   await sql`
     UPDATE cycles SET status = 'active'
     WHERE status = 'approved' AND start_date <= ((now() AT TIME ZONE 'Asia/Hong_Kong')::date)::text`;
