@@ -7,7 +7,6 @@ import { ArrowLeftIcon, PencilIcon, QrCodeIcon } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { tt } from "@/lib/i18n-core";
 import { api } from "@/lib/api-client";
-import { isStaff } from "@/lib/roles";
 import { BTN_GHOST, INPUT_CLS } from "@/lib/ui";
 import {
   INVENTORY_STATUSES,
@@ -179,13 +178,11 @@ export default function InventoryItemPage() {
             onSubmit={save}
             onCancel={() => setEditing(false)}
           />
-          {isStaff(me.role) && (
-            <div className="mt-4 border-t border-border pt-4">
-              <button type="button" className="text-sm text-rose-500 hover:underline" onClick={remove}>
-                {tt("刪除這個物品", "Delete this item")}
-              </button>
-            </div>
-          )}
+          <div className="mt-4 border-t border-border pt-4">
+            <button type="button" className="text-sm text-rose-500 hover:underline" onClick={remove}>
+              {tt("刪除這個物品", "Delete this item")}
+            </button>
+          </div>
         </section>
       )}
 

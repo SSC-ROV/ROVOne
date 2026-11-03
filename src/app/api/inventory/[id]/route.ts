@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/pg";
 import { getSessionUser } from "@/lib/auth";
-import { isStaff } from "@/lib/roles";
 import { logAudit } from "@/lib/audit";
 import { cleanLocations, cleanPhoto, getInventoryItem, replaceLocations } from "@/lib/inventory-db";
 import { cleanTags, purchaseInfoError } from "@/lib/inventory";
@@ -72,9 +71,6 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 export async function DELETE(_req: NextRequest, ctx: Ctx) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "未登入" }, { status: 401 });
-  if (!isStaff(user.role)) {
-    return NextResponse.json({ error: "只有隊長或老師可以刪除庫存物品" }, { status: 403 });
-  }
   const id = await itemId(ctx);
   const cur = id ? await getInventoryItem(id) : null;
   if (!id || !cur) return NextResponse.json({ error: "找不到這個物品" }, { status: 404 });
