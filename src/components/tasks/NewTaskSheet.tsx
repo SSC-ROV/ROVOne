@@ -142,7 +142,7 @@ export function NewTaskSheet({
             <div className="flex flex-col gap-1.5">
               <span className="font-medium">{tt("優先級", "Priority")}</span>
               <div className="overflow-hidden rounded-[4px]">
-                <ColorCell value={form.priority} options={priorityOptions} onChange={(value) => set("priority", value)} />
+                <ColorCell kind="priority" value={form.priority} options={priorityOptions} onChange={(value) => set("priority", value)} />
               </div>
             </div>
             <div className="flex flex-col gap-1.5">

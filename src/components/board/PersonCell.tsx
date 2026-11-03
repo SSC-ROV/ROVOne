@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { CheckIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { tt } from "@/lib/i18n-core";
 
-const COLORS = ["#579bfc", "#00c875", "#a25ddc", "#ff642e", "#fdab3d", "#5559df", "#ffcb00"];
+const COLORS = ["#6b95ee", "#4cb784", "#9b8cec", "#e38a5d", "#d4ad48", "#5fb3c4", "#d77aa6"];
 
 export function personColor(name: string) {
   let hash = 0;
@@ -11,24 +13,40 @@ export function personColor(name: string) {
   return COLORS[hash];
 }
 
-export function initials(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  return name.trim().slice(0, 1) || "?";
+/** "Jude (Liu Pak Hei Jude Asher)" → "Jude". Names without a nickname are returned as is. */
+export function shortName(name: string) {
+  const match = /^(.+?)\s*\(.+\)$/.exec(name.trim());
+  return match ? match[1] : name.trim();
 }
 
-function Avatar({ name }: { name: string | null }) {
+export function initials(name: string) {
+  const parts = shortName(name).split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return parts[0]?.slice(0, 1).toUpperCase() || "?";
+}
+
+export function Avatar({ name, size = 24 }: { name: string | null; size?: number }) {
   if (!name) {
     return (
-      <span className="inline-flex size-6 items-center justify-center rounded-full border border-dashed border-[#c4c4c4] text-[10px] text-muted-foreground">
+      <span
+        className="inline-flex shrink-0 items-center justify-center rounded-full border border-dashed border-input text-[10px] text-muted-foreground"
+        style={{ width: size, height: size }}
+      >
         ?
       </span>
     );
   }
+  const color = personColor(name);
   return (
     <span
-      className="inline-flex size-6 items-center justify-center rounded-full text-[11px] font-medium text-white"
-      style={{ background: personColor(name) }}
+      className="inline-flex shrink-0 items-center justify-center rounded-full font-semibold"
+      style={{
+        width: size,
+        height: size,
+        fontSize: Math.round(size * 0.42),
+        background: `color-mix(in oklch, ${color} 26%, transparent)`,
+        color: `color-mix(in oklch, ${color} 55%, var(--foreground))`,
+      }}
       title={name}
     >
       {initials(name)}
@@ -49,30 +67,31 @@ export function PersonCell({
 }) {
   const [open, setOpen] = useState(false);
   const face = (
-    <span className="inline-flex items-center gap-2">
+    <span className="inline-flex min-w-0 items-center gap-2" title={name ?? undefined}>
       <Avatar name={name} />
-      <span className="max-w-32 truncate">{name ?? "—"}</span>
+      <span className={`truncate text-sm ${name ? "" : "text-muted-foreground"}`}>{name ? shortName(name) : "—"}</span>
     </span>
   );
   if (!onChange || disabled || !options) return face;
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger type="button" className="inline-flex cursor-pointer items-center border-0 bg-transparent p-0">
+      <PopoverTrigger type="button" className="inline-flex h-7 max-w-full min-w-0 cursor-pointer items-center rounded-[6px] border-0 bg-transparent px-1 hover:bg-muted">
         {face}
       </PopoverTrigger>
-      <PopoverContent className="max-h-72 w-56 gap-0.5 overflow-y-auto rounded-[4px] p-1" align="start">
+      <PopoverContent className="max-h-72 w-64 gap-0.5 overflow-y-auto p-1" align="start">
         {options.map((option) => (
           <button
             key={option.value}
             type="button"
-            className="flex w-full items-center gap-2 rounded-[4px] px-2 py-1.5 text-left text-sm hover:bg-muted"
+            className="flex h-8 w-full items-center gap-2 rounded-[6px] px-2 text-left text-sm hover:bg-muted"
             onClick={() => {
               onChange(option.value);
               setOpen(false);
             }}
           >
             <Avatar name={option.label === "—" ? null : option.label} />
-            <span className="truncate">{option.label}</span>
+            <span className="min-w-0 flex-1 truncate">{option.label === "—" ? tt("未指派", "Unassigned") : option.label}</span>
+            {option.label === name && <CheckIcon className="size-4 text-muted-foreground" />}
           </button>
         ))}
       </PopoverContent>

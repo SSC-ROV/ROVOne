@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/sheet";
 import ThemeToggle from "./ThemeToggle";
 import type { Me } from "@/lib/types";
-import { initials, personColor } from "@/components/board/PersonCell";
+import { Avatar } from "@/components/board/PersonCell";
 
 export default function Navbar({
   user,
@@ -67,12 +67,12 @@ export default function Navbar({
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-    <div className="fixed inset-0 flex overflow-hidden overscroll-none pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] bg-[#f6f7fb] text-foreground dark:bg-[#090a0c]">
-      <aside className="hidden w-[240px] shrink-0 flex-col overflow-y-auto bg-white dark:bg-[#121418] md:flex">
+    <div className="fixed inset-0 flex overflow-hidden overscroll-none pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] bg-background text-foreground">
+      <aside className="hidden w-[240px] shrink-0 flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar md:flex">
         <div className="flex items-center gap-2 px-4 pt-4 pb-3">
           <span
             className="flex size-8 shrink-0 items-center justify-center rounded-[6px] text-sm font-medium text-white"
-            style={{ background: "#fe158a" }}
+            style={{ background: "var(--primary)" }}
           >
             {mark}
           </span>
@@ -87,7 +87,7 @@ export default function Navbar({
                 key={item.href}
                 href={item.href}
                 className={`flex h-9 items-center gap-2 rounded-[4px] px-2 text-sm transition-colors duration-150 ${
-                  active ? "bg-[#cce5ff] text-[#0073ea] dark:bg-[#0073ea]/20" : "text-foreground hover:bg-[#f6f7fb] dark:hover:bg-[#1c1f24]"
+                  active ? "bg-primary-soft font-medium text-primary-soft-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 }`}
               >
                 <item.icon className="size-4 shrink-0" strokeWidth={1.75} />
@@ -100,15 +100,10 @@ export default function Navbar({
           <Link
             href="/account"
             className={`flex h-9 items-center gap-2 rounded-[4px] px-2 text-sm ${
-              pathname === "/account" ? "bg-[#cce5ff] text-[#0073ea]" : "hover:bg-[#f6f7fb] dark:hover:bg-[#1c1f24]"
+              pathname === "/account" ? "bg-primary-soft font-medium text-primary-soft-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
             }`}
           >
-            <span
-              className="flex size-6 items-center justify-center rounded-full text-[11px] font-medium text-white"
-              style={{ background: personColor(user.display_name) }}
-            >
-              {initials(user.display_name)}
-            </span>
+            <Avatar name={user.display_name} />
             <span className="truncate">{user.display_name}</span>
           </Link>
           <Button
@@ -116,7 +111,7 @@ export default function Navbar({
             variant="ghost"
             disabled={busy}
             onClick={logout}
-            className="h-9 w-full justify-start gap-2 px-2 text-[#676879]"
+            className="h-9 w-full justify-start gap-2 px-2 text-muted-foreground"
           >
             <LogOutIcon className="size-4" />
             {t("登出")}
@@ -124,8 +119,8 @@ export default function Navbar({
         </div>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col bg-white dark:bg-[#121418]">
-        <header className="flex h-12 shrink-0 items-center gap-2 bg-[#f6f7fb] px-3 dark:bg-[#090a0c]">
+      <div className="flex min-w-0 flex-1 flex-col bg-background">
+        <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-background px-3">
           <Button
             type="button"
             variant="ghost"
@@ -141,7 +136,7 @@ export default function Navbar({
             type="button"
             variant="ghost"
             onClick={() => window.dispatchEvent(new Event("rov-palette"))}
-            className="mx-auto hidden h-8 w-full max-w-[400px] justify-center gap-2 rounded-full bg-[rgba(103,104,121,0.1)] px-3 text-sm font-normal text-[#676879] hover:bg-[rgba(103,104,121,0.16)] md:flex"
+            className="mx-auto hidden h-8 w-full max-w-[400px] justify-center gap-2 rounded-full border border-border bg-card px-3 text-sm font-normal text-muted-foreground hover:bg-muted md:flex"
           >
             <SearchIcon className="size-4" />
             {t("搜尋")}
@@ -151,7 +146,7 @@ export default function Navbar({
               type="button"
               variant="ghost"
               size="icon"
-              className="rounded-full bg-[rgba(103,104,121,0.1)] md:hidden"
+              className="rounded-full bg-muted md:hidden"
               onClick={() => window.dispatchEvent(new Event("rov-palette"))}
               aria-label={t("搜尋")}
             >
@@ -162,24 +157,19 @@ export default function Navbar({
               type="button"
               variant="ghost"
               onClick={toggle}
-              className="text-[#676879]"
+              className="text-muted-foreground"
             >
               {lang === "zh" ? "EN" : "中"}
             </Button>
-            <Link
-              href="/account"
-              className="flex size-8 items-center justify-center rounded-full text-xs font-medium text-white"
-              style={{ background: personColor(user.display_name) }}
-              title={user.display_name}
-            >
-              {initials(user.display_name)}
+            <Link href="/account" className="flex rounded-full" title={user.display_name}>
+              <Avatar name={user.display_name} size={30} />
             </Link>
           </div>
         </header>
-        <div className="min-h-0 flex-1 overflow-auto overscroll-contain bg-white px-4 py-4 md:px-6 dark:bg-[#121418]">{children}</div>
+        <div className="min-h-0 flex-1 overflow-auto overscroll-contain bg-background px-4 py-5 md:px-8">{children}</div>
       </div>
 
-      <SheetContent side="left" className="w-[280px] gap-1 bg-white p-3 md:hidden dark:bg-[#121418]">
+      <SheetContent side="left" className="w-[280px] gap-1 bg-sidebar p-3 md:hidden">
         <SheetHeader className="p-0 pr-8">
           <SheetTitle className="truncate">{teamName}</SheetTitle>
         </SheetHeader>
@@ -189,7 +179,7 @@ export default function Navbar({
             href={item.href}
             onClick={() => setOpen(false)}
             className={`flex h-10 items-center gap-2 rounded-[4px] px-2 text-sm ${
-              pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href + "/")) ? "bg-[#cce5ff] text-[#0073ea]" : ""
+              pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href + "/")) ? "bg-primary-soft font-medium text-primary-soft-foreground" : "text-muted-foreground"
             }`}
           >
             <item.icon className="size-4" />

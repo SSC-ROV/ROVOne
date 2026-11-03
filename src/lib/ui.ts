@@ -29,14 +29,14 @@ export const SUBTEAM_CLS: Record<string, string> = {
   general: "border-transparent bg-transparent text-foreground",
 };
 
-export const GROUP_COLORS = ["#579bfc", "#00c875", "#a25ddc", "#ff642e", "#ffcb00"] as const;
+export const GROUP_COLORS = ["#6b95ee", "#4cb784", "#9b8cec", "#e38a5d", "#d4ad48", "#5fb3c4"] as const;
 
 export const groupColor = (index: number) => GROUP_COLORS[index % GROUP_COLORS.length];
 
 export const PRIORITIES: { key: Priority; zh: string; en: string; dot: string; color: string; label: string }[] = [
-  { key: "high", zh: "高", en: "High", dot: "bg-[#401694]", color: "#401694", get label() { return tt(this.zh, this.en); } },
-  { key: "medium", zh: "中", en: "Med", dot: "bg-[#5559df]", color: "#5559df", get label() { return tt(this.zh, this.en); } },
-  { key: "low", zh: "低", en: "Low", dot: "bg-[#579bfc]", color: "#579bfc", get label() { return tt(this.zh, this.en); } },
+  { key: "high", zh: "高", en: "High", dot: "bg-[#e5704f]", color: "#e5704f", get label() { return tt(this.zh, this.en); } },
+  { key: "medium", zh: "中", en: "Medium", dot: "bg-[#8f94a3]", color: "#8f94a3", get label() { return tt(this.zh, this.en); } },
+  { key: "low", zh: "低", en: "Low", dot: "bg-[#6b95ee]", color: "#6b95ee", get label() { return tt(this.zh, this.en); } },
 ];
 
 export const priorityLabel = (k: string) => {
@@ -48,9 +48,9 @@ export const priorityDot = (k: string) =>
   PRIORITIES.find((p) => p.key === k)?.dot ?? "bg-gray-400";
 
 export const STATUSES: { key: TaskStatus; zh: string; en: string; color: string; label: string }[] = [
-  { key: "todo", zh: "待辦", en: "To Do", color: "#c4c4c4", get label() { return tt(this.zh, this.en); } },
-  { key: "doing", zh: "進行中", en: "In Progress", color: "#fdab3d", get label() { return tt(this.zh, this.en); } },
-  { key: "done", zh: "已完成", en: "Done", color: "#00c875", get label() { return tt(this.zh, this.en); } },
+  { key: "todo", zh: "待辦", en: "To Do", color: "#8f94a3", get label() { return tt(this.zh, this.en); } },
+  { key: "doing", zh: "進行中", en: "In Progress", color: "#dba545", get label() { return tt(this.zh, this.en); } },
+  { key: "done", zh: "已完成", en: "Done", color: "#4cb784", get label() { return tt(this.zh, this.en); } },
 ];
 
 export const statusLabel = (k: string) => {

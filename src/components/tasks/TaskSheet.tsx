@@ -213,7 +213,7 @@ export function TaskSheet({
           </dd>
           <dt className="text-muted-foreground">{tt("優先級", "Priority")}</dt>
           <dd className="max-w-48 overflow-hidden rounded-[4px]">
-            <ColorCell value={task.priority} options={priorityOptions} disabled={!editable} onChange={(value) => onPatch({ priority: value })} />
+            <ColorCell kind="priority" value={task.priority} options={priorityOptions} disabled={!editable} onChange={(value) => onPatch({ priority: value })} />
           </dd>
           <dt className="text-muted-foreground">{tt("負責人", "Assignee")}</dt>
           <dd className="flex h-8 items-center">
