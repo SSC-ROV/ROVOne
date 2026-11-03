@@ -152,7 +152,7 @@ export default function DashboardPage() {
                 {bucket.tasks.slice(0, 8).map((task) => (
                   <tr key={task.id}>
                     <td>
-                      <Link href="/work" className="hover:underline">{task.title}</Link>
+                      <Link href={`/tasks?task=${task.id}`} className="hover:underline">{task.title}</Link>
                     </td>
                     <td><PersonCell name={task.assignee_name} /></td>
                     <td className="color-cell"><StatusCell value={task.status} options={statusOptions} /></td>

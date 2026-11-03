@@ -9,6 +9,7 @@ export function BoardGroup({
   count,
   children,
   footer,
+  meta,
   defaultOpen = true,
 }: {
   title: string;
@@ -16,6 +17,8 @@ export function BoardGroup({
   count?: number;
   children: ReactNode;
   footer?: ReactNode;
+  /** Extra info shown at the right of the group header (e.g. progress). */
+  meta?: ReactNode;
   defaultOpen?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -43,6 +46,7 @@ export function BoardGroup({
         {count != null ? (
           <span className="rounded-[4px] bg-muted px-1.5 text-sm tabular-nums text-muted-foreground">{count}</span>
         ) : null}
+        {meta ? <span className="ml-auto flex items-center gap-2 text-sm text-muted-foreground">{meta}</span> : null}
       </button>
       {open ? (
         <>

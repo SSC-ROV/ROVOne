@@ -53,7 +53,7 @@ export default function Navbar({
 
   const links = [
     { href: "/", label: t("首頁"), icon: HomeIcon },
-    { href: "/work", label: t("工作"), icon: LayoutListIcon },
+    { href: "/tasks", label: t("任務"), icon: LayoutListIcon },
     { href: "/calendar", label: t("日曆"), icon: CalendarIcon },
     { href: "/cycles", label: t("開發週期"), icon: RefreshCwIcon },
     { href: "/parts", label: t("零件採買"), icon: ShoppingCartIcon },
