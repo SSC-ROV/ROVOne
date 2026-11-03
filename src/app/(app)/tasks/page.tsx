@@ -65,7 +65,8 @@ const LEGACY_PREFS_KEY = "rov-tasks-prefs";
 type View = "table" | "board";
 type GroupBy = "cycle" | "status" | "assignee" | "priority" | "subteam" | "due" | "none";
 type SortBy = "manual" | "due" | "priority" | "title" | "status";
-type Prefs = { view: View; groupBy: GroupBy; sort: SortBy; cycleId: string };
+type SortDir = "asc" | "desc";
+type Prefs = { view: View; groupBy: GroupBy; sort: SortBy; sortDir: SortDir; cycleId: string };
 type Filters = {
   query: string;
   assignees: string[];
@@ -85,7 +86,7 @@ type Group = {
 };
 
 const EMPTY_FILTERS: Filters = { query: "", assignees: [], statuses: [], priorities: [], subteams: [], cycles: [], due: [] };
-const DEFAULT_PREFS: Prefs = { view: "table", groupBy: "subteam", sort: "manual", cycleId: "" };
+const DEFAULT_PREFS: Prefs = { view: "table", groupBy: "subteam", sort: "manual", sortDir: "asc", cycleId: "" };
 
 function readPrefs(): Prefs {
   if (typeof window === "undefined") return DEFAULT_PREFS;
@@ -274,19 +275,25 @@ export default function TasksPage() {
     (list: Task[]) => {
       const sorted = [...list];
       const byManual = (a: Task, b: Task) => a.sort_order - b.sort_order || a.id - b.id;
+      // Direction flips the primary key only; ties keep the manual order.
+      const dir = prefs.sortDir === "desc" ? -1 : 1;
       switch (prefs.sort) {
         case "due":
-          sorted.sort((a, b) => (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999") || byManual(a, b));
+          sorted.sort((a, b) => {
+            // Tasks without a due date always sink to the bottom.
+            if (!a.due_date || !b.due_date) return (a.due_date ? 0 : 1) - (b.due_date ? 0 : 1) || byManual(a, b);
+            return dir * a.due_date.localeCompare(b.due_date) || byManual(a, b);
+          });
           break;
         case "priority":
-          sorted.sort((a, b) => (PRIORITY_RANK[a.priority] ?? 9) - (PRIORITY_RANK[b.priority] ?? 9) || byManual(a, b));
+          sorted.sort((a, b) => dir * ((PRIORITY_RANK[a.priority] ?? 9) - (PRIORITY_RANK[b.priority] ?? 9)) || byManual(a, b));
           break;
         case "title":
-          sorted.sort((a, b) => a.title.localeCompare(b.title));
+          sorted.sort((a, b) => dir * a.title.localeCompare(b.title) || byManual(a, b));
           break;
         case "status": {
           const rank = (s: string) => STATUSES.findIndex((item) => item.key === s);
-          sorted.sort((a, b) => rank(a.status) - rank(b.status) || byManual(a, b));
+          sorted.sort((a, b) => dir * (rank(a.status) - rank(b.status)) || byManual(a, b));
           break;
         }
         default:
@@ -294,7 +301,7 @@ export default function TasksPage() {
       }
       return sorted;
     },
-    [prefs.sort]
+    [prefs.sort, prefs.sortDir]
   );
 
   const groups = useMemo<Group[]>(() => {
@@ -589,6 +596,10 @@ export default function TasksPage() {
     { value: "status", label: tt("排序：狀態", "Sort: Status") },
     { value: "title", label: tt("排序：名稱", "Sort: Name") },
   ];
+  const sortDirOptions: { value: SortDir; label: string }[] = [
+    { value: "asc", label: tt("遞增", "Ascending") },
+    { value: "desc", label: tt("遞減", "Descending") },
+  ];
 
   return (
     <div className="flex w-full flex-col pb-24">
@@ -675,6 +686,14 @@ export default function TasksPage() {
               <Choice value={prefs.groupBy} onChange={(value) => updatePrefs({ groupBy: value as GroupBy })} options={groupByOptions} ariaLabel={tt("分組", "Group by")} />
             )}
             <Choice value={prefs.sort} onChange={(value) => updatePrefs({ sort: value as SortBy })} options={sortOptions} ariaLabel={tt("排序", "Sort")} />
+            {prefs.sort !== "manual" && (
+              <Choice
+                value={prefs.sortDir}
+                onChange={(value) => updatePrefs({ sortDir: value as SortDir })}
+                options={sortDirOptions}
+                ariaLabel={tt("排序方向", "Sort direction")}
+              />
+            )}
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
