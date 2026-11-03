@@ -34,7 +34,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   if (!user) return NextResponse.json({ error: "未登入" }, { status: 401 });
   const { id } = await ctx.params;
   const cycle = await load(Number(id));
-  if (!cycle) return NextResponse.json({ error: "週期不存在" }, { status: 404 });
+  if (!cycle) return NextResponse.json({ error: "專案不存在" }, { status: 404 });
 
   const body = (await req.json().catch(() => null)) as {
     action?: string;
@@ -53,22 +53,22 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       return NextResponse.json({ error: "只有隊長或老師可以審批" }, { status: 403 });
     }
   }
-  // ── 隊員認領開放中的週期 ──
+  // ── 隊員認領開放中的專案 ──
   if (body.action === "claim") {
     if (user.role === "teacher") {
       return NextResponse.json({ error: "認領是給隊員的，老師不需要認領" }, { status: 403 });
     }
     if (!cycle.claimable) {
-      return NextResponse.json({ error: "這個週期不是開放認領的" }, { status: 400 });
+      return NextResponse.json({ error: "這個專案不是開放認領的" }, { status: 400 });
     }
     if (cycle.claimed_by) {
-      return NextResponse.json({ error: "這個週期已被認領" }, { status: 400 });
+      return NextResponse.json({ error: "這個專案已被認領" }, { status: 400 });
     }
     if (cycle.proposer_id === user.id) {
-      return NextResponse.json({ error: "不能認領自己發佈的週期" }, { status: 400 });
+      return NextResponse.json({ error: "不能認領自己發佈的專案" }, { status: 400 });
     }
     if (!["active", "approved"].includes(cycle.status)) {
-      return NextResponse.json({ error: "這個週期還沒開放" }, { status: 400 });
+      return NextResponse.json({ error: "這個專案還沒開放" }, { status: 400 });
     }
     await sql`
       UPDATE cycles SET claimed_by = ${user.id} WHERE id = ${cycle.id} AND claimed_by IS NULL`;
@@ -77,7 +77,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       ON CONFLICT DO NOTHING`;
     await logAudit(user.id, user.username, "cycle.claim", `cycle:${cycle.id}`, cycle.title);
     after(() => pushToUsers([cycle.proposer_id],
-      "🙋 你的週期已被認領",
+      "🙋 你的專案已被認領",
       `「${cycle.title}」由 ${user.display_name} 認領`,
       "/cycles", user.id));
     return NextResponse.json({ ok: true });
@@ -94,17 +94,17 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       await logAudit(user.id, user.username, "cycle.approve", `cycle:${cycle.id}`, `${cycle.title} → ${next}`);
       if (next === "pending_teacher") {
         after(() => notifyTeams("teacher_cycle",
-          `📋 週期「${cycle.title}」待老師批准`,
+          `📋 專案「${cycle.title}」待老師批准`,
           `隊長 ${user.display_name} 已核准，進入最終審批`,
           `${origin}/cycles`));
         after(async () => {
           await pushToUsers([cycle.proposer_id],
-            "✅ 你的週期已被隊長批准",
+            "✅ 你的專案已被隊長批准",
             `「${cycle.title}」進入老師最終審批`,
             "/cycles", user.id);
           const teachers = await roleUserIds("teacher");
           await pushToUsers(teachers,
-            "📋 有週期待你最終審批",
+            "📋 有專案待你最終審批",
             `「${cycle.title}」由隊長 ${user.display_name} 核准`,
             "/cycles", user.id);
         });
@@ -121,7 +121,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
         WHERE id = ${cycle.id}`;
       await logAudit(user.id, user.username, "cycle.approve", `cycle:${cycle.id}`, `${cycle.title} → approved`);
       after(() => pushToUsers([cycle.proposer_id],
-        "🎉 你的週期已獲老師核准",
+        "🎉 你的專案已獲老師核准",
         `「${cycle.title}」將在開始日自動開始`,
         "/cycles", user.id));
       return NextResponse.json({ ok: true, status: "approved" });
@@ -145,7 +145,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       WHERE id = ${cycle.id}`;
     await logAudit(user.id, user.username, "cycle.reject", `cycle:${cycle.id}`, cycle.title);
     after(() => pushToUsers([cycle.proposer_id],
-      "❌ 你的週期被駁回",
+      "❌ 你的專案被駁回",
       `「${cycle.title}」${String(body?.note ?? "").trim() || "請查看駁回原因或修改後重新提交"}`,
       "/cycles", user.id));
     return NextResponse.json({ ok: true, status: "rejected" });
@@ -153,7 +153,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 
   if (body.action === "marklate") {
     if (cycle.status !== "active") {
-      return NextResponse.json({ error: "只有進行中的週期可以標記遲交" }, { status: 400 });
+      return NextResponse.json({ error: "只有進行中的專案可以標記遲交" }, { status: 400 });
     }
     if (!isStaff(user.role) && cycle.proposer_id !== user.id) {
       return NextResponse.json({ error: "只有提案人或幹部可以標記遲交" }, { status: 403 });
@@ -167,7 +167,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 
   if (body.action === "complete") {
     if (cycle.status !== "active" && cycle.status !== "late") {
-      return NextResponse.json({ error: "只有進行中或遲交的週期可以標記完成" }, { status: 400 });
+      return NextResponse.json({ error: "只有進行中或遲交的專案可以標記完成" }, { status: 400 });
     }
     if (!isStaff(user.role) && cycle.proposer_id !== user.id) {
       return NextResponse.json({ error: "只有提案人或幹部可以標記完成" }, { status: 403 });
@@ -181,7 +181,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 
   if (body.action === "resubmit") {
     if (cycle.status !== "rejected") {
-      return NextResponse.json({ error: "只有被駁回的週期可以重新提交" }, { status: 400 });
+      return NextResponse.json({ error: "只有被駁回的專案可以重新提交" }, { status: 400 });
     }
     if (cycle.proposer_id !== user.id) {
       return NextResponse.json({ error: "只有提案人可以重新提交" }, { status: 403 });
@@ -196,7 +196,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     return NextResponse.json({ error: "只有提案人可以編輯" }, { status: 403 });
   }
   if (cycle.status === "active" || cycle.status === "completed") {
-    return NextResponse.json({ error: "已開始或已完成的週期不可編輯內容" }, { status: 400 });
+    return NextResponse.json({ error: "已開始或已完成的專案不可編輯內容" }, { status: 400 });
   }
   if (body.title !== undefined) {
     const title = String(body.title).trim();
@@ -229,7 +229,7 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
   if (!user) return NextResponse.json({ error: "未登入" }, { status: 401 });
   const { id } = await ctx.params;
   const cycle = await load(Number(id));
-  if (!cycle) return NextResponse.json({ error: "週期不存在" }, { status: 404 });
+  if (!cycle) return NextResponse.json({ error: "專案不存在" }, { status: 404 });
   const ownerPending =
     cycle.proposer_id === user.id &&
     ["pending_leader", "pending_teacher", "rejected"].includes(cycle.status);

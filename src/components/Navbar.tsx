@@ -55,7 +55,7 @@ export default function Navbar({
     { href: "/", label: t("總覽"), icon: HomeIcon },
     { href: "/tasks", label: t("任務"), icon: LayoutListIcon },
     { href: "/calendar", label: t("行事曆"), icon: CalendarIcon },
-    { href: "/cycles", label: t("開發週期"), icon: RefreshCwIcon },
+    { href: "/cycles", label: t("專案"), icon: RefreshCwIcon },
     { href: "/parts", label: t("採購申請"), icon: ShoppingCartIcon },
     { href: "/inventory", label: t("庫存"), icon: PackageSearchIcon },
     { href: "/equipment", label: t("設備借用"), icon: WrenchIcon },

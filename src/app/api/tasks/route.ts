@@ -38,13 +38,13 @@ export async function POST(req: NextRequest) {
   const assigneeId = (body?.assignee_id as number) || null;
   const cycleId = (body?.cycle_id as number) || null;
   if (!cycleId) {
-    return NextResponse.json({ error: "任務必須歸屬一個開發週期" }, { status: 400 });
+    return NextResponse.json({ error: "任務必須歸屬一個專案" }, { status: 400 });
   }
   const [cycle] = await sql`
     SELECT status FROM cycles WHERE id = ${cycleId}`;
-  if (!cycle) return NextResponse.json({ error: "週期不存在" }, { status: 400 });
+  if (!cycle) return NextResponse.json({ error: "專案不存在" }, { status: 400 });
   if (["completed", "rejected"].includes(String(cycle.status))) {
-    return NextResponse.json({ error: "該週期已完成或已駁回，無法加入任務" }, { status: 400 });
+    return NextResponse.json({ error: "該專案已完成或已駁回，無法加入任務" }, { status: 400 });
   }
   const [task] = await sql`
     INSERT INTO tasks (title, description, status, priority, subteam, due_date, assignee_id, created_by, cycle_id)

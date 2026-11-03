@@ -348,7 +348,7 @@ export default function TasksPage() {
           )
         );
         const loose = filtered.filter((task) => task.cycle_id == null || !cycles.some((cycle) => cycle.id === task.cycle_id));
-        if (loose.length) out.push(make("none", tt("未分週期", "No cycle"), "#c4c4c4", loose, {}, false));
+        if (loose.length) out.push(make("none", tt("未分專案", "No project"), "#c4c4c4", loose, {}, false));
         return out;
       }
     }
@@ -384,7 +384,7 @@ export default function TasksPage() {
   async function createTask(input: Partial<NewTaskInput> & { title: string }) {
     const cycleId = input.cycle_id ?? defaultCycleId;
     if (!cycleId) {
-      toast(tt("請先選擇開發週期", "Pick a development cycle first"), "err");
+      toast(tt("請先選擇專案", "Pick a project first"), "err");
       return false;
     }
     try {
@@ -526,7 +526,7 @@ export default function TasksPage() {
   });
 
   const groupByOptions: { value: GroupBy; label: string }[] = [
-    { value: "cycle", label: tt("依週期分組", "Group: Cycle") },
+    { value: "cycle", label: tt("依專案分組", "Group: Project") },
     { value: "status", label: tt("依狀態分組", "Group: Status") },
     { value: "assignee", label: tt("依負責人分組", "Group: Assignee") },
     { value: "priority", label: tt("依優先級分組", "Group: Priority") },
@@ -679,7 +679,7 @@ export default function TasksPage() {
             options={subteams.map((item) => ({ value: item.key, label: item.label, hint: countBy((task) => task.subteam === item.key) }))}
           />
           <MultiFilter
-            label={tt("開發週期", "Cycle")}
+            label={tt("專案", "Project")}
             icon={<RefreshCwIcon className="size-3.5" />}
             value={filters.cycles}
             onChange={(next) => setFilters((prev) => ({ ...prev, cycles: next }))}
@@ -1145,7 +1145,7 @@ function EmptyState({ narrowing, hasCycle, onClear, onCreate }: { narrowing: boo
             ? tt("試著調整搜尋或篩選條件", "Try adjusting your search or filters")
             : hasCycle
               ? tt("建立第一個任務，開始追蹤進度", "Create the first task to start tracking work")
-              : tt("目前沒有進行中的開發週期，請先在「開發週期」頁提案", "No active development cycle right now. Propose one on the Development Cycles page first.")}
+              : tt("目前沒有進行中的專案，請先在「專案」頁提案", "No active project right now. Propose one on the Projects page first.")}
         </p>
       </div>
       {narrowing ? (

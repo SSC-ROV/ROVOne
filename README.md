@@ -1,6 +1,6 @@
 # ROV Team Hub
 
-A mission-control web app for a school ROV team: development cycles, task
+A mission-control web app for a school ROV team: projects, task
 tracking, calendar, parts purchasing, equipment loans and dive logs.
 Full-stack, single repo, no external services required to run locally.
 
@@ -14,7 +14,7 @@ English-only.
 |---|---|
 | Home | Competition countdown, active / overdue / due-this-week stats, my tasks, upcoming events |
 | Calendar | Month view showing task deadlines and events (meetings / water tests / competitions); click a date for details; leaders can add events |
-| Development Cycles | Members propose cycles (date range + collaborators) → leader approval → teacher approval → active; tasks can belong to cycles; staff see per-member cycle stats and completion |
+| Projects | Members propose projects (date range + collaborators) → leader approval → teacher approval → active; tasks can belong to projects; staff see per-member project stats and completion |
 | Parts Purchasing | Request → **teacher approval** → ordered → arrived, with estimated / actual spend stats |
 | Inventory | Search where anything is stored (e.g. `M3` → `4-A-14`), room map with the cabinet/bin highlighted, one-tap "low" / "empty" reports, items kept in several places are flagged, "Request restock" pre-fills a Parts request, printable QR labels that open the item page |
 | Equipment | Loan register (who took it, due back, overdue turns red), maintenance status |
@@ -22,7 +22,7 @@ English-only.
 | Admin (leader) | Team name, competition date, member accounts / password resets, notifications, iCal subscription |
 | Display board | Full-screen wall dashboard (`/display`) — dark HUD style, live clock, cycle progress, month calendar |
 
-### Development cycle approval chain
+### Project approval chain
 
 ```
 Member proposal (name, date range, collaborators, goal)
@@ -259,7 +259,7 @@ Everything is a JSON REST API (`/api/...`) called with the cookie session
 | `/api/auth/google/start` `/auth/google/callback` `/google/status` | GET | Google (OAuth) sign-in + configured flag |
 | `/api/tasks` `/api/tasks/[id]` `/api/tasks/[id]/items` `/api/items/[id]` | CRUD | Tasks and subtasks (optional `mission_id`, `cycle_id`) |
 | `/api/events` `/api/events/[id]` | CRUD | Calendar events |
-| `/api/cycles` `/api/cycles/[id]` | CRUD | Development cycles (`action: approve/reject/complete/resubmit/claim`) |
+| `/api/cycles` `/api/cycles/[id]` | CRUD | Projects (`action: approve/reject/complete/resubmit/claim`) |
 | `/api/parts` `/api/parts/[id]` | CRUD | Parts purchasing |
 | `/api/approve/[token]` | GET/POST | Teacher no-login approval |
 | `/api/inventory` `/api/inventory/[id]` `/api/inventory/[id]/report` | CRUD / POST | Inventory items + locations; report `in_stock` / `low` / `empty` (tables auto-created on first call, or `node scripts/migrate-inventory.mjs`) |

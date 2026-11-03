@@ -156,7 +156,7 @@ export function TaskSheet({
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex items-center gap-2 border-b border-border px-5 pt-4 pb-3 pr-14">
         <SheetDescription className="min-w-0 flex-1 truncate">
-          {cycle ? cycle.title : tt("未分週期", "No cycle")} · #{task.id}
+          {cycle ? cycle.title : tt("未分專案", "No project")} · #{task.id}
         </SheetDescription>
         <Button variant="ghost" size="icon-sm" onClick={copyLink} aria-label={tt("複製連結", "Copy link")} title={tt("複製連結", "Copy link")}>
           <LinkIcon />
@@ -232,14 +232,14 @@ export function TaskSheet({
           <dd>
             <Choice value={task.subteam} disabled={!editable} options={subteams} onChange={(value) => onPatch({ subteam: value })} ariaLabel={tt("組別", "Subteam")} />
           </dd>
-          <dt className="text-muted-foreground">{tt("開發週期", "Cycle")}</dt>
+          <dt className="text-muted-foreground">{tt("專案", "Project")}</dt>
           <dd>
             <Choice
               value={task.cycle_id != null ? String(task.cycle_id) : ""}
               disabled={!editable || cycleOptions.length === 0}
               options={cycleOptions}
               onChange={(value) => onPatch({ cycle_id: Number(value) })}
-              ariaLabel={tt("開發週期", "Cycle")}
+              ariaLabel={tt("專案", "Project")}
             />
           </dd>
           {task.completed_at && (
