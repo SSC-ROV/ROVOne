@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import { tt } from "@/lib/i18n-core";
 import { describeLocation, inventoryStatus, inventoryTag, type InventoryStatus } from "@/lib/inventory";
 
 export function StatusPill({ status }: { status: InventoryStatus }) {
   const s = inventoryStatus(status);
   return (
-    <span className="inline-flex h-6 items-center rounded-full px-2.5 text-xs font-semibold text-white" style={{ background: s.color }}>
+    <span className="gh-label shrink-0" style={{ "--label": s.color } as CSSProperties}>
       {s.label}
     </span>
   );

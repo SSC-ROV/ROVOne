@@ -265,9 +265,18 @@ export default function InventoryItemPage() {
                     disabled={busy}
                     aria-pressed={on}
                     onClick={() => report(s.key)}
-                    className="h-11 rounded-[6px] border-2 text-sm font-semibold transition-colors disabled:opacity-50"
-                    style={on ? { background: s.color, borderColor: s.color, color: "#fff" } : { borderColor: s.color, color: "inherit" }}
+                    className="inline-flex h-11 items-center justify-center gap-2 rounded-[8px] border text-sm font-medium transition-colors hover:bg-muted disabled:opacity-50"
+                    style={
+                      on
+                        ? {
+                            background: `color-mix(in srgb, ${s.color} 14%, transparent)`,
+                            borderColor: `color-mix(in srgb, ${s.color} 45%, transparent)`,
+                            color: `color-mix(in srgb, ${s.color} 82%, var(--foreground))`,
+                          }
+                        : { borderColor: "var(--border)", color: "var(--muted-foreground)" }
+                    }
                   >
+                    <span className="size-2 shrink-0 rounded-full" style={{ background: s.color }} aria-hidden />
                     {s.label}
                   </button>
                 );

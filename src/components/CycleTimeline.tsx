@@ -40,7 +40,7 @@ export default function CycleTimeline({ cycles, today }: { cycles: Cycle[]; toda
         <h2 className="font-bold">{t("專案時間軸")}</h2>
         <span className="text-xs text-ink-tertiary">
           {fmtMD(minStart)} ~ {fmtMD(maxEnd)}
-          <span className="ml-2 text-[#2383a5]">│ {t("今天")} {fmtMD(today)}</span>
+          <span className="ml-2 text-[var(--c-red)]">│ {t("今天")} {fmtMD(today)}</span>
         </span>
       </div>
       <p className="mb-3 text-xs text-ink-tertiary">
@@ -83,7 +83,7 @@ export default function CycleTimeline({ cycles, today }: { cycles: Cycle[]; toda
             ))}
             {todayPos !== null && (
               <div
-                className="absolute inset-y-0 z-10 w-px bg-primary-hover/80"
+                className="absolute inset-y-0 z-10 w-px bg-[var(--c-red)]"
                 style={{ left: `${todayPos}%` }}
               />
             )}

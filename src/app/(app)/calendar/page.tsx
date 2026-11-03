@@ -95,6 +95,7 @@ export default function CalendarPage() {
   const [saving, setSaving] = useState(false);
   const [modalTask, setModalTask] = useState<Task | null>(null);
   const [flash, setFlash] = useState<number | null>(null);
+  const [dropDay, setDropDay] = useState<string | null>(null);
 
   const apply = useCallback((data: Loaded) => {
     setTasks(data.tasks);
@@ -173,12 +174,27 @@ export default function CalendarPage() {
 
   const selData = byDate.get(sel) ?? { tasks: [], events: [] };
 
-  /** Clicking an event opens its linked task; events without one open the editor (leaders) or the day. */
+  /** Clicking an event opens the editor for leaders; others see its linked task, or the day. */
   function openEvent(event: TeamEvent) {
     const linked = event.task_id ? taskById.get(event.task_id) : undefined;
-    if (linked) setModalTask(linked);
-    else if (staff) openEdit(event);
+    if (staff) openEdit(event);
+    else if (linked) setModalTask(linked);
     else setSel(event.date);
+  }
+
+  /** Drag an event onto another day to move it (leaders only). */
+  async function moveEvent(id: number, date: string) {
+    const event = events?.find((item) => item.id === id);
+    if (!event || event.date === date) return;
+    setEvents((prev) => prev?.map((item) => (item.id === id ? { ...item, date } : item)) ?? prev);
+    setSel(date);
+    try {
+      await api(`/api/events/${id}`, { method: "PATCH", body: JSON.stringify({ date }) });
+      toast(tt(`已移到 ${date}`, `Moved to ${longDate(date)}`), "ok");
+    } catch (err) {
+      toast(t((err as Error).message), "err");
+    }
+    await load();
   }
 
   function goMonth(delta: number) {
@@ -406,12 +422,28 @@ export default function CalendarPage() {
                   onClick={() => setSel(cell)}
                   onDoubleClick={() => staff && openNew(cell)}
                   onContextMenu={(event) => dayMenu(event, cell)}
+                  onDragOver={(event) => {
+                    if (!staff || !event.dataTransfer.types.includes("application/x-rov-event")) return;
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = "move";
+                    if (dropDay !== cell) setDropDay(cell);
+                  }}
+                  onDragLeave={(event) => {
+                    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropDay((d) => (d === cell ? null : d));
+                  }}
+                  onDrop={(event) => {
+                    const id = Number(event.dataTransfer.getData("application/x-rov-event"));
+                    setDropDay(null);
+                    if (!staff || !id) return;
+                    event.preventDefault();
+                    moveEvent(id, cell);
+                  }}
                   onKeyDown={(event) => {
                     if (event.key === "Enter") setSel(cell);
                   }}
                   className={`group/day relative flex min-h-[7.5rem] min-w-0 cursor-default flex-col overflow-hidden gap-1 border-r border-b border-border p-1.5 outline-none transition-colors duration-150 [&:nth-child(7n)]:border-r-0 ${
                     selected ? "bg-primary-soft" : weekend ? "bg-muted/25 hover:bg-muted/60" : "hover:bg-muted/50"
-                  } ${inMonth ? "" : "text-muted-foreground/60"} focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset`}
+                  } ${inMonth ? "" : "text-muted-foreground/60"} ${dropDay === cell ? "ring-2 ring-[var(--c-blue)] ring-inset" : ""} focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset`}
                 >
                   <div className="flex items-center justify-between">
                     <span
@@ -446,7 +478,13 @@ export default function CalendarPage() {
                             openEvent(item.event);
                           }}
                           onContextMenu={(mouse) => eventMenu(mouse, item.event)}
-                          title={item.event.title}
+                          draggable={staff}
+                          onDragStart={(drag) => {
+                            drag.dataTransfer.setData("application/x-rov-event", String(item.event.id));
+                            drag.dataTransfer.effectAllowed = "move";
+                          }}
+                          onDragEnd={() => setDropDay(null)}
+                          title={staff ? `${item.event.title}\n${tt("拖到其他日期即可移動", "Drag to another day to move")}` : item.event.title}
                           className={`flex min-w-0 items-center gap-1.5 rounded-[4px] border-l-[3px] px-1.5 py-[3px] text-left text-[13px] leading-tight transition-[filter,transform] duration-150 hover:brightness-125 active:scale-[0.98] ${
                             flash === item.event.id ? "animate-pulse ring-2 ring-[var(--c-blue)]" : ""
                           }`}
@@ -508,18 +546,13 @@ export default function CalendarPage() {
                       : tt("沒有安排", "Nothing scheduled")}
                 </p>
               </div>
-              {staff && (
-                <Button variant="outline" size="sm" onClick={() => openNew(sel)}>
-                  <PlusIcon /> {tt("活動", "Event")}
-                </Button>
-              )}
             </header>
 
             <div className="flex flex-col gap-1 p-2">
               {selData.events.length === 0 && selData.tasks.length === 0 && (
                 <div className="flex flex-col items-center gap-2 px-4 py-8 text-center text-sm text-muted-foreground">
                   <CalendarDaysIcon className="size-6 opacity-60" />
-                  {staff ? tt("右鍵點日曆上的日期，或按「活動」新增", "Right-click a day on the calendar or press Event to add one") : tt("這天沒有活動", "No events on this day")}
+                  {staff ? tt("右鍵或雙擊日曆上的日期即可新增活動", "Right-click or double-click a day on the calendar to add an event") : tt("這天沒有活動", "No events on this day")}
                 </div>
               )}
 
@@ -531,9 +564,10 @@ export default function CalendarPage() {
                     onContextMenu={(mouse) => eventMenu(mouse, event)}
                     onClick={(mouse) => {
                       if ((mouse.target as HTMLElement).closest("a,button")) return;
-                      if (linked) setModalTask(linked);
+                      if (staff) openEdit(event);
+                      else if (linked) setModalTask(linked);
                     }}
-                    className={`group/ev min-w-0 rounded-[6px] ${linked ? "cursor-pointer" : ""} border border-transparent p-2.5 transition-colors hover:border-border hover:bg-muted/40 ${flash === event.id ? "border-[var(--c-blue)] bg-primary-soft" : ""}`}
+                    className={`group/ev min-w-0 rounded-[6px] ${staff || linked ? "cursor-pointer" : ""} border border-transparent p-2.5 transition-colors hover:border-border hover:bg-muted/40 ${flash === event.id ? "border-[var(--c-blue)] bg-primary-soft" : ""}`}
                   >
                     <div className="flex items-start gap-2.5">
                       <span className="mt-1 h-9 w-1 shrink-0 rounded-full" style={{ background: eventType(event.type).color }} />

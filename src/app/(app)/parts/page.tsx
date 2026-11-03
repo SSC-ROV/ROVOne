@@ -7,13 +7,19 @@ import { isStaff } from "@/lib/roles";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 import { tt } from "@/lib/i18n-core";
-import { BTN, INPUT_CLS, PART_STATUSES, SELECT_CLS, subteamLabel } from "@/lib/ui";
+import { BTN, INPUT_CLS, PART_STATUSES, groupColor, subteamLabel } from "@/lib/ui";
 import { fmtMD } from "@/lib/date";
 import { useDialogs } from "@/components/ui/Dialogs";
-import { PageEmpty, PageError, PageLoading } from "@/components/PageState";
+import { PageError, PageLoading } from "@/components/PageState";
+import { CheckIcon, CircleDotIcon, ExternalLinkIcon, LayersIcon, LinkIcon, PanelRightOpenIcon, PlusIcon, Trash2Icon, XIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Choice, MultiFilter } from "@/components/tasks/shared";
+import { DetailRow, FormField, RowActions, StatusDot, TableEmpty, TableToolbar, TitleCell } from "@/components/board/BoardTable";
 import { BoardGroup } from "@/components/board/BoardGroup";
 import { BoardHeader } from "@/components/board/BoardHeader";
-import { StatusCell } from "@/components/board/ColorCell";
+import { Label, StatusCell } from "@/components/board/ColorCell";
 import { PersonCell } from "@/components/board/PersonCell";
 import type { Me, Part, PartStatus } from "@/lib/types";
 
@@ -23,8 +29,10 @@ export default function PartsPage() {
   const { confirm, prompt, toast } = useDialogs();
   const [parts, setParts] = useState<Part[] | null>(null);
   const [me, setMe] = useState<Me | null>(null);
-  const [fStatus, setFStatus] = useState("all");
-  const [fSubteam, setFSubteam] = useState("all");
+  const [q, setQ] = useState("");
+  const [fStatus, setFStatus] = useState<string[]>([]);
+  const [fSubteam, setFSubteam] = useState<string[]>([]);
+  const [openId, setOpenId] = useState<number | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [ordering, setOrdering] = useState<{ part: Part; vendor: string; price: string } | null>(null);
   const [error, setError] = useState("");
@@ -67,9 +75,22 @@ export default function PartsPage() {
   if (error) return <PageError message={error} />;
   if (!parts || !me) return <PageLoading label={t("載入中…")} />;
 
+  const staff = isStaff(me.role);
+  const needle = q.trim().toLowerCase();
   const filtered = parts.filter(
-    (p) => (fStatus === "all" || p.status === fStatus) && (fSubteam === "all" || p.subteam === fSubteam)
+    (p) =>
+      (fStatus.length === 0 || fStatus.includes(p.status)) &&
+      (fSubteam.length === 0 || fSubteam.includes(p.subteam)) &&
+      (!needle || [p.name, p.spec, p.purpose, p.requested_by_name ?? "", p.order_vendor].join(" ").toLowerCase().includes(needle))
   );
+  const narrowing = needle.length > 0 || fStatus.length > 0 || fSubteam.length > 0;
+  const openPart = openId != null ? parts.find((p) => p.id === openId) ?? null : null;
+  const statusFilter = PART_STATUSES.map((s) => ({ value: s.key, label: s.label, color: s.color }));
+  const subteamFilter = subteams.map((s, i) => ({ value: s.key, label: s.label, color: groupColor(i) }));
+  const subteamColor = (key: string) => {
+    const i = subteams.findIndex((s) => s.key === key);
+    return i >= 0 ? groupColor(i) : "var(--c-gray)";
+  };
   const partOptions = PART_STATUSES.map((s) => ({ value: s.key, label: s.label, color: s.color }));
   const pendingCount = parts.filter((p) => p.status === "pending").length;
   const buying = parts.filter((p) => p.status === "approved" || p.status === "ordered");
@@ -221,21 +242,9 @@ export default function PartsPage() {
         subtitle={t("需求 → 老師審批 → 下單 → 到貨，一頁追蹤")}
         action={
           <>
-          <select className={`${SELECT_CLS} w-32`} value={fStatus} onChange={(e) => setFStatus(e.target.value)}>
-            <option value="all">{t("全部狀態")}</option>
-            {PART_STATUSES.map((s) => (
-              <option key={s.key} value={s.key}>{s.label}</option>
-            ))}
-          </select>
-          <select className={`${SELECT_CLS} w-32`} value={fSubteam} onChange={(e) => setFSubteam(e.target.value)}>
-            <option value="all">{t("全部組別")}</option>
-            {subteams.map((s) => (
-              <option key={s.key} value={s.key}>{s.label}</option>
-            ))}
-          </select>
-          <button className={BTN} onClick={() => setShowForm(!showForm)}>
-            {t("＋ 新零件需求")}
-          </button>
+          <Button onClick={() => setShowForm(!showForm)}>
+            <PlusIcon /> {tt("新採購申請", "New request")}
+          </Button>
           </>
         }
       />
@@ -246,29 +255,6 @@ export default function PartsPage() {
         <span><b className="text-xl tabular-nums">{arrived.length}</b> {t("已到貨")}</span>
         <span><b className="text-xl tabular-nums">${Math.round(totalSpent).toLocaleString()}</b> / ${Math.round(totalEst).toLocaleString()}</span>
       </div>
-
-      {showForm && (
-        <form onSubmit={submit} className="mb-4 space-y-3 rounded-[16px] border border-border bg-card p-5">
-          <h2 className="font-bold">{t("新增零件需求（送出後自動產生「老師審批連結」）")}</h2>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <input className={INPUT_CLS} placeholder={t("零件名稱 *")} value={name} onChange={(e) => setName(e.target.value)} />
-            <input className={INPUT_CLS} placeholder={t("規格 / 型號")} value={spec} onChange={(e) => setSpec(e.target.value)} />
-            <input className={INPUT_CLS} placeholder={t("購買連結（選填）")} value={link} onChange={(e) => setLink(e.target.value)} />
-            <div className="grid grid-cols-2 gap-2">
-              <input className={INPUT_CLS} type="number" min="1" value={qty} onChange={(e) => setQty(e.target.value)} />
-              <input className={INPUT_CLS} placeholder={t("單位")} value={unit} onChange={(e) => setUnit(e.target.value)} />
-            </div>
-            <input className={INPUT_CLS} type="number" min="0" placeholder={`${t("預估單價")} $`} value={estPrice} onChange={(e) => setEstPrice(e.target.value)} />
-            <select className={INPUT_CLS} value={subteam} onChange={(e) => setSubteam(e.target.value)}>
-              {subteams.map((s) => (
-                <option key={s.key} value={s.key}>{s.label}</option>
-              ))}
-            </select>
-            <input className={`${INPUT_CLS} sm:col-span-3`} placeholder={t("用途（給老師看的說明）")} value={purpose} onChange={(e) => setPurpose(e.target.value)} />
-          </div>
-          <button className={BTN} disabled={busy || !name.trim()}>{busy ? t("送出中…") : t("送出申請")}</button>
-        </form>
-      )}
 
       {ordering && (
         <form
@@ -298,104 +284,207 @@ export default function PartsPage() {
         </form>
       )}
 
-      <BoardGroup title={t("採購申請")} color="#579bfc" count={filtered.length}>
-        {filtered.length === 0 && <PageEmpty>{t("沒有符合的零件申請")}</PageEmpty>}
-        {filtered.length > 0 && (
-          <table className="board-table">
-            <thead>
-              <tr>
-                <th>{tt("零件", "Part")}</th>
-                <th>{t("負責人")}</th>
-                <th className="color-cell">{t("狀態")}</th>
-                <th>{tt("數量", "Qty")}</th>
-                <th>{t("組別")}</th>
-                <th>{tt("金額", "Amount")}</th>
-                <th>{t("操作")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((p) => {
-                const canDelete = isStaff(me.role) || (p.requested_by === me.id && p.status === "pending");
-                return (
-                  <tr key={p.id}>
-                    <td>
-                      <div className="max-w-sm whitespace-normal py-1">
-                        <div className="font-medium">{p.name}</div>
-                        {p.spec && <p className="text-xs text-muted-foreground">{t("規格")}：{p.spec}</p>}
-                        {p.purpose && <p className="text-xs text-muted-foreground">{t("用途")}：{p.purpose}</p>}
-                        {p.link && (
-                          <a href={p.link} target="_blank" rel="noreferrer" className="text-xs text-[#2383a5] hover:underline">
-                            {t("購買連結")} ↗
-                          </a>
+      <TableToolbar
+        query={q}
+        onQuery={setQ}
+        placeholder={tt("搜尋零件、規格、用途、申請人…", "Search parts, specs, purpose, people…")}
+        narrowing={narrowing}
+        onClear={() => {
+          setQ("");
+          setFStatus([]);
+          setFSubteam([]);
+        }}
+        shown={filtered.length}
+        total={parts.length}
+        noun={["項", "requests"]}
+        filters={
+          <>
+            <MultiFilter label={tt("狀態", "Status")} icon={<CircleDotIcon className="size-3.5" />} value={fStatus} onChange={setFStatus} options={statusFilter} />
+            <MultiFilter label={tt("組別", "Subteam")} icon={<LayersIcon className="size-3.5" />} value={fSubteam} onChange={setFSubteam} options={subteamFilter} />
+          </>
+        }
+      />
+
+      {filtered.length === 0 && (
+        <div className="rounded-[8px] border border-dashed border-border bg-card">
+          <TableEmpty>{parts.length === 0 ? tt("還沒有採購申請", "No purchase requests yet") : t("沒有符合的零件申請")}</TableEmpty>
+        </div>
+      )}
+      {PART_STATUSES.map((status) => {
+        const rows = filtered.filter((p) => p.status === status.key);
+        if (rows.length === 0) return null;
+        return (
+          <BoardGroup
+            key={status.key}
+            title={status.label}
+            color={status.color}
+            icon={<StatusDot color={status.color} />}
+            count={rows.length}
+            defaultOpen={status.key !== "rejected"}
+          >
+            <table className="board-table is-interactive table-fixed" style={{ minWidth: 1080 }}>
+              <colgroup>
+                <col />
+                <col style={{ width: 170 }} />
+                <col style={{ width: 130 }} />
+                <col style={{ width: 100 }} />
+                <col style={{ width: 130 }} />
+                <col style={{ width: 130 }} />
+                <col style={{ width: 100 }} />
+                <col style={{ width: 40 }} />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th><span className="pl-8">{tt("零件", "Part")}</span></th>
+                  <th>{tt("申請人", "Requested by")}</th>
+                  <th className="color-cell">{t("狀態")}</th>
+                  <th>{tt("數量", "Qty")}</th>
+                  <th>{tt("金額", "Amount")}</th>
+                  <th>{t("組別")}</th>
+                  <th>{tt("申請日", "Requested")}</th>
+                  <th aria-label={tt("動作", "Actions")} />
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((p, index) => {
+                  const canDelete = staff || (p.requested_by === me.id && p.status === "pending");
+                  return (
+                    <tr key={p.id} className="group/row">
+                      <td>
+                        <TitleCell index={index} title={p.name} sub={p.spec} muted={p.status === "rejected"} onOpen={() => setOpenId(p.id)} />
+                      </td>
+                      <td><PersonCell name={p.requested_by_name} /></td>
+                      <td className="color-cell">
+                        <StatusCell value={p.status} options={partOptions} disabled={!staff} onChange={(value) => onPartStatus(p, value)} />
+                      </td>
+                      <td className="tabular-nums">× {p.qty} {t(p.unit)}</td>
+                      <td className="tabular-nums">
+                        {p.actual_price != null ? (
+                          <span title={t("實際")}>${p.actual_price.toLocaleString()}</span>
+                        ) : (
+                          <span className="text-muted-foreground" title={t("預估")}>≈ ${(p.est_price * p.qty).toLocaleString()}</span>
                         )}
-                        {p.decided_note && <p className="text-xs text-muted-foreground">{t("審批備註")}：{p.decided_note}</p>}
-                        {p.order_vendor && (
-                          <p className="text-xs text-muted-foreground">
-                            {t("下單")}：{p.order_vendor}{p.order_ref ? `（${p.order_ref}）` : ""}
-                          </p>
-                        )}
-                        {p.arrived_at && <p className="text-xs text-muted-foreground">{t("到貨")}：{fmtMD(p.arrived_at.slice(0, 10))}</p>}
-                      </div>
-                    </td>
-                    <td>
-                      <PersonCell name={p.requested_by_name} />
-                    </td>
-                    <td className="color-cell">
-                      <StatusCell
-                        value={p.status}
-                        options={partOptions}
-                        disabled={!isStaff(me.role)}
-                        onChange={(value) => onPartStatus(p, value)}
-                      />
-                    </td>
-                    <td className="tabular-nums">× {p.qty} {t(p.unit)}</td>
-                    <td>{subteamLabel(p.subteam)}</td>
-                    <td className="tabular-nums">
-                      {p.actual_price != null ? (
-                        <span>{t("實際")} ${p.actual_price.toLocaleString()}</span>
-                      ) : (
-                        <span className="text-muted-foreground">{t("預估")} ${(p.est_price * p.qty).toLocaleString()}</span>
-                      )}
-                    </td>
-                    <td>
-                      <div className="flex flex-wrap items-center gap-2 py-1">
-                        {p.status === "pending" && isStaff(me.role) && (
-                          <>
-                            <button
-                              type="button"
-                              className="rounded-lg bg-emerald-500 px-3 py-1.5 text-sm font-bold text-ink shadow transition hover:bg-emerald-400"
-                              onClick={() => decide(p, "approved")}
-                            >
-                              ✓ {t("批准")}
-                            </button>
-                            <button
-                              type="button"
-                              className="rounded-lg bg-rose-500 px-3 py-1.5 text-sm font-bold text-ink shadow transition hover:bg-rose-400"
-                              onClick={() => decide(p, "rejected")}
-                            >
-                              ✕ {t("駁回")}
-                            </button>
-                            {p.approve_token && (
-                              <button type="button" className="rounded-lg border border-amber-200 bg-amber-500/10 px-3 py-1.5 text-sm text-amber-600 transition hover:bg-amber-500/20" onClick={() => copyApproveLink(p)}>
-                                {t("複製老師審批連結")}
-                              </button>
-                            )}
-                          </>
-                        )}
-                        {canDelete && (
-                          <button type="button" className="text-xs text-muted-foreground transition hover:text-rose-400" onClick={() => removePart(p)}>
-                            {t("刪除")}
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </BoardGroup>
+                      </td>
+                      <td><Label color={subteamColor(p.subteam)}>{subteamLabel(p.subteam)}</Label></td>
+                      <td className="tabular-nums text-muted-foreground">{fmtMD(p.created_at.slice(0, 10))}</td>
+                      <td>
+                        <RowActions
+                          label={p.name}
+                          actions={[
+                            { label: tt("開啟詳情", "Open details"), icon: <PanelRightOpenIcon />, onSelect: () => setOpenId(p.id) },
+                            { label: tt("開啟購買連結", "Open purchase link"), icon: <ExternalLinkIcon />, onSelect: () => window.open(p.link, "_blank", "noopener"), hidden: !p.link },
+                            { label: t("批准"), icon: <CheckIcon />, onSelect: () => decide(p, "approved"), hidden: !(staff && p.status === "pending"), separator: true },
+                            { label: t("駁回"), icon: <XIcon />, onSelect: () => decide(p, "rejected"), hidden: !(staff && p.status === "pending") },
+                            { label: t("複製老師審批連結"), icon: <LinkIcon />, onSelect: () => copyApproveLink(p), hidden: !(staff && p.status === "pending" && p.approve_token) },
+                            { label: t("刪除"), icon: <Trash2Icon />, onSelect: () => removePart(p), destructive: true, separator: true, hidden: !canDelete },
+                          ]}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </BoardGroup>
+        );
+      })}
+
+      <Sheet open={openPart != null} onOpenChange={(open) => { if (!open) setOpenId(null); }}>
+        <SheetContent className="w-full gap-0 sm:max-w-[480px]" style={{ width: "min(480px, 100%)", maxWidth: 480 }}>
+          {openPart && (
+            <>
+              <SheetHeader className="border-b border-border px-5">
+                <SheetTitle className="text-lg">{openPart.name}</SheetTitle>
+                <SheetDescription>
+                  {tt("申請人", "Requested by")} {openPart.requested_by_name ?? "—"} · {fmtMD(openPart.created_at.slice(0, 10))}
+                </SheetDescription>
+              </SheetHeader>
+              <dl className="flex flex-col gap-4 overflow-y-auto px-5 py-4 text-sm">
+                <DetailRow label={t("狀態")}>
+                  <StatusCell value={openPart.status} options={partOptions} disabled={!staff} onChange={(value) => onPartStatus(openPart, value)} />
+                </DetailRow>
+                <DetailRow label={t("規格")}>{openPart.spec}</DetailRow>
+                <DetailRow label={tt("數量", "Qty")}>× {openPart.qty} {t(openPart.unit)}</DetailRow>
+                <DetailRow label={tt("金額", "Amount")}>
+                  {openPart.actual_price != null
+                    ? `${t("實際")} $${openPart.actual_price.toLocaleString()}`
+                    : `${t("預估")} $${(openPart.est_price * openPart.qty).toLocaleString()}`}
+                </DetailRow>
+                <DetailRow label={t("組別")}><Label color={subteamColor(openPart.subteam)}>{subteamLabel(openPart.subteam)}</Label></DetailRow>
+                <DetailRow label={t("用途")}>{openPart.purpose}</DetailRow>
+                <DetailRow label={t("購買連結")}>
+                  {openPart.link && (
+                    <a href={openPart.link} target="_blank" rel="noreferrer" className="break-all text-[var(--c-blue)] hover:underline">
+                      {openPart.link}
+                    </a>
+                  )}
+                </DetailRow>
+                <DetailRow label={t("審批備註")}>{openPart.decided_note}</DetailRow>
+                <DetailRow label={t("下單")}>
+                  {openPart.order_vendor ? `${openPart.order_vendor}${openPart.order_ref ? `（${openPart.order_ref}）` : ""}` : ""}
+                </DetailRow>
+                <DetailRow label={t("到貨")}>{openPart.arrived_at ? fmtMD(openPart.arrived_at.slice(0, 10)) : ""}</DetailRow>
+              </dl>
+              {staff && openPart.status === "pending" && (
+                <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-border px-5 py-3">
+                  <Button onClick={() => decide(openPart, "approved")}><CheckIcon /> {t("批准")}</Button>
+                  <Button variant="outline" className="text-destructive hover:text-destructive" onClick={() => decide(openPart, "rejected")}><XIcon /> {t("駁回")}</Button>
+                  {openPart.approve_token && (
+                    <Button variant="ghost" onClick={() => copyApproveLink(openPart)}><LinkIcon /> {t("複製老師審批連結")}</Button>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={showForm} onOpenChange={setShowForm}>
+        <SheetContent className="w-full gap-0 sm:max-w-[520px]" style={{ width: "min(520px, 100%)", maxWidth: 520 }}>
+          <form onSubmit={submit} className="flex h-full min-h-0 flex-col">
+            <SheetHeader className="border-b border-border px-5">
+              <SheetTitle className="text-lg">{tt("新採購申請", "New purchase request")}</SheetTitle>
+              <SheetDescription>{tt("送出後會產生老師審批連結", "Sending it creates an approval link for the teacher")}</SheetDescription>
+            </SheetHeader>
+            <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-4 text-sm">
+              <FormField label={tt("零件名稱", "Part name")}>
+                <Input autoFocus className="h-9" placeholder={tt("例如：T200 推進器", "e.g. T200 thruster")} value={name} onChange={(e) => setName(e.target.value)} />
+              </FormField>
+              <FormField label={t("規格 / 型號")}>
+                <Input className="h-9" value={spec} onChange={(e) => setSpec(e.target.value)} />
+              </FormField>
+              <div className="grid grid-cols-2 gap-4">
+                <FormField label={tt("數量", "Qty")}>
+                  <Input className="h-9" type="number" min="1" value={qty} onChange={(e) => setQty(e.target.value)} />
+                </FormField>
+                <FormField label={t("單位")}>
+                  <Input className="h-9" value={unit} onChange={(e) => setUnit(e.target.value)} />
+                </FormField>
+                <FormField label={`${t("預估單價")} $`}>
+                  <Input className="h-9" type="number" min="0" value={estPrice} onChange={(e) => setEstPrice(e.target.value)} />
+                </FormField>
+                <FormField label={t("組別")}>
+                  <Choice value={subteam} onChange={setSubteam} options={subteams.map((s) => ({ value: s.key, label: s.label }))} className="w-full" ariaLabel={t("組別")} />
+                </FormField>
+              </div>
+              <FormField label={t("購買連結（選填）")}>
+                <Input className="h-9" value={link} onChange={(e) => setLink(e.target.value)} />
+              </FormField>
+              <FormField label={t("用途（給老師看的說明）")}>
+                <textarea
+                  className="field-sizing-content min-h-24 rounded-[8px] border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                  value={purpose}
+                  onChange={(e) => setPurpose(e.target.value)}
+                />
+              </FormField>
+            </div>
+            <div className="flex items-center gap-3 border-t border-border px-5 py-3">
+              <Button type="button" variant="ghost" className="ml-auto" onClick={() => setShowForm(false)}>{t("取消")}</Button>
+              <Button type="submit" disabled={busy || !name.trim()}>{busy ? t("送出中…") : t("送出申請")}</Button>
+            </div>
+          </form>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

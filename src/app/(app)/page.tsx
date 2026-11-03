@@ -12,7 +12,7 @@ import CycleTimeline from "@/components/CycleTimeline";
 import { PageEmpty, PageError, PageLoading } from "@/components/PageState";
 import { BoardGroup } from "@/components/board/BoardGroup";
 import { BoardHeader } from "@/components/board/BoardHeader";
-import { StatusCell } from "@/components/board/ColorCell";
+import { Label, StatusCell } from "@/components/board/ColorCell";
 import { PeopleCell, PersonCell } from "@/components/board/PersonCell";
 import { Button } from "@/components/ui/button";
 import type { Cycle, Me, Part, Settings, Task, TeamEvent } from "@/lib/types";
@@ -184,7 +184,7 @@ export default function DashboardPage() {
                 return (
                   <Link key={c.id} href="/cycles" className="rounded-[8px] border border-border p-3 transition-colors hover:bg-muted">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className={`inline-flex h-6 items-center px-2 text-xs ${cycleStatus(c.status).chip}`}>{cycleStatus(c.status).label}</span>
+                      <Label color={cycleStatus(c.status).color}>{cycleStatus(c.status).label}</Label>
                       <span className="font-medium">{c.title}</span>
                       {isTeacher && c.proposer_name && <PersonCell name={c.proposer_name} />}
                       <span className="ml-auto text-xs text-muted-foreground tabular-nums">
