@@ -15,7 +15,7 @@ export default function InventoryTabs() {
     { href: "/inventory/manage", label: tt("新增 / 放置", "Add & place"), icon: PackagePlusIcon },
   ];
   return (
-    <nav aria-label={tt("庫存頁面", "Inventory pages")} className="inline-flex rounded-full border border-border bg-card p-1">
+    <nav aria-label={tt("庫存頁面", "Inventory pages")} className="flex gap-1 overflow-x-auto border-b border-border">
       {tabs.map((tab) => {
         const on = pathname === tab.href;
         const Icon = tab.icon;
@@ -24,11 +24,11 @@ export default function InventoryTabs() {
             key={tab.href}
             href={tab.href}
             aria-current={on ? "page" : undefined}
-            className={`inline-flex h-9 items-center gap-1.5 rounded-full px-4 text-sm font-medium transition-colors ${
-              on ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
+            className={`relative -mb-px inline-flex h-10 shrink-0 items-center gap-2 border-b-2 px-3 text-sm transition-colors ${
+              on ? "border-[var(--underline)] font-semibold text-foreground" : "border-transparent text-muted-foreground hover:border-border hover:text-foreground"
             }`}
           >
-            <Icon className="size-4" /> {tab.label}
+            <Icon className="size-4 text-muted-foreground" /> {tab.label}
           </Link>
         );
       })}

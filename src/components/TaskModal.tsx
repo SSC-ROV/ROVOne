@@ -5,6 +5,11 @@ import { api } from "@/lib/api-client";
 import { BTN, BTN_GHOST, INPUT_CLS, PRIORITIES, STATUSES } from "@/lib/ui";
 import { useI18n } from "@/lib/i18n";
 import { useDialogs } from "@/components/ui/Dialogs";
+import { ChevronDownIcon } from "lucide-react";
+import { ColorCell } from "@/components/board/ColorCell";
+import { AvatarStack, PeopleChecklist, peopleSummary } from "@/components/board/PersonCell";
+import { Choice } from "@/components/tasks/shared";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { isAssignedTo, type ChecklistItem, type Me, type Member, type Task } from "@/lib/types";
 
 export default function TaskModal({
@@ -47,6 +52,8 @@ export default function TaskModal({
   const [newItem, setNewItem] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const people = members.map((m) => ({ value: String(m.id), label: m.display_name }));
+  const assigneeNames = assigneeIds.map((id) => members.find((m) => m.id === id)?.display_name ?? "").filter(Boolean);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -195,67 +202,53 @@ export default function TaskModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="mb-1 block text-sm text-ink-subtle">{t("組別")}</label>
-              <select
-                className={INPUT_CLS}
+              <Choice
                 value={subteam}
-                onChange={(e) => setSubteam(e.target.value as Task["subteam"])}
+                onChange={(value) => setSubteam(value as Task["subteam"])}
+                options={subteams.map((s) => ({ value: s.key, label: s.label }))}
                 disabled={!canEdit}
-              >
-                {subteams.map((s) => (
-                  <option key={s.key} value={s.key}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
+                className="w-full"
+                ariaLabel={t("組別")}
+              />
             </div>
             <div>
               <label className="mb-1 block text-sm text-ink-subtle">{t("負責人")}</label>
-              <div className={`${INPUT_CLS} flex h-auto max-h-36 flex-col gap-1 overflow-y-auto py-1.5`}>
-                {members.map((m) => (
-                  <label key={m.id} className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      className="size-4 shrink-0 accent-[#0073ea]"
-                      checked={assigneeIds.includes(m.id)}
-                      disabled={!canEdit}
-                      onChange={(e) =>
-                        setAssigneeIds((prev) => (e.target.checked ? [...prev, m.id] : prev.filter((id) => id !== m.id)))
-                      }
-                    />
-                    <span className="min-w-0 truncate">{m.display_name}</span>
-                  </label>
-                ))}
-              </div>
+              <Popover>
+                <PopoverTrigger
+                  type="button"
+                  disabled={!canEdit}
+                  aria-label={t("負責人")}
+                  className="flex h-7 w-full min-w-0 items-center gap-2 rounded-[min(var(--radius-md),10px)] border border-input bg-transparent px-2 text-left text-sm hover:bg-muted disabled:cursor-default disabled:hover:bg-transparent dark:bg-input/30"
+                >
+                  {assigneeNames.length ? <AvatarStack names={assigneeNames} size={18} /> : null}
+                  <span className={`min-w-0 flex-1 truncate ${assigneeNames.length ? "" : "text-muted-foreground"}`}>
+                    {assigneeNames.length ? peopleSummary(assigneeNames) : t("未指派")}
+                  </span>
+                  <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                </PopoverTrigger>
+                <PopoverContent className="max-h-80 w-64 max-w-[calc(100vw-2rem)] gap-0.5 overflow-y-auto p-1" align="start">
+                  <PeopleChecklist options={people} value={assigneeIds} onChange={setAssigneeIds} />
+                </PopoverContent>
+              </Popover>
             </div>
             <div>
               <label className="mb-1 block text-sm text-ink-subtle">{t("優先級")}</label>
-              <select
-                className={INPUT_CLS}
+              <ColorCell
+                kind="priority"
                 value={priority}
-                onChange={(e) => setPriority(e.target.value as Task["priority"])}
+                options={PRIORITIES.map((p) => ({ value: p.key, label: p.label, color: p.color }))}
                 disabled={!canEdit}
-              >
-                {PRIORITIES.map((p) => (
-                  <option key={p.key} value={p.key}>
-                    {p.label}
-                  </option>
-                ))}
-              </select>
+                onChange={(value) => setPriority(value as Task["priority"])}
+              />
             </div>
             <div>
               <label className="mb-1 block text-sm text-ink-subtle">{t("狀態")}</label>
-              <select
-                className={INPUT_CLS}
+              <ColorCell
                 value={status}
-                onChange={(e) => setStatus(e.target.value as Task["status"])}
+                options={STATUSES.map((s) => ({ value: s.key, label: s.label, color: s.color }))}
                 disabled={!canEdit}
-              >
-                {STATUSES.map((s) => (
-                  <option key={s.key} value={s.key}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
+                onChange={(value) => setStatus(value as Task["status"])}
+              />
             </div>
             <div className="col-span-2">
               <label className="mb-1 block text-sm text-ink-subtle">{t("截止日期")}</label>

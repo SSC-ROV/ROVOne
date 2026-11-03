@@ -9,11 +9,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "訂閱連結不正確" }, { status: 403 });
   }
   // ?subteam=<key> limits the feed to one subteam (plus team-wide items); omit for the full calendar.
-  const { body } = await buildIcs(req.nextUrl.searchParams.get("subteam"));
+  const { body, name } = await buildIcs(req.nextUrl.searchParams.get("subteam"));
   return new NextResponse(body, {
     headers: {
       "Content-Type": "text/calendar; charset=utf-8",
       "Cache-Control": "no-store",
+      // Some apps take the calendar's name from the file name rather than X-WR-CALNAME.
+      "Content-Disposition": `inline; filename="${name.replace(/[^\w .-]+/g, "").trim() || "calendar"}.ics"; filename*=UTF-8''${encodeURIComponent(name)}.ics`,
     },
   });
 }

@@ -5,12 +5,19 @@ import { isStaff } from "@/lib/roles";
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
-import { BTN, EQUIPMENT_CATEGORIES, INPUT_CLS, SELECT_CLS } from "@/lib/ui";
+import { EQUIPMENT_CATEGORIES, groupColor } from "@/lib/ui";
 import { fmtMD, todayStr } from "@/lib/date";
 import { useDialogs } from "@/components/ui/Dialogs";
-import { PageEmpty, PageError, PageLoading } from "@/components/PageState";
+import { PageError, PageLoading } from "@/components/PageState";
+import { CircleDotIcon, HandIcon, PlusIcon, TagIcon, Trash2Icon, Undo2Icon, WrenchIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Choice, MultiFilter } from "@/components/tasks/shared";
+import { BoardHeader } from "@/components/board/BoardHeader";
+import { FormField, RowActions, StatusDot, TableEmpty, TableToolbar, TitleCell } from "@/components/board/BoardTable";
 import { BoardGroup } from "@/components/board/BoardGroup";
-import { StatusCell } from "@/components/board/ColorCell";
+import { Label, StatusCell } from "@/components/board/ColorCell";
 import { PersonCell } from "@/components/board/PersonCell";
 import { tt } from "@/lib/i18n-core";
 import type { Equipment, Me } from "@/lib/types";
@@ -30,8 +37,10 @@ export default function EquipmentPage() {
   const [category, setCategory] = useState("其他");
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
-  const [fStatus, setFStatus] = useState("all");
-  const [fCategory, setFCategory] = useState("all");
+  const [q, setQ] = useState("");
+  const [fStatus, setFStatus] = useState<string[]>([]);
+  const [fCategory, setFCategory] = useState<string[]>([]);
+  const [adding, setAdding] = useState(false);
 
   async function load() {
     const [e, u] = await Promise.all([
@@ -112,6 +121,7 @@ export default function EquipmentPage() {
       await api("/api/equipment", { method: "POST", body: JSON.stringify({ name, category, note }) });
       setName("");
       setNote("");
+      setAdding(false);
       toast(t("設備已新增"));
       await load();
     } catch (err) {
@@ -173,122 +183,146 @@ export default function EquipmentPage() {
 
   const borrowed = equipment.filter((e) => e.status === "borrowed");
   const statusOptions = STATUS_OPTIONS.map((item) => ({ ...item, label: t(item.label) }));
+  const needle = q.trim().toLowerCase();
   const visible = equipment.filter(
-    (e) => (fStatus === "all" || e.status === fStatus) && (fCategory === "all" || e.category === fCategory)
+    (e) =>
+      (fStatus.length === 0 || fStatus.includes(e.status)) &&
+      (fCategory.length === 0 || fCategory.includes(e.category)) &&
+      (!needle || [e.name, e.note, t(e.category), e.borrower_name ?? ""].join(" ").toLowerCase().includes(needle))
   );
+  const narrowing = needle.length > 0 || fStatus.length > 0 || fCategory.length > 0;
+  const categoryColor = (c: string) => groupColor(Math.max(0, EQUIPMENT_CATEGORIES.indexOf(c)));
+  const categoryOptions = EQUIPMENT_CATEGORIES.map((c) => ({ value: c, label: t(c), color: categoryColor(c) }));
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="board-title">{t("設備借用")}</h1>
-        <span className="text-sm text-ink-tertiary">
-          {t("目前借出")} {borrowed.length} {t("項；借用請登記，歸還請按「歸還」")}
-        </span>
-        <select className={`${SELECT_CLS} ml-auto w-32`} value={fStatus} onChange={(e) => setFStatus(e.target.value)}>
-          <option value="all">{t("全部狀態")}</option>
-          <option value="available">{t("可借用")}</option>
-          <option value="borrowed">{t("借出中")}</option>
-          <option value="maintenance">{t("維修中")}</option>
-        </select>
-        <select className={`${SELECT_CLS} w-32`} value={fCategory} onChange={(e) => setFCategory(e.target.value)}>
-          <option value="all">{t("全部分類")}</option>
-          {EQUIPMENT_CATEGORIES.map((c) => (
-            <option key={c} value={c}>{t(c)}</option>
-          ))}
-        </select>
-      </div>
+      <BoardHeader
+        title={t("設備借用")}
+        subtitle={tt(`目前借出 ${borrowed.length} 項`, `${borrowed.length} out on loan`)}
+        action={
+          staff ? (
+            <Button onClick={() => setAdding(true)}>
+              <PlusIcon /> {tt("新設備", "New equipment")}
+            </Button>
+          ) : null
+        }
+      />
 
-      <BoardGroup title={t("設備")} color="#579bfc" count={visible.length}>
-        <table className="board-table">
-          <thead>
-            <tr>
-              <th>{t("設備")}</th>
-              <th>{t("分類")}</th>
-              <th className="color-cell">{t("狀態")}</th>
-              <th>{t("借用人")}</th>
-              <th>{t("應還日")}</th>
-              <th>{t("操作")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {visible.map((e) => {
-              const overdue =
-                e.status === "borrowed" && e.due_return && e.due_return < todayStr();
-              return (
-                <tr key={e.id}>
-                  <td>
-                    <div className="whitespace-normal py-1">
-                      <div>{e.name}</div>
-                      {e.note && <p className="text-xs text-muted-foreground">{e.note}</p>}
-                    </div>
-                  </td>
-                  <td>{t(e.category)}</td>
-                  <td className="color-cell">
-                    <StatusCell
-                      value={e.status}
-                      options={statusOptions}
-                      disabled={!canEditStatus(e)}
-                      onChange={(value) => onEquipmentStatus(e, value)}
-                    />
-                  </td>
-                  <td>
-                    <PersonCell name={e.borrower_name} />
-                  </td>
-                  <td className={`tabular-nums ${overdue ? "text-rose-400" : ""}`}>
-                    {e.due_return ? (overdue ? t("逾期 ") : "") + fmtMD(e.due_return) : "—"}
-                  </td>
-                  <td>
-                    <div className="flex gap-3 text-xs">
-                      {e.status === "available" && (
-                        <button type="button" className="text-primary hover:underline" onClick={() => act(e, "borrow")}>
-                          {t("借用")}
-                        </button>
-                      )}
-                      {e.status === "borrowed" && (isStaff(me.role) || e.borrower_id === me.id) && (
-                        <button type="button" className="text-emerald-600 hover:underline" onClick={() => act(e, "return")}>
-                          {t("歸還")}
-                        </button>
-                      )}
-                      {isStaff(me.role) && e.status !== "borrowed" && (
-                        <button type="button" className="text-muted-foreground hover:underline" onClick={() => act(e, "maintenance")}>
-                          {e.status === "maintenance" ? t("修好了") : t("送修")}
-                        </button>
-                      )}
-                      {isStaff(me.role) && (
-                        <button type="button" className="text-muted-foreground hover:text-rose-400" onClick={() => remove(e)}>
-                          {t("刪除")}
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-            {visible.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-4 py-4">
-                  <PageEmpty>
-                    {equipment.length === 0 ? t("還沒有登記設備") : t("沒有符合的結果")}
-                  </PageEmpty>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </BoardGroup>
+      <TableToolbar
+        query={q}
+        onQuery={setQ}
+        placeholder={tt("搜尋設備、備註、借用人…", "Search equipment, notes, borrowers…")}
+        narrowing={narrowing}
+        onClear={() => {
+          setQ("");
+          setFStatus([]);
+          setFCategory([]);
+        }}
+        shown={visible.length}
+        total={equipment.length}
+        noun={["項", "items"]}
+        filters={
+          <>
+            <MultiFilter label={tt("狀態", "Status")} icon={<CircleDotIcon className="size-3.5" />} value={fStatus} onChange={setFStatus} options={statusOptions} />
+            <MultiFilter label={tt("分類", "Category")} icon={<TagIcon className="size-3.5" />} value={fCategory} onChange={setFCategory} options={categoryOptions} />
+          </>
+        }
+      />
 
-      {isStaff(me.role) && (
-        <form onSubmit={addEquipment} className="grid gap-3 rounded-xl border border-hairline bg-surface-1 p-5 sm:grid-cols-[1fr_10rem_1fr_auto]">
-          <input className={INPUT_CLS} placeholder={t("設備名稱，例如：T200 備用推進器")} value={name} onChange={(e) => setName(e.target.value)} />
-          <select className={INPUT_CLS} value={category} onChange={(e) => setCategory(e.target.value)}>
-            {EQUIPMENT_CATEGORIES.map((c) => (
-              <option key={c} value={c}>{t(c)}</option>
-            ))}
-          </select>
-          <input className={INPUT_CLS} placeholder={t("備註（序號、位置…選填）")} value={note} onChange={(e) => setNote(e.target.value)} />
-          <button className={BTN} disabled={!name.trim()}>{t("新增設備")}</button>
-        </form>
+      {visible.length === 0 && (
+        <div className="rounded-[8px] border border-dashed border-border bg-card">
+          <TableEmpty>{equipment.length === 0 ? t("還沒有登記設備") : t("沒有符合的結果")}</TableEmpty>
+        </div>
       )}
+      {statusOptions.map((status) => {
+        const rows = visible.filter((e) => e.status === status.value);
+        if (rows.length === 0) return null;
+        return (
+          <BoardGroup key={status.value} title={status.label} color={status.color} icon={<StatusDot color={status.color} />} count={rows.length}>
+            <table className="board-table is-interactive table-fixed" style={{ minWidth: 920 }}>
+              <colgroup>
+                <col />
+                <col style={{ width: 130 }} />
+                <col style={{ width: 130 }} />
+                <col style={{ width: 180 }} />
+                <col style={{ width: 120 }} />
+                <col style={{ width: 40 }} />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th><span className="pl-8">{t("設備")}</span></th>
+                  <th>{t("分類")}</th>
+                  <th className="color-cell">{t("狀態")}</th>
+                  <th>{t("借用人")}</th>
+                  <th>{t("應還日")}</th>
+                  <th aria-label={tt("動作", "Actions")} />
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((e, index) => {
+                  const overdue = e.status === "borrowed" && !!e.due_return && e.due_return < todayStr();
+                  const canReturn = e.status === "borrowed" && (staff || e.borrower_id === meId);
+                  return (
+                    <tr key={e.id} className="group/row">
+                      <td><TitleCell index={index} title={e.name} sub={e.note} /></td>
+                      <td><Label color={categoryColor(e.category)}>{t(e.category)}</Label></td>
+                      <td className="color-cell">
+                        <StatusCell value={e.status} options={statusOptions} disabled={!canEditStatus(e)} onChange={(value) => onEquipmentStatus(e, value)} />
+                      </td>
+                      <td><PersonCell name={e.borrower_name} /></td>
+                      <td className={`tabular-nums ${overdue ? "font-medium text-[var(--c-red)]" : e.due_return ? "" : "text-muted-foreground"}`}>
+                        {e.due_return ? (overdue ? t("逾期 ") : "") + fmtMD(e.due_return) : "—"}
+                      </td>
+                      <td>
+                        <RowActions
+                          label={e.name}
+                          actions={[
+                            { label: t("借用"), icon: <HandIcon />, onSelect: () => act(e, "borrow"), hidden: e.status !== "available" },
+                            { label: t("歸還"), icon: <Undo2Icon />, onSelect: () => act(e, "return"), hidden: !canReturn },
+                            {
+                              label: e.status === "maintenance" ? t("修好了") : t("送修"),
+                              icon: <WrenchIcon />,
+                              onSelect: () => act(e, "maintenance"),
+                              hidden: !staff || e.status === "borrowed",
+                            },
+                            { label: t("刪除"), icon: <Trash2Icon />, onSelect: () => remove(e), destructive: true, separator: true, hidden: !staff },
+                          ]}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </BoardGroup>
+        );
+      })}
+
+      <Sheet open={adding} onOpenChange={setAdding}>
+        <SheetContent className="w-full gap-0 sm:max-w-[520px]" style={{ width: "min(520px, 100%)", maxWidth: 520 }}>
+          <form onSubmit={addEquipment} className="flex h-full min-h-0 flex-col">
+            <SheetHeader className="border-b border-border px-5">
+              <SheetTitle className="text-lg">{tt("新設備", "New equipment")}</SheetTitle>
+              <SheetDescription>{tt("登記後隊員就能借用", "Once added, team members can borrow it")}</SheetDescription>
+            </SheetHeader>
+            <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-4 text-sm">
+              <FormField label={tt("名稱", "Name")}>
+                <Input autoFocus className="h-9" placeholder={t("設備名稱，例如：T200 備用推進器")} value={name} onChange={(ev) => setName(ev.target.value)} />
+              </FormField>
+              <FormField label={t("分類")}>
+                <Choice value={category} onChange={setCategory} options={EQUIPMENT_CATEGORIES.map((c) => ({ value: c, label: t(c) }))} className="w-full" ariaLabel={t("分類")} />
+              </FormField>
+              <FormField label={tt("備註", "Note")}>
+                <Input className="h-9" placeholder={t("備註（序號、位置…選填）")} value={note} onChange={(ev) => setNote(ev.target.value)} />
+              </FormField>
+            </div>
+            <div className="flex items-center gap-3 border-t border-border px-5 py-3">
+              <Button type="button" variant="ghost" className="ml-auto" onClick={() => setAdding(false)}>{t("取消")}</Button>
+              <Button type="submit" disabled={!name.trim()}>{t("新增設備")}</Button>
+            </div>
+          </form>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

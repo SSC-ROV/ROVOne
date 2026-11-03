@@ -36,7 +36,7 @@ function addHour(hhmm: string): string {
  * 產生 iCal（.ics）訂閱內容：活動含時間，任務截止為整天事件。
  * With `subteam`, only that subteam's events and tasks plus team-wide ones ("general" / no subteam).
  */
-export async function buildIcs(subteam?: string | null): Promise<{ body: string; token: string }> {
+export async function buildIcs(subteam?: string | null): Promise<{ body: string; token: string; name: string }> {
   const token = await getOrCreateIcalToken();
   const settings = await getSettings();
   const team = subteam ? (await getSubteams()).find((item) => item.key === subteam) : undefined;
@@ -46,7 +46,11 @@ export async function buildIcs(subteam?: string | null): Promise<{ body: string;
     "VERSION:2.0",
     "PRODID:-//ROV Team Hub//CN",
     "CALSCALE:GREGORIAN",
+    // NAME / DESCRIPTION are the RFC 7986 fields; X-WR-* covers Apple, Google and Outlook.
+    `NAME:${esc(name)}`,
     `X-WR-CALNAME:${esc(name)}`,
+    `DESCRIPTION:${esc(`${name} events and task due dates`)}`,
+    `X-WR-CALDESC:${esc(`${name} events and task due dates`)}`,
     "REFRESH-INTERVAL;VALUE=DURATION:PT1H",
     "X-PUBLISHED-TTL:PT1H",
   ];
@@ -96,5 +100,5 @@ export async function buildIcs(subteam?: string | null): Promise<{ body: string;
   }
 
   lines.push("END:VCALENDAR");
-  return { body: lines.join("\r\n"), token };
+  return { body: lines.join("\r\n"), token, name };
 }

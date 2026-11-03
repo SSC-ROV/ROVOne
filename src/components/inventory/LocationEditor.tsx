@@ -50,7 +50,7 @@ export default function LocationEditor({
   const preview = pending ? [pending] : kept;
 
   return (
-    <div className="space-y-3 rounded-[8px] border border-[#0073ea]/40 bg-[#cce5ff]/30 p-3 dark:bg-[#0073ea]/10">
+    <div className="space-y-3">
       {hasOld && (
         <div className="space-y-1.5">
           <p className="text-xs font-medium text-muted-foreground">{tt("目前記錄的位置", "Currently recorded at")}</p>
@@ -80,7 +80,7 @@ export default function LocationEditor({
         )}
       </div>
 
-      <LocationDiagram locations={preview} className="max-w-md" />
+      <LocationDiagram locations={preview} />
 
       <div className="flex flex-wrap items-center gap-2">
         {pending ? (
