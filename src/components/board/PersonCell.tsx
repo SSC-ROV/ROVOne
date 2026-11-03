@@ -44,7 +44,7 @@ export function Avatar({ name, size = 24 }: { name: string | null; size?: number
         width: size,
         height: size,
         fontSize: Math.round(size * 0.42),
-        background: `color-mix(in oklch, ${color} 26%, transparent)`,
+        background: `color-mix(in oklch, ${color} 26%, var(--card))`,
         color: `color-mix(in oklch, ${color} 55%, var(--foreground))`,
       }}
       title={name}
