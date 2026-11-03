@@ -129,6 +129,12 @@ positioning only. Teachers can always use the no-login approval links too.
   days paused the Restore button stops working. Before long holidays set up a
   keep-alive ping (any Vercel Cron hitting the site counts as activity)
 - Handover: at least two people should hold the Supabase credentials
+- **Security**: the app connects only via `DATABASE_URL` (the `postgres` role,
+  which bypasses RLS). The Supabase Data API roles (`anon`, `authenticated`)
+  get no access: every public table has RLS on with no policies, and their
+  grants are revoked. After adding a table, run
+  `node --env-file=.env.local scripts/migrate-lock-down.mjs` and check
+  Supabase → Advisors → Security (only "RLS Enabled No Policy" INFO is expected)
 
 ## Platform limits & ops (production)
 

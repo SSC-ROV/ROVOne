@@ -38,6 +38,9 @@ await sql`CREATE TABLE IF NOT EXISTS inventory_reports (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 )`;
 await sql`CREATE INDEX IF NOT EXISTS inventory_reports_item_idx ON inventory_reports(item_id, created_at DESC)`;
+for (const t of ["inventory_items", "inventory_locations", "inventory_reports"]) {
+  await sql.unsafe(`ALTER TABLE ${t} ENABLE ROW LEVEL SECURITY`);
+}
 const [{ n }] = await sql`SELECT COUNT(*)::int AS n FROM inventory_items`;
 console.log("inventory 表準備完成，目前物品數:", n);
 await sql.end();
