@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { CalendarIcon, CheckIcon, ChevronDownIcon, XIcon } from "lucide-react";
+import { CalendarIcon, CheckIcon, ChevronDownIcon, FilterIcon, XIcon } from "lucide-react";
 import { tt } from "@/lib/i18n-core";
 import { addDaysStr, daysBetween, fmtMD } from "@/lib/date";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -58,12 +58,15 @@ export function DueCell({
   disabled,
   onChange,
   className = "",
+  rowLabel,
 }: {
   task: Pick<Task, "due_date" | "status">;
   today: string;
   disabled?: boolean;
   onChange?: (value: string | null) => void;
   className?: string;
+  /** Render as a full-width "label  value" sidebar row that highlights on hover. */
+  rowLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
   const state = dueState(task, today);
@@ -76,7 +79,18 @@ export function DueCell({
       )}
     </span>
   );
-  if (disabled || !onChange) return <span className={className}>{face}</span>;
+  const rowClass = "grid min-h-9 w-full grid-cols-[5.5rem_1fr] items-center gap-x-2 px-2 text-left text-sm";
+  if (disabled || !onChange) {
+    if (rowLabel) {
+      return (
+        <div className={rowClass}>
+          <span className="text-muted-foreground">{rowLabel}</span>
+          {face}
+        </div>
+      );
+    }
+    return <span className={className}>{face}</span>;
+  }
   const pick = (value: string | null) => {
     onChange(value);
     setOpen(false);
@@ -89,13 +103,23 @@ export function DueCell({
   ];
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
-        type="button"
-        className={`inline-flex h-7 items-center rounded-[4px] px-1.5 hover:bg-muted ${className}`}
-        aria-label={tt("截止日", "Due date")}
-      >
-        {face}
-      </PopoverTrigger>
+      {rowLabel ? (
+        <PopoverTrigger
+          type="button"
+          className={`${rowClass} cursor-pointer rounded-[6px] transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none data-popup-open:bg-muted ${className}`}
+        >
+          <span className="text-muted-foreground">{rowLabel}</span>
+          {face}
+        </PopoverTrigger>
+      ) : (
+        <PopoverTrigger
+          type="button"
+          className={`inline-flex h-7 items-center rounded-[4px] px-1.5 hover:bg-muted ${className}`}
+          aria-label={tt("截止日", "Due date")}
+        >
+          {face}
+        </PopoverTrigger>
+      )}
       <PopoverContent className="w-56 gap-1 p-1.5" align="start">
         {quick.map((option) => (
           <button
@@ -185,12 +209,15 @@ export function MultiFilter({
   options,
   value,
   onChange,
+  variant = "pill",
 }: {
   label: string;
   icon?: ReactNode;
   options: FilterOption[];
   value: string[];
   onChange: (value: string[]) => void;
+  /** "icon" = a small funnel button for table column headers. */
+  variant?: "pill" | "icon";
 }) {
   const [search, setSearch] = useState("");
   const active = value.length > 0;
@@ -200,19 +227,35 @@ export function MultiFilter({
   const shown = needle ? options.filter((option) => option.label.toLowerCase().includes(needle)) : options;
   return (
     <Popover onOpenChange={(open) => { if (!open) setSearch(""); }}>
-      <PopoverTrigger
-        type="button"
-        className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-sm transition-colors ${
-          active
-            ? "border-transparent bg-primary-soft text-primary-soft-foreground"
-            : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
-        }`}
-      >
-        {icon}
-        <span>{label}</span>
-        {summary && <span className="max-w-28 truncate font-medium">: {summary}</span>}
-        <ChevronDownIcon className="size-3.5 opacity-60" aria-hidden />
-      </PopoverTrigger>
+      {variant === "icon" ? (
+        <PopoverTrigger
+          type="button"
+          aria-label={tt(`篩選${label}`, `Filter ${label}`)}
+          title={tt(`篩選${label}`, `Filter ${label}`)}
+          className={`relative inline-flex size-6 shrink-0 items-center justify-center rounded-[4px] transition-colors data-popup-open:bg-muted ${
+            active ? "bg-primary-soft text-[var(--c-blue)]" : "text-muted-foreground/70 hover:bg-muted hover:text-foreground"
+          }`}
+        >
+          <FilterIcon className="size-3.5" fill={active ? "currentColor" : "none"} aria-hidden />
+          {value.length > 1 && (
+            <span className="absolute -top-1 -right-1 flex size-3.5 items-center justify-center rounded-full bg-[var(--c-blue)] text-[9px] leading-none font-semibold text-white">{value.length}</span>
+          )}
+        </PopoverTrigger>
+      ) : (
+        <PopoverTrigger
+          type="button"
+          className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-sm transition-colors ${
+            active
+              ? "border-transparent bg-primary-soft text-primary-soft-foreground"
+              : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
+          }`}
+        >
+          {icon}
+          <span>{label}</span>
+          {summary && <span className="max-w-28 truncate font-medium">: {summary}</span>}
+          <ChevronDownIcon className="size-3.5 opacity-60" aria-hidden />
+        </PopoverTrigger>
+      )}
       <PopoverContent className="w-60 gap-1 p-1.5" align="start">
         {options.length > 7 && (
           <input

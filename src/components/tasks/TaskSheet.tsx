@@ -21,12 +21,13 @@ import { useI18n } from "@/lib/i18n";
 import { tt } from "@/lib/i18n-core";
 import { fmtMD } from "@/lib/date";
 import { PRIORITIES, STATUSES, eventType, groupColor, priorityLabel, statusLabel } from "@/lib/ui";
-import { ColorCell, Label, StatusIcon } from "@/components/board/ColorCell";
-import { Avatar, PersonCell, shortName } from "@/components/board/PersonCell";
+import { Label, StatusIcon } from "@/components/board/ColorCell";
+import { Avatar, shortName } from "@/components/board/PersonCell";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { DueCell, Progress } from "./shared";
+import { AssigneeList, FieldRow, LabelList, OptionList, SidebarPicker } from "./Pickers";
 import type { ChecklistItem, Cycle, Task, TeamEvent } from "@/lib/types";
 
 type Toast = (msg: string, kind?: "ok" | "err" | "info") => void;
@@ -103,6 +104,8 @@ export function TaskSheet({
   const [comment, setComment] = useState("");
   const [posting, setPosting] = useState(false);
   const [editingComment, setEditingComment] = useState<{ id: number; body: string } | null>(null);
+  const [assigneeOpen, setAssigneeOpen] = useState(false);
+  const [labelsOpen, setLabelsOpen] = useState(false);
 
   // Load the timeline and linked events; reload whenever the task changes (version bump).
   useEffect(() => {
@@ -277,8 +280,7 @@ export function TaskSheet({
               />
             ) : (
               <span className="group/title">
-                <span className="break-words">{task.title}</span>{" "}
-                <span className="font-light text-muted-foreground">#{task.id}</span>
+                <span className="break-words">{task.title}</span>
                 {editable && (
                   <button
                     type="button"
@@ -553,30 +555,66 @@ export function TaskSheet({
 
         {/* Sidebar */}
         <aside className="flex flex-col border-t border-border px-5 py-2 text-sm md:border-t-0 md:border-l">
-          <SideSection title={tt("負責人", "Assignee")}>
-            {task.assignee_name || editable ? (
-              <PersonCell
-                name={task.assignee_name}
-                disabled={!editable}
-                options={people}
-                onChange={(value) => onPatch({ assignee_id: value === "none" ? null : Number(value) })}
+          <div className="border-b border-border py-2">
+            <SidebarPicker
+              title={tt("負責人", "Assignees")}
+              disabled={!editable}
+              open={assigneeOpen}
+              onOpenChange={setAssigneeOpen}
+              face={
+                task.assignee_name ? (
+                  <span className="flex min-w-0 items-center gap-2">
+                    <Avatar name={task.assignee_name} size={22} />
+                    <span className="truncate font-semibold">{shortName(task.assignee_name)}</span>
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">{tt("尚未指派", "No one assigned")}</span>
+                )
+              }
+            >
+              <AssigneeList
+                people={people}
+                value={task.assignee_id}
+                onChange={(id) => {
+                  setAssigneeOpen(false);
+                  onPatch({ assignee_id: id });
+                }}
               />
-            ) : (
-              <span className="text-muted-foreground">{tt("尚未指派", "No one assigned")}</span>
-            )}
+            </SidebarPicker>
             {editable && !task.assignee_id && (
-              <button type="button" className="mt-1 block text-xs text-[var(--c-blue)] hover:underline" onClick={() => onPatch({ assignee_id: me.id })}>
+              <button type="button" className="mx-2 mt-0.5 block text-xs text-[var(--c-blue)] hover:underline" onClick={() => onPatch({ assignee_id: me.id })}>
                 {tt("指派給自己", "Assign yourself")}
               </button>
             )}
-          </SideSection>
+          </div>
 
-          <SideSection title={tt("標籤", "Labels")}>
-            <div className="flex flex-wrap gap-1.5">
-              {priority && <Label color={priority.color}>{priority.label}</Label>}
-              <Label color={groupColor(Math.max(0, subteams.findIndex((item) => item.value === task.subteam)))}>{subteamName}</Label>
-            </div>
-          </SideSection>
+          <div className="border-b border-border py-2">
+            <SidebarPicker
+              title={tt("標籤", "Labels")}
+              disabled={!editable}
+              open={labelsOpen}
+              onOpenChange={setLabelsOpen}
+              face={
+                <span className="flex flex-wrap gap-1.5">
+                  {priority && <Label color={priority.color}>{priority.label}</Label>}
+                  <Label color={groupColor(Math.max(0, subteams.findIndex((item) => item.value === task.subteam)))}>{subteamName}</Label>
+                </span>
+              }
+            >
+              <LabelList
+                groups={[
+                  { key: "priority", title: tt("優先級", "Priority"), value: task.priority, options: priorityOptions, onChange: (value) => value !== task.priority && onPatch({ priority: value }) },
+                  {
+                    key: "subteam",
+                    title: tt("組別", "Subteam"),
+                    value: task.subteam,
+                    options: subteams.map((item, i) => ({ ...item, color: groupColor(i) })),
+                    onChange: (value) => value !== task.subteam && onPatch({ subteam: value }),
+                  },
+                ]}
+              />
+            </SidebarPicker>
+          </div>
 
           <SideSection title={tt("專案", "Project")}>
             <div className="overflow-hidden rounded-[6px] border border-border">
@@ -584,26 +622,71 @@ export function TaskSheet({
                 <FolderIcon className="size-4 text-muted-foreground" />
                 <span className="min-w-0 truncate">{cycle ? cycle.title : tt("未分專案", "No project")}</span>
               </div>
-              <dl className="grid grid-cols-[5.5rem_1fr] items-center gap-x-2 gap-y-1.5 px-3 py-2.5">
-                <dt className="text-muted-foreground">{tt("狀態", "Status")}</dt>
-                <dd><ColorCell value={task.status} options={statusOptions} disabled={!editable} onChange={(value) => onPatch({ status: value })} /></dd>
-                <dt className="text-muted-foreground">{tt("優先級", "Priority")}</dt>
-                <dd><ColorCell kind="priority" value={task.priority} options={priorityOptions} disabled={!editable} onChange={(value) => onPatch({ priority: value })} /></dd>
-                <dt className="text-muted-foreground">{tt("截止日", "Due")}</dt>
-                <dd className="-ml-1.5"><DueCell task={task} today={today} disabled={!editable} onChange={(value) => onPatch({ due_date: value })} /></dd>
-                <dt className="text-muted-foreground">{tt("組別", "Subteam")}</dt>
-                <dd><ColorCell kind="priority" value={task.subteam} disabled={!editable} options={subteams.map((item, i) => ({ ...item, color: groupColor(i) }))} onChange={(value) => onPatch({ subteam: value })} /></dd>
-                <dt className="text-muted-foreground">{tt("專案", "Project")}</dt>
-                <dd>
-                  <ColorCell
-                    kind="priority"
-                    value={task.cycle_id != null ? String(task.cycle_id) : ""}
-                    disabled={!editable || cycleOptions.length === 0}
-                    options={cycleOptions.map((item) => ({ ...item, color: "var(--c-gray)" }))}
-                    onChange={(value) => onPatch({ cycle_id: Number(value) })}
-                  />
-                </dd>
-              </dl>
+              <div className="flex flex-col gap-0.5 p-1">
+                <FieldRow label={tt("狀態", "Status")} disabled={!editable} face={<Label color={STATUSES.find((s) => s.key === task.status)?.color ?? "var(--c-gray)"}>{statusLabel(task.status)}</Label>}>
+                  {(close) => (
+                    <OptionList
+                      value={task.status}
+                      options={statusOptions}
+                      icon={(option) => <StatusIcon status={option.value} />}
+                      onPick={(value) => {
+                        close();
+                        if (value !== task.status) onPatch({ status: value });
+                      }}
+                    />
+                  )}
+                </FieldRow>
+                <FieldRow
+                  label={tt("優先級", "Priority")}
+                  disabled={!editable}
+                  face={priority ? <Label color={priority.color}>{priority.label}</Label> : <span className="text-muted-foreground">{tt("選擇", "Choose an option")}</span>}
+                >
+                  {(close) => (
+                    <OptionList
+                      value={task.priority}
+                      options={priorityOptions}
+                      onPick={(value) => {
+                        close();
+                        if (value !== task.priority) onPatch({ priority: value });
+                      }}
+                    />
+                  )}
+                </FieldRow>
+                <DueCell rowLabel={tt("截止日", "Due")} task={task} today={today} disabled={!editable} onChange={(value) => onPatch({ due_date: value })} />
+                <FieldRow
+                  label={tt("組別", "Subteam")}
+                  disabled={!editable}
+                  face={<Label color={groupColor(Math.max(0, subteams.findIndex((item) => item.value === task.subteam)))}>{subteamName}</Label>}
+                >
+                  {(close) => (
+                    <OptionList
+                      value={task.subteam}
+                      options={subteams.map((item, i) => ({ ...item, color: groupColor(i) }))}
+                      onPick={(value) => {
+                        close();
+                        if (value !== task.subteam) onPatch({ subteam: value });
+                      }}
+                    />
+                  )}
+                </FieldRow>
+                <FieldRow
+                  label={tt("專案", "Project")}
+                  disabled={!editable || cycleOptions.length === 0}
+                  face={<span className="block truncate">{cycle ? cycle.title : <span className="text-muted-foreground">{tt("選擇", "Choose an option")}</span>}</span>}
+                >
+                  {(close) => (
+                    <OptionList
+                      value={task.cycle_id != null ? String(task.cycle_id) : ""}
+                      options={cycleOptions.map((item) => ({ ...item, color: "var(--c-gray)" }))}
+                      icon={() => <FolderIcon className="size-3.5 shrink-0 text-muted-foreground" />}
+                      onPick={(value) => {
+                        close();
+                        if (Number(value) !== task.cycle_id) onPatch({ cycle_id: Number(value) });
+                      }}
+                    />
+                  )}
+                </FieldRow>
+              </div>
             </div>
           </SideSection>
 
