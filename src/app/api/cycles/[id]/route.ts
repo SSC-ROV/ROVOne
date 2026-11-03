@@ -166,8 +166,8 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   }
 
   if (body.action === "complete") {
-    if (cycle.status !== "active" && cycle.status !== "late") {
-      return NextResponse.json({ error: "只有進行中或遲交的專案可以標記完成" }, { status: 400 });
+    if (!["active", "late", "approved"].includes(cycle.status)) {
+      return NextResponse.json({ error: "只有已核准、進行中或遲交的專案可以標記完成" }, { status: 400 });
     }
     if (!isStaff(user.role) && cycle.proposer_id !== user.id) {
       return NextResponse.json({ error: "只有提案人或幹部可以標記完成" }, { status: 403 });

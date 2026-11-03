@@ -9,7 +9,6 @@ import {
   CheckCircle2Icon,
   CircleDotIcon,
   ClipboardListIcon,
-  EyeOffIcon,
   FlagIcon,
   KanbanSquareIcon,
   LayersIcon,
@@ -48,7 +47,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Choice, DueCell, Kbd, MultiFilter, Pill, PRIORITY_RANK, Progress, dueState, type DueState } from "@/components/tasks/shared";
+import { Choice, DateCell, DueCell, Kbd, MultiFilter, Pill, PRIORITY_RANK, Progress, dueState, type DueState, type FilterOption } from "@/components/tasks/shared";
 import { TaskSheet } from "@/components/tasks/TaskSheet";
 import { NewTaskSheet, type NewTaskInput } from "@/components/tasks/NewTaskSheet";
 import type { ChecklistItem, Cycle, Me, Member, Task } from "@/lib/types";
@@ -65,7 +64,7 @@ const LEGACY_PREFS_KEY = "rov-tasks-prefs";
 type View = "table" | "board";
 type GroupBy = "cycle" | "status" | "assignee" | "priority" | "subteam" | "due" | "none";
 type SortBy = "manual" | "due" | "priority" | "title" | "status";
-type Prefs = { view: View; groupBy: GroupBy; sort: SortBy; hideDone: boolean; cycleId: string };
+type Prefs = { view: View; groupBy: GroupBy; sort: SortBy; cycleId: string };
 type Filters = {
   query: string;
   assignees: string[];
@@ -85,7 +84,7 @@ type Group = {
 };
 
 const EMPTY_FILTERS: Filters = { query: "", assignees: [], statuses: [], priorities: [], subteams: [], cycles: [], due: [] };
-const DEFAULT_PREFS: Prefs = { view: "table", groupBy: "subteam", sort: "manual", hideDone: false, cycleId: "" };
+const DEFAULT_PREFS: Prefs = { view: "table", groupBy: "subteam", sort: "manual", cycleId: "" };
 
 function readPrefs(): Prefs {
   if (typeof window === "undefined") return DEFAULT_PREFS;
@@ -251,7 +250,8 @@ export default function TasksPage() {
       const needle = f.query.trim().toLowerCase();
       if (needle && !`${task.title}\n${task.description}\n${task.assignee_name ?? ""}`.toLowerCase().includes(needle)) return false;
       if (f.statuses.length && !f.statuses.includes(task.status)) return false;
-      if (!f.statuses.length && prefs.hideDone && task.status === "done") return false;
+      // Done tasks stay hidden unless the status filter asks for them.
+      if (task.status === "done" && !f.statuses.includes("done")) return false;
       if (f.priorities.length && !f.priorities.includes(task.priority)) return false;
       if (f.subteams.length && !f.subteams.includes(task.subteam)) return false;
       if (f.cycles.length && !f.cycles.includes(String(task.cycle_id ?? "none"))) return false;
@@ -264,7 +264,7 @@ export default function TasksPage() {
       if (f.due.length && !f.due.includes(dueState(task, today))) return false;
       return true;
     },
-    [me, prefs.hideDone, today]
+    [me, today]
   );
 
   const filtered = useMemo(() => (tasks ?? []).filter((task) => matches(task, filters)), [tasks, filters, matches]);
@@ -371,7 +371,7 @@ export default function TasksPage() {
   async function patch(task: Task, body: Record<string, unknown>) {
     // Optimistic update for simple fields so the UI feels instant.
     const optimistic: Partial<Task> = {};
-    for (const key of ["status", "priority", "subteam", "due_date", "title", "description"] as const) {
+    for (const key of ["status", "priority", "subteam", "due_date", "title", "description", "cycle_id", "start_date"] as const) {
       if (key in body) (optimistic as Record<string, unknown>)[key] = body[key];
     }
     if ("assignee_id" in body) {
@@ -488,8 +488,12 @@ export default function TasksPage() {
   const staff = isStaff(me.role);
   const openTask = tasks.find((task) => task.id === openId) ?? null;
   const narrowing = !sameFilters(filters, EMPTY_FILTERS);
-  const hiddenByToggle = prefs.hideDone && !filters.statuses.length;
-  const shownGroups = groups.filter((group) => group.tasks.length > 0 || (!narrowing && !hiddenByToggle && group.addable && (prefs.groupBy === "cycle" || prefs.groupBy === "status" || prefs.groupBy === "subteam")));
+  const showingDone = filters.statuses.includes("done");
+  const shownGroups = groups.filter(
+    (group) =>
+      group.tasks.length > 0 ||
+      (!narrowing && group.addable && (prefs.groupBy === "cycle" || (prefs.groupBy === "status" && group.id !== "done") || prefs.groupBy === "subteam"))
+  );
 
   const statusOptions = STATUSES.map((item) => ({ value: item.key, label: item.label, color: item.color }));
   const priorityOptions = PRIORITIES.map((item) => ({ value: item.key, label: item.label, color: item.color }));
@@ -497,6 +501,12 @@ export default function TasksPage() {
   const subteamOptions = subteams.map((item) => ({ value: item.key, label: item.label }));
   const subteamColorOptions = subteams.map((item, i) => ({ value: item.key, label: item.label, color: groupColor(i) }));
   const reorderable = prefs.sort === "manual" && prefs.groupBy === "cycle";
+  // Projects a task can move to: open ones, plus its current project so the cell can show it.
+  const projectCellOptions = (task: Task) =>
+    cycles
+      .filter((cycle) => cycle.id === task.cycle_id || OPEN_STATUSES.has(cycle.status))
+      .map((cycle) => ({ value: String(cycle.id), label: cycle.title, color: "var(--c-gray)" }))
+      .concat(task.cycle_id == null ? [{ value: "", label: tt("未分專案", "No project"), color: "var(--c-gray)" }] : []);
 
   // Summary numbers over every task (not just the filtered view).
   const openTasks = tasks.filter((task) => task.status !== "done");
@@ -520,6 +530,23 @@ export default function TasksPage() {
   ];
 
   const countBy = (fn: (task: Task) => boolean) => tasks.filter(fn).length;
+  const assigneeFilter: FilterOption[] = [
+    { value: "me", label: tt("指派給我", "Assigned to me"), hint: countBy((task) => task.assignee_id === me.id) },
+    { value: "none", label: tt("未指派", "Unassigned"), hint: countBy((task) => task.assignee_id == null) },
+    ...members.map((member) => ({ value: String(member.id), label: member.display_name, color: personColor(member.display_name), hint: countBy((task) => task.assignee_id === member.id) })),
+  ];
+  const statusFilter: FilterOption[] = STATUSES.map((item) => ({ value: item.key, label: item.label, color: item.color, hint: countBy((task) => task.status === item.key) }));
+  const priorityFilter: FilterOption[] = PRIORITIES.map((item) => ({ value: item.key, label: item.label, color: item.color, hint: countBy((task) => task.priority === item.key) }));
+  const dueFilter: FilterOption[] = [
+    { value: "overdue", label: tt("已逾期", "Overdue"), color: "var(--c-red)" },
+    { value: "today", label: tt("今天", "Today"), color: "var(--c-yellow)" },
+    { value: "soon", label: tt("七天內", "Next 7 days"), color: "var(--c-blue)" },
+    { value: "later", label: tt("之後", "Later"), color: "var(--c-purple)" },
+    { value: "none", label: tt("無截止日", "No date"), color: "var(--c-gray)" },
+  ].map((option) => ({ ...option, hint: countBy((task) => dueState(task, today) === option.value) }));
+  const subteamFilter: FilterOption[] = subteams.map((item, i) => ({ value: item.key, label: item.label, color: groupColor(i), hint: countBy((task) => task.subteam === item.key) }));
+  const projectFilter: FilterOption[] = cycles.map((cycle) => ({ value: String(cycle.id), label: cycle.title, hint: countBy((task) => task.cycle_id === cycle.id) }));
+  const setFilter = (key: Exclude<keyof Filters, "query">) => (next: string[]) => setFilters((prev) => ({ ...prev, [key]: next }));
   const newTaskDefaults = (): Partial<NewTaskInput> => ({
     cycle_id: defaultCycleId ?? undefined,
     subteam: filters.subteams.length === 1 ? filters.subteams[0] : me.subteam,
@@ -628,14 +655,6 @@ export default function TasksPage() {
               <Choice value={prefs.groupBy} onChange={(value) => updatePrefs({ groupBy: value as GroupBy })} options={groupByOptions} ariaLabel={tt("分組", "Group by")} />
             )}
             <Choice value={prefs.sort} onChange={(value) => updatePrefs({ sort: value as SortBy })} options={sortOptions} ariaLabel={tt("排序", "Sort")} />
-            <Button
-              variant={prefs.hideDone ? "secondary" : "outline"}
-              size="sm"
-              aria-pressed={prefs.hideDone}
-              onClick={() => updatePrefs({ hideDone: !prefs.hideDone })}
-            >
-              <EyeOffIcon /> {tt("隱藏已完成", "Hide done")}
-            </Button>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
@@ -644,52 +663,42 @@ export default function TasksPage() {
             icon={<UsersIcon className="size-3.5" />}
             value={filters.assignees}
             onChange={(assignees) => setFilters((prev) => ({ ...prev, assignees }))}
-            options={[
-              { value: "me", label: tt("指派給我", "Assigned to me"), hint: countBy((task) => task.assignee_id === me.id) },
-              { value: "none", label: tt("未指派", "Unassigned"), hint: countBy((task) => task.assignee_id == null) },
-              ...members.map((member) => ({ value: String(member.id), label: member.display_name, color: personColor(member.display_name), hint: countBy((task) => task.assignee_id === member.id) })),
-            ]}
+            options={assigneeFilter}
           />
           <MultiFilter
             label={tt("狀態", "Status")}
             icon={<CircleDotIcon className="size-3.5" />}
             value={filters.statuses}
             onChange={(statuses) => setFilters((prev) => ({ ...prev, statuses }))}
-            options={STATUSES.map((item) => ({ value: item.key, label: item.label, color: item.color, hint: countBy((task) => task.status === item.key) }))}
+            options={statusFilter}
           />
           <MultiFilter
             label={tt("優先級", "Priority")}
             icon={<FlagIcon className="size-3.5" />}
             value={filters.priorities}
             onChange={(priorities) => setFilters((prev) => ({ ...prev, priorities }))}
-            options={PRIORITIES.map((item) => ({ value: item.key, label: item.label, color: item.color, hint: countBy((task) => task.priority === item.key) }))}
+            options={priorityFilter}
           />
           <MultiFilter
             label={tt("截止日", "Due")}
             icon={<CalendarClockIcon className="size-3.5" />}
             value={filters.due}
             onChange={(due) => setFilters((prev) => ({ ...prev, due }))}
-            options={[
-              { value: "overdue", label: tt("已逾期", "Overdue"), color: "var(--c-red)" },
-              { value: "today", label: tt("今天", "Today"), color: "var(--c-yellow)" },
-              { value: "soon", label: tt("七天內", "Next 7 days"), color: "var(--c-blue)" },
-              { value: "later", label: tt("之後", "Later"), color: "var(--c-purple)" },
-              { value: "none", label: tt("無截止日", "No date"), color: "var(--c-gray)" },
-            ].map((option) => ({ ...option, hint: countBy((task) => dueState(task, today) === option.value) }))}
+            options={dueFilter}
           />
           <MultiFilter
             label={tt("組別", "Subteam")}
             icon={<LayersIcon className="size-3.5" />}
             value={filters.subteams}
             onChange={(next) => setFilters((prev) => ({ ...prev, subteams: next }))}
-            options={subteams.map((item) => ({ value: item.key, label: item.label, hint: countBy((task) => task.subteam === item.key) }))}
+            options={subteamFilter}
           />
           <MultiFilter
             label={tt("專案", "Project")}
             icon={<RefreshCwIcon className="size-3.5" />}
             value={filters.cycles}
             onChange={(next) => setFilters((prev) => ({ ...prev, cycles: next }))}
-            options={cycles.map((cycle) => ({ value: String(cycle.id), label: cycle.title, hint: countBy((task) => task.cycle_id === cycle.id) }))}
+            options={projectFilter}
           />
           {narrowing && (
             <Button variant="ghost" size="sm" onClick={() => setFilters(EMPTY_FILTERS)}>
@@ -724,16 +733,18 @@ export default function TasksPage() {
                 {group.tasks.length === 0 ? (
                   <p className="px-4 py-5 text-sm text-muted-foreground">{tt("尚未新增任務，用下方輸入快速加入", "No tasks yet — add one below")}</p>
                 ) : (
-                  <table className="board-table is-interactive">
+                  <table className="board-table is-interactive table-fixed" style={{ minWidth: showSubteam ? 1300 : 1180 }}>
                     {/* Fixed column widths keep every group's columns aligned */}
                     <colgroup>
                       <col />
                       <col style={{ width: 140 }} />
                       <col style={{ width: 120 }} />
                       <col style={{ width: 96 }} />
+                      <col style={{ width: 110 }} />
                       <col style={{ width: 130 }} />
                       <col style={{ width: 110 }} />
                       {showSubteam && <col style={{ width: 120 }} />}
+                      <col style={{ width: 160 }} />
                       <col style={{ width: 40 }} />
                     </colgroup>
                     <thead>
@@ -753,12 +764,14 @@ export default function TasksPage() {
                             {tt("標題", "Title")}
                           </span>
                         </th>
-                        <th>{t("負責人")}</th>
-                        <th className="color-cell">{t("狀態")}</th>
-                        <th className="color-cell">{t("優先級")}</th>
-                        <th>{t("截止日")}</th>
+                        <th><ColumnHead label={t("負責人")} options={assigneeFilter} value={filters.assignees} onChange={setFilter("assignees")} /></th>
+                        <th className="color-cell"><ColumnHead label={t("狀態")} options={statusFilter} value={filters.statuses} onChange={setFilter("statuses")} /></th>
+                        <th className="color-cell"><ColumnHead label={t("優先級")} options={priorityFilter} value={filters.priorities} onChange={setFilter("priorities")} /></th>
+                        <th>{tt("開始日", "Start")}</th>
+                        <th><ColumnHead label={t("截止日")} options={dueFilter} value={filters.due} onChange={setFilter("due")} /></th>
                         <th>{tt("子任務", "Subtasks")}</th>
-                        {showSubteam && <th>{t("組別")}</th>}
+                        {showSubteam && <th><ColumnHead label={t("組別")} options={subteamFilter} value={filters.subteams} onChange={setFilter("subteams")} /></th>}
+                        <th><ColumnHead label={tt("專案", "Project")} options={projectFilter} value={filters.cycles} onChange={setFilter("cycles")} /></th>
                         <th aria-label={tt("動作", "Actions")} />
                       </tr>
                     </thead>
@@ -791,7 +804,6 @@ export default function TasksPage() {
                                 >
                                   {task.title}
                                 </button>
-                                <span className="shrink-0 text-[13px] text-muted-foreground tabular-nums">#{task.id}</span>
                                 <button
                                   type="button"
                                   onClick={() => setOpenId(task.id)}
@@ -816,6 +828,9 @@ export default function TasksPage() {
                               <PriorityCell value={task.priority} disabled={!editable} options={priorityOptions} onChange={(value) => patch(task, { priority: value })} />
                             </td>
                             <td>
+                              <DateCell value={task.start_date} today={today} disabled={!editable} onChange={(value) => patch(task, { start_date: value })} />
+                            </td>
+                            <td>
                               <DueCell task={task} today={today} disabled={!editable} onChange={(value) => patch(task, { due_date: value })} />
                             </td>
                             <td>
@@ -832,6 +847,15 @@ export default function TasksPage() {
                               />
                             </td>
                             )}
+                            <td>
+                              <ColorCell
+                                kind="priority"
+                                value={task.cycle_id != null ? String(task.cycle_id) : ""}
+                                disabled={!editable}
+                                onChange={(value) => Number(value) !== task.cycle_id && patch(task, { cycle_id: Number(value) })}
+                                options={projectCellOptions(task)}
+                              />
+                            </td>
                             <td>
                               <RowMenu
                                 task={task}
@@ -855,11 +879,10 @@ export default function TasksPage() {
           })}
           {shownGroups.length === 0 && (
             <EmptyState
-              narrowing={narrowing || hiddenByToggle}
+              narrowing={narrowing}
               hasCycle={defaultCycleId != null}
               onClear={() => {
                 setFilters(EMPTY_FILTERS);
-                updatePrefs({ hideDone: false });
               }}
               onCreate={() => setCreating(newTaskDefaults())}
             />
@@ -895,7 +918,19 @@ export default function TasksPage() {
                     <h2 className="text-[15px] font-semibold">{column.label}</h2>
                     <span className="rounded-full bg-muted px-2 text-xs leading-5 font-medium tabular-nums text-muted-foreground">{columnTasks.length}</span>
                   </div>
-                  <p className="mt-0.5 text-[13px] text-muted-foreground">{STATUS_HINT[column.key]}</p>
+                  <p className="mt-0.5 text-[13px] text-muted-foreground">
+                    {column.key === "done" && !showingDone ? (
+                      <button
+                        type="button"
+                        className="text-[var(--c-blue)] hover:underline"
+                        onClick={() => setFilters((prev) => ({ ...prev, statuses: ["todo", "doing", "done"] }))}
+                      >
+                        {tt("已完成的任務已隱藏，點此顯示", "Done tasks are hidden. Show them")}
+                      </button>
+                    ) : (
+                      STATUS_HINT[column.key]
+                    )}
+                  </p>
                 </header>
                 <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2">
                   {columnTasks.map((task) => {
@@ -922,7 +957,6 @@ export default function TasksPage() {
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                           <StatusIcon status={task.status} size={14} />
                           <span className="min-w-0 truncate">{project ?? tt("無專案", "No project")}</span>
-                          <span className="shrink-0 tabular-nums">#{task.id}</span>
                           <span className="ml-auto">{task.assignee_name && <Avatar name={task.assignee_name} size={20} />}</span>
                         </div>
                         <p className="text-sm leading-snug font-medium break-words group-hover/card:text-[var(--c-blue)]">{task.title}</p>
@@ -1001,7 +1035,7 @@ export default function TasksPage() {
       )}
 
       <Sheet open={openTask != null} onOpenChange={(open) => { if (!open) setOpenId(null); }}>
-        <SheetContent className="w-full gap-0 sm:max-w-[1040px]" style={{ width: "min(1040px, 100%)", maxWidth: 1040 }}>
+        <SheetContent className="w-full gap-0 bg-background sm:max-w-[1040px]" style={{ width: "min(1040px, 100%)", maxWidth: 1040 }}>
           {openTask && (
             <TaskSheet
               key={openTask.id}
@@ -1195,5 +1229,15 @@ function EmptyState({ narrowing, hasCycle, onClear, onCreate }: { narrowing: boo
         <Button onClick={onCreate}><PlusIcon /> {tt("新任務", "New task")}</Button>
       ) : null}
     </div>
+  );
+}
+
+/** Column title with a funnel that filters the whole view by that column. */
+function ColumnHead({ label, options, value, onChange }: { label: string; options: FilterOption[]; value: string[]; onChange: (value: string[]) => void }) {
+  return (
+    <span className="flex items-center justify-between gap-1">
+      <span className="truncate">{label}</span>
+      <MultiFilter variant="icon" label={label} options={options} value={value} onChange={onChange} />
+    </span>
   );
 }

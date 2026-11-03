@@ -550,16 +550,22 @@ summary {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  height: 20px;
-  padding: 0 7px;
+  box-sizing: border-box;
+  min-height: 20px;
+  max-width: 100%;
+  min-width: 0;
+  padding: 2px 7px;
   border-radius: 9999px;
   border: 1px solid color-mix(in srgb, var(--label) 45%, transparent);
   background: color-mix(in srgb, var(--label) 14%, transparent);
   color: color-mix(in srgb, var(--label) 82%, var(--foreground));
   font-size: 12px;
   font-weight: 500;
-  line-height: 18px;
+  /* line-height 1 + flex centering keeps the text centred on every platform (iPad Safari sat it high). */
+  line-height: 1;
   white-space: nowrap;
+  overflow: hidden;
+  vertical-align: middle;
 }
 
 @layer base {
