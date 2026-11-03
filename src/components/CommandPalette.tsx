@@ -96,7 +96,7 @@ export default function CommandPalette() {
       { key: "home", label: t("總覽"), hint: t("頁面"), run: () => go("/") },
       { key: "tasks", label: t("任務"), hint: t("頁面"), run: () => go("/tasks") },
       { key: "cal", label: t("行事曆"), hint: t("頁面"), run: () => go("/calendar") },
-      { key: "cycles", label: t("開發週期"), hint: t("頁面"), run: () => go("/cycles") },
+      { key: "cycles", label: t("專案"), hint: t("頁面"), run: () => go("/cycles") },
       { key: "parts", label: t("採購申請"), hint: t("頁面"), run: () => go("/parts") },
       { key: "inventory", label: t("庫存"), hint: t("頁面"), run: () => go("/inventory") },
       { key: "equip", label: t("設備借用"), hint: t("頁面"), run: () => go("/equipment") },
@@ -124,7 +124,7 @@ export default function CommandPalette() {
     const cycleHits: Hit[] = cycles.map((cycle) => ({
       key: `c${cycle.id}`,
       label: cycle.title,
-      hint: t("開發週期"),
+      hint: t("專案"),
       run: () => go("/cycles"),
     }));
     const invHits: Hit[] = inventory.map((item) => ({
@@ -154,7 +154,7 @@ export default function CommandPalette() {
         <input
           ref={inputRef}
           className="w-full border-b border-hairline bg-transparent px-4 py-3 text-sm text-ink outline-none placeholder:text-ink-tertiary"
-          placeholder={t("搜尋任務、庫存、零件、設備、週期")}
+          placeholder={t("搜尋任務、庫存、零件、設備、專案")}
           value={q}
           onChange={(e) => {
             setQ(e.target.value);

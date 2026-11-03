@@ -376,12 +376,12 @@ export default function AdminPage() {
             placeholder="https://discord.com/api/webhooks/…"
           />
           <WebhookRow
-            label={t("週期審批頻道（老師收到）")}
+            label={t("專案審批頻道（老師收到）")}
             value={wcTeacherCycle}
             onChange={setWcTeacherCycle}
           />
           <WebhookRow
-            label={t("週期審批頻道（隊長收到）")}
+            label={t("專案審批頻道（隊長收到）")}
             value={wcLeaderCycle}
             onChange={setWcLeaderCycle}
           />
@@ -407,7 +407,7 @@ export default function AdminPage() {
           <Button type="button" variant="ghost" onClick={copyDisplayUrl}>{t("複製看板連結")}</Button>
           <Button type="button" variant="ghost" onClick={rotateDisplay}>{t("重新產生")}</Button>
           <span className="text-xs text-ink-tertiary">
-            {t("全屏顯示進行中週期與近兩週日程，每分鐘自動更新，免登入")}
+            {t("全屏顯示進行中專案與近兩週日程，每分鐘自動更新，免登入")}
           </span>
         </div>
       </CardContent></Card>

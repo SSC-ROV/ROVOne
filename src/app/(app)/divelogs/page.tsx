@@ -85,7 +85,7 @@ export default function DiveLogsPage() {
   async function toTask(log: DiveLog) {
     const candidates = (cycles ?? []).filter((c) => c.status === "active");
     if (candidates.length === 0) {
-      toast(t("目前沒有進行中的開發週期，請先在「開發週期」頁提案"), "err");
+      toast(t("目前沒有進行中的專案，請先在「專案」頁提案"), "err");
       return;
     }
     const mine = candidates.find((c) => c.proposer_id === me?.id || c.members.some((m) => m.id === me?.id));

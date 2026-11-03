@@ -170,7 +170,7 @@ export default function TaskModal({
         </div>
 
         <p className="mb-3 text-xs text-ink-tertiary">
-          {t("所屬開發週期")}：{cycleTitle}
+          {t("所屬專案")}：{cycleTitle}
         </p>
 
         <div className="space-y-3">

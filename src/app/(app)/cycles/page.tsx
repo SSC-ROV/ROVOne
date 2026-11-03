@@ -99,7 +99,7 @@ export default function CyclesPage() {
   const history = cycles.filter((c) => (c.status === "completed" || c.status === "rejected") && cycleVisible(c));
   const myRole = me.role;
   const meId = me.id;
-  // 示範帳號（leader/member/teacher）與所有老師帳號：不進週期邀請名單與成員統計
+  // 示範帳號（leader/member/teacher）與所有老師帳號：不進專案邀請名單與成員統計
   const DEMO_USERNAMES = ["leader", "member", "teacher", "dashboard"];
   const invitableMembers = members.filter(
     (m) => m.role !== "teacher" && !DEMO_USERNAMES.includes(m.username)
@@ -170,7 +170,7 @@ export default function CyclesPage() {
         action === "approve"
           ? r.status === "active" ? "" : t("已核准，送老師最終審批")
           : action === "reject" ? t("已駁回")
-          : action === "complete" ? t("週期已完成，辛苦了！")
+          : action === "complete" ? t("專案已完成，辛苦了！")
           : action === "marklate" ? t("已標記為遲交")
           : t("已重新提交"),
         "ok"
@@ -187,7 +187,7 @@ export default function CyclesPage() {
         method: "PATCH",
         body: JSON.stringify({ action: "claim" }),
       });
-      toast(t("認領成功！週期已加入你的名下"), "ok");
+      toast(t("認領成功！專案已加入你的名下"), "ok");
       await load();
     } catch (err) {
       toast(t((err as Error).message), "err");
@@ -195,7 +195,7 @@ export default function CyclesPage() {
   }
 
   async function removeCycle(c: Cycle) {
-    const ok = await confirm({ title: `${t("刪除週期「")}${c.title}${t("」？")}`, message: t("任務不會被刪除，只會解除關聯。"), confirmText: t("刪除"), danger: true });
+    const ok = await confirm({ title: `${t("刪除專案「")}${c.title}${t("」？")}`, message: t("任務不會被刪除，只會解除關聯。"), confirmText: t("刪除"), danger: true });
     if (!ok) return;
     try {
       await api(`/api/cycles/${c.id}`, { method: "DELETE" });
@@ -212,7 +212,7 @@ export default function CyclesPage() {
     return false;
   }
 
-  // 幹部統計：每個成員參與（提案或合作）的週期數量
+  // 幹部統計：每個成員參與（提案或合作）的專案數量
   const stats = invitableMembers
     .map((m) => {
       const mine = cycles.filter(
@@ -288,9 +288,9 @@ export default function CyclesPage() {
       <CycleTimeline cycles={cycles} today={today} />
 
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="board-title">{t("開發週期")}</h1>
+        <h1 className="board-title">{t("專案")}</h1>
         <span className="text-sm text-ink-tertiary">
-          {t("提案 → 隊長審批 → 老師審批 → 進行中；任務在週期卡片內直接新增")}
+          {t("提案 → 隊長審批 → 老師審批 → 進行中；任務在專案卡片內直接新增")}
         </span>
         <Select value={fSubteam} onValueChange={(value) => value && setFSubteam(value)}>
           <SelectTrigger className="ml-auto w-36">
@@ -315,7 +315,7 @@ export default function CyclesPage() {
           </SelectContent>
         </Select>
         <Button type="button" onClick={() => setForm({ editing: null })}>
-          {t("＋ 提案新週期")}
+          {t("＋ 提案新專案")}
         </Button>
       </div>
 
@@ -385,7 +385,7 @@ export default function CyclesPage() {
 
       {claimableOpen.length > 0 && (
         <section className="space-y-3">
-          <h2 className="group-title" style={{ color: "#579bfc" }}>{t("可認領的週期")}（{claimableOpen.length}）</h2>
+          <h2 className="group-title" style={{ color: "#579bfc" }}>{t("可認領的專案")}（{claimableOpen.length}）</h2>
           {claimableOpen.map((c) => (
             <div
               key={c.id}
@@ -411,7 +411,7 @@ export default function CyclesPage() {
         <h2 className="group-title" style={{ color: "#fdab3d" }}>{t("進行中")}（{active.length}）</h2>
         {active.length === 0 && (
           <PageEmpty>
-            {fSubteam !== "all" || fAssignee !== "all" ? t("沒有符合的結果") : t("目前沒有進行中的週期")}
+            {fSubteam !== "all" || fAssignee !== "all" ? t("沒有符合的結果") : t("目前沒有進行中的專案")}
           </PageEmpty>
         )}
         {active.map((c) =>
@@ -443,7 +443,7 @@ export default function CyclesPage() {
       )}
 
       <section className="rounded-xl border border-hairline bg-surface-1 p-5">
-        <h2 className="mb-3 font-bold">{t("成員週期統計")}</h2>
+        <h2 className="mb-3 font-bold">{t("成員專案統計")}</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -474,7 +474,7 @@ export default function CyclesPage() {
               </tbody>
             </table>
           </div>
-          <p className="mt-2 text-xs text-ink-tertiary">{t("統計包含「提案」與「作為合作成員」的週期；已核准的週期在開始日自動轉為進行中。")}</p>
+          <p className="mt-2 text-xs text-ink-tertiary">{t("統計包含「提案」與「作為合作成員」的專案；已核准的專案在開始日自動轉為進行中。")}</p>
       </section>
 
       {history.length > 0 && (
@@ -633,18 +633,18 @@ function CycleForm({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{editing ? `${t("編輯週期")}：${editing.title}` : t("提案新開發週期")}</CardTitle>
+        <CardTitle>{editing ? `${t("編輯專案")}：${editing.title}` : t("提案新專案")}</CardTitle>
       </CardHeader>
       <CardContent>
     <form onSubmit={submit} className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-[1fr_10rem_10rem]">
-        <Input placeholder={t("週期名稱，例如：推進系統重構 *")} value={title} onChange={(e) => setTitle(e.target.value)} />
+        <Input placeholder={t("專案名稱，例如：推進系統重構 *")} value={title} onChange={(e) => setTitle(e.target.value)} />
         <Input type="date" value={start} onChange={(e) => setStart(e.target.value)} title={t("開始日期")} />
         <Input type="date" value={end} onChange={(e) => setEnd(e.target.value)} title={t("結束日期")} />
       </div>
       <textarea
         className={`${INPUT_CLS} min-h-16 resize-y`}
-        placeholder={t("這個週期要做什麼？目標是什麼？（選填）")}
+        placeholder={t("這個專案要做什麼？目標是什麼？（選填）")}
         value={description}
         onChange={(e) => setDescription(e.target.value)}
       />
@@ -683,7 +683,7 @@ function CycleForm({
           {claimable && (
             <label className="flex items-center gap-2 pl-6 text-sm text-ink-subtle">
               <input type="checkbox" checked={countForLeader} onChange={(e) => setCountForLeader(e.target.checked)} className="h-4 w-4 accent-primary" />
-              {t("計入隊長週期統計")}
+              {t("計入隊長專案統計")}
             </label>
           )}
         </div>
