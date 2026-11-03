@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { MapIcon, MapPinIcon, PencilIcon, QrCodeIcon, SearchIcon, XIcon } from "lucide-react";
+import { MapIcon, MapPinIcon, PencilIcon, QrCodeIcon, SearchIcon, Trash2Icon, XIcon } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { tt } from "@/lib/i18n-core";
 import { api } from "@/lib/api-client";
@@ -34,7 +34,7 @@ type Filter = "all" | InventoryStatus | "multi";
 
 export default function InventoryPage() {
   const { t } = useI18n();
-  const { toast } = useDialogs();
+  const { confirm, toast } = useDialogs();
   const [items, setItems] = useState<InventoryItem[] | null>(null);
   const [error, setError] = useState("");
   const [q, setQ] = useState("");
@@ -156,6 +156,25 @@ export default function InventoryPage() {
       const label = INVENTORY_STATUSES.find((s) => s.key === status)!.label;
       toast(reportToast(item.name, label, res));
       load().catch(() => {});
+    } catch (err) {
+      setItems(snapshot);
+      toast(t((err as Error).message), "err");
+    }
+  }
+
+  async function remove(item: InventoryItem) {
+    const ok = await confirm({
+      title: tt(`刪除「${item.name}」？`, `Delete ${item.name}?`),
+      message: tt("位置和回報紀錄也會一起刪除，無法復原。", "Its locations and report history are deleted too. This can't be undone."),
+      confirmText: t("刪除"),
+      danger: true,
+    });
+    if (!ok) return;
+    const snapshot = items;
+    setItems((prev) => prev!.filter((x) => x.id !== item.id));
+    try {
+      await api(`/api/inventory/${item.id}`, { method: "DELETE" });
+      toast(tt(`已刪除「${item.name}」`, `Deleted ${item.name}`));
     } catch (err) {
       setItems(snapshot);
       toast(t((err as Error).message), "err");
@@ -445,6 +464,15 @@ export default function InventoryPage() {
                         {tt("最後回報", "Last report")}: {i.status_by_name ?? "—"} · {timeAgo(i.status_at)}
                       </span>
                     )}
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 rounded-[4px] px-1.5 py-1 text-muted-foreground hover:bg-[#df2f4a]/10 hover:text-[#c0233b] dark:hover:text-[#ff8597]"
+                      onClick={() => remove(i)}
+                      aria-label={tt(`刪除「${i.name}」`, `Delete ${i.name}`)}
+                    >
+                      <Trash2Icon className="size-3.5" />
+                      {tt("刪除", "Delete")}
+                    </button>
                   </div>
                 </li>
               );
