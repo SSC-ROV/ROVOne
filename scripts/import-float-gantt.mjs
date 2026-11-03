@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import postgres from "postgres";
 
 const APPLY = process.argv.includes("--apply");
-const PROJECT = { title: "Float (MATE ROV)", start: "2026-10-26", end: "2027-02-20" };
+const PROJECT = { title: "Float v1", start: "2026-10-26", end: "2027-02-20" };
 const CSV = new URL("./data/float-gantt.csv", import.meta.url);
 
 function parseCsv(text) {
