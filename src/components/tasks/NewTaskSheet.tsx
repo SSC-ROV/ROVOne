@@ -9,6 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Choice, DueCell } from "./shared";
+import { ChevronDownIcon } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { AvatarStack, PeopleChecklist, peopleSummary } from "@/components/board/PersonCell";
 import type { Cycle } from "@/lib/types";
 
 export type NewTaskInput = {
@@ -18,7 +21,7 @@ export type NewTaskInput = {
   status: string;
   priority: string;
   subteam: string;
-  assignee_id: number | null;
+  assignee_ids: number[];
   due_date: string | null;
 };
 
@@ -47,7 +50,7 @@ export function NewTaskSheet({
     status: defaults.status ?? "todo",
     priority: defaults.priority ?? "medium",
     subteam: defaults.subteam ?? "general",
-    assignee: defaults.assignee_id ? String(defaults.assignee_id) : "none",
+    assignees: defaults.assignee_ids ?? [],
     due: defaults.due_date ?? null,
   });
   const [another, setAnother] = useState(false);
@@ -66,7 +69,7 @@ export function NewTaskSheet({
       status: form.status,
       priority: form.priority,
       subteam: form.subteam,
-      assignee_id: form.assignee === "none" ? null : Number(form.assignee),
+      assignee_ids: form.assignees,
       due_date: form.due,
     });
     setBusy(false);
@@ -75,6 +78,7 @@ export function NewTaskSheet({
     else onDone();
   }
 
+  const selectedNames = form.assignees.map((id) => people.find((person) => person.value === String(id))?.label ?? "").filter(Boolean);
   const statusOptions = STATUSES.map((item) => ({ value: item.key, label: item.label, color: item.color }));
   const priorityOptions = PRIORITIES.map((item) => ({ value: item.key, label: item.label, color: item.color }));
 
@@ -146,8 +150,23 @@ export function NewTaskSheet({
               </div>
             </div>
             <div className="flex flex-col gap-1.5">
-              <span className="font-medium">{tt("負責人", "Assignee")}</span>
-              <Choice value={form.assignee} onChange={(value) => set("assignee", value)} options={people} className="w-full" ariaLabel={tt("負責人", "Assignee")} />
+              <span className="font-medium">{tt("負責人", "Assignees")}</span>
+              <Popover>
+                <PopoverTrigger
+                  type="button"
+                  aria-label={tt("負責人", "Assignees")}
+                  className="flex h-7 w-full min-w-0 items-center gap-2 rounded-[min(var(--radius-md),10px)] border border-input bg-transparent px-2 text-left text-sm hover:bg-muted dark:bg-input/30"
+                >
+                  {selectedNames.length ? <AvatarStack names={selectedNames} size={18} /> : null}
+                  <span className={`min-w-0 flex-1 truncate ${selectedNames.length ? "" : "text-muted-foreground"}`}>
+                    {selectedNames.length ? peopleSummary(selectedNames) : tt("未指派", "Unassigned")}
+                  </span>
+                  <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                </PopoverTrigger>
+                <PopoverContent className="max-h-80 w-64 max-w-[calc(100vw-2rem)] gap-0.5 overflow-y-auto p-1" align="start">
+                  <PeopleChecklist options={people} value={form.assignees} onChange={(ids) => set("assignees", ids)} />
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="flex flex-col gap-1.5">
               <span className="font-medium">{tt("組別", "Subteam")}</span>

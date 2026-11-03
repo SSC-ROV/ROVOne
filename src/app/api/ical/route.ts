@@ -8,7 +8,8 @@ export async function GET(req: NextRequest) {
   if (!token || token !== (await getOrCreateIcalToken())) {
     return NextResponse.json({ error: "訂閱連結不正確" }, { status: 403 });
   }
-  const { body } = await buildIcs();
+  // ?subteam=<key> limits the feed to one subteam (plus team-wide items); omit for the full calendar.
+  const { body } = await buildIcs(req.nextUrl.searchParams.get("subteam"));
   return new NextResponse(body, {
     headers: {
       "Content-Type": "text/calendar; charset=utf-8",

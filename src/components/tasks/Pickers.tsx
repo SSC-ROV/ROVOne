@@ -113,19 +113,20 @@ export function AssigneeList({
   onChange,
 }: {
   people: { value: string; label: string }[];
-  value: number | null;
-  onChange: (id: number | null) => void;
+  value: number[];
+  onChange: (ids: number[]) => void;
 }) {
   const [search, setSearch] = useState("");
   const needle = search.trim().toLowerCase();
   const list = people
     .filter((person) => person.value !== "none")
     .filter((person) => !needle || person.label.toLowerCase().includes(needle))
-    .sort((a, b) => Number(b.value === String(value)) - Number(a.value === String(value)));
+    .sort((a, b) => Number(value.includes(Number(b.value))) - Number(value.includes(Number(a.value))));
   return (
     <PickerShell title={tt("選擇負責人", "Select assignees")} search={search} onSearch={setSearch} placeholder={tt("篩選負責人", "Filter assignees")}>
       {list.map((person) => {
-        const checked = person.value === String(value);
+        const id = Number(person.value);
+        const checked = value.includes(id);
         const full = fullName(person.label);
         return (
           <button
@@ -133,7 +134,7 @@ export function AssigneeList({
             type="button"
             role="menuitemcheckbox"
             aria-checked={checked}
-            onClick={() => onChange(checked ? null : Number(person.value))}
+            onClick={() => onChange(checked ? value.filter((item) => item !== id) : [...value, id])}
             className="mx-1 flex min-h-10 items-center gap-2.5 rounded-[6px] px-2 py-1.5 text-left text-sm transition-colors hover:bg-muted"
           >
             <Checkbox checked={checked} />

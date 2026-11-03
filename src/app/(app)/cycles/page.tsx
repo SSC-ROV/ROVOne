@@ -30,11 +30,11 @@ import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { BoardHeader } from "@/components/board/BoardHeader";
 import { Label, StatusIcon } from "@/components/board/ColorCell";
-import { Avatar, shortName } from "@/components/board/PersonCell";
+import { Avatar, AvatarStack, peopleSummary, shortName } from "@/components/board/PersonCell";
 import { Choice, Progress } from "@/components/tasks/shared";
 import { isStaff } from "@/lib/roles";
 import { daysBetween, fmtMD, todayStr } from "@/lib/date";
-import type { Cycle, CycleStatus, Me, Member, Task } from "@/lib/types";
+import { isAssignedTo, type Cycle, type CycleStatus, type Me, type Member, type Task } from "@/lib/types";
 
 type Action = "approve" | "reject" | "complete" | "resubmit" | "marklate";
 
@@ -102,7 +102,7 @@ export default function CyclesPage() {
     if (fAssignee !== "all") {
       const id = Number(fAssignee);
       const onCycle = c.proposer_id === id || c.members.some((m) => m.id === id);
-      const onTask = allTasks.some((task) => task.cycle_id === c.id && task.assignee_id === id);
+      const onTask = allTasks.some((task) => task.cycle_id === c.id && isAssignedTo(task, id));
       if (!onCycle && !onTask) return false;
     }
     if (fSubteam !== "all") {
@@ -249,7 +249,7 @@ export default function CyclesPage() {
         tasks={allTasks.filter((task) => task.cycle_id === c.id)}
         expanded={expanded.has(c.id)}
         onToggle={() => toggleExpand(c.id)}
-        canComplete={canManage && ["active", "late", "approved"].includes(c.status)}
+        canComplete={canManage && c.status !== "completed" && c.status !== "rejected"}
         onComplete={() => act(c, "complete")}
         decision={decision}
         onApprove={() => act(c, "approve")}
@@ -503,8 +503,15 @@ function ProjectCard({
             )}
             {decision === "wait" && <span className="text-xs text-muted-foreground">{t("等待老師審批中")}</span>}
             {canComplete && (
-              <Button size="sm" variant="outline" onClick={onComplete} className="hover:border-[var(--c-green)] hover:text-[var(--c-green)]">
-                <CheckCircle2Icon /> {tt("標記完成", "Mark complete")}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onComplete}
+                className="hover:border-[var(--c-green)] hover:text-[var(--c-green)]"
+                title={tt("標記專案完成", "Mark project complete")}
+                aria-label={tt("標記專案完成", "Mark project complete")}
+              >
+                <CheckCircle2Icon /> <span className="hidden sm:inline">{tt("標記完成", "Mark complete")}</span>
               </Button>
             )}
             {menu.length > 0 && (
@@ -659,10 +666,10 @@ function ProjectTasks({
                     </span>
                   </td>
                   <td>
-                    {task.assignee_name ? (
-                      <span className="flex min-w-0 items-center gap-2">
-                        <Avatar name={task.assignee_name} size={22} />
-                        <span className="truncate">{shortName(task.assignee_name)}</span>
+                    {task.assignees?.length ? (
+                      <span className="flex min-w-0 items-center gap-2" title={task.assignees.map((person) => person.display_name).join(", ")}>
+                        <AvatarStack names={task.assignees.map((person) => person.display_name)} size={22} />
+                        <span className="truncate">{peopleSummary(task.assignees.map((person) => person.display_name))}</span>
                       </span>
                     ) : (
                       <span className="text-muted-foreground">—</span>

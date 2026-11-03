@@ -159,11 +159,9 @@ body {
   width: 140px;
 }
 
+/* The title column scrolls with the rest of the row when the table is wider than the screen. */
 .board-table th:first-child,
 .board-table td:first-child {
-  position: sticky;
-  left: 0;
-  z-index: 1;
   min-width: 220px;
 }
 
