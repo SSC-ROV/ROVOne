@@ -67,8 +67,8 @@ export default function Navbar({
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-    <div className="flex min-h-svh w-full bg-[#f6f7fb] text-foreground dark:bg-[#090a0c]">
-      <aside className="hidden w-[240px] shrink-0 flex-col bg-white dark:bg-[#121418] md:flex">
+    <div className="flex h-svh w-full overflow-hidden bg-[#f6f7fb] text-foreground dark:bg-[#090a0c]">
+      <aside className="hidden w-[240px] shrink-0 flex-col overflow-y-auto bg-white dark:bg-[#121418] md:flex">
         <div className="flex items-center gap-2 px-4 pt-4 pb-3">
           <span
             className="flex size-8 shrink-0 items-center justify-center rounded-[6px] text-sm font-medium text-white"
