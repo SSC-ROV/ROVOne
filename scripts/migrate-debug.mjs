@@ -38,6 +38,8 @@ await sql.unsafe(`
     detail TEXT NOT NULL DEFAULT ''
   );
   CREATE INDEX IF NOT EXISTS idx_audit_log_at ON audit_log(at DESC);
+  ALTER TABLE login_attempts ENABLE ROW LEVEL SECURITY;
+  ALTER TABLE audit_log ENABLE ROW LEVEL SECURITY;
 `);
 console.log("遷移完成：password_changed_at / login_attempts / audit_log / approve_expires_at / tasks.version");
 await sql.end();
