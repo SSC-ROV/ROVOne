@@ -72,9 +72,14 @@ export async function GET(req: NextRequest) {
       username = `${username.slice(0, 15)}_${crypto.randomBytes(2).toString("hex")}`;
     }
 
+    // Team roster gives the display name as "Nickname (Full Name)".
+    const [rostered] = await sql`
+      SELECT CASE WHEN nickname <> '' AND nickname <> full_name THEN nickname || ' (' || full_name || ')' ELSE full_name END AS display_name
+      FROM member_roster WHERE email = ${email}`;
+
     const [created] = await sql`
       INSERT INTO users (username, display_name, password_hash, role, subteam, email, login_method, password_changed_at)
-      VALUES (${username}, ${name || localPart}, ${crypto.randomBytes(32).toString("hex")},
+      VALUES (${username}, ${rostered?.display_name || name || localPart},${crypto.randomBytes(32).toString("hex")},
               ${role}, 'general', ${email}, 'google', now())
       RETURNING id, role`;
     user = created;

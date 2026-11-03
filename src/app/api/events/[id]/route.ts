@@ -15,9 +15,13 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   const { id } = await ctx.params;
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   if (!body) return NextResponse.json({ error: "格式錯誤" }, { status: 400 });
-  const [cur] = await sql`SELECT title, type, date, time, location, notes, subteam FROM events WHERE id = ${Number(id)}`;
+  const [cur] = await sql`SELECT title, type, date, time, location, notes, subteam, task_id FROM events WHERE id = ${Number(id)}`;
   if (!cur) return NextResponse.json({ error: "活動不存在" }, { status: 404 });
-  const c = cur as { title: string; type: string; date: string; time: string | null; location: string; notes: string; subteam: string | null };
+  const c = cur as { title: string; type: string; date: string; time: string | null; location: string; notes: string; subteam: string | null; task_id: number | null };
+  const taskId = body.task_id !== undefined ? Number(body.task_id) || null : c.task_id;
+  if (taskId && taskId !== c.task_id && !(await sql`SELECT 1 FROM tasks WHERE id = ${taskId}`).length) {
+    return NextResponse.json({ error: "任務不存在" }, { status: 400 });
+  }
   await sql`
     UPDATE events SET
       title = ${body.title !== undefined ? String(body.title).trim() || c.title : c.title},
@@ -26,7 +30,8 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       time = ${body.time !== undefined ? (body.time ? String(body.time) : null) : c.time},
       location = ${body.location !== undefined ? String(body.location) : c.location},
       notes = ${body.notes !== undefined ? String(body.notes) : c.notes},
-      subteam = ${body.subteam !== undefined ? (body.subteam ? String(body.subteam) : null) : c.subteam}
+      subteam = ${body.subteam !== undefined ? (body.subteam ? String(body.subteam) : null) : c.subteam},
+      task_id = ${taskId}
     WHERE id = ${Number(id)}`;
   return NextResponse.json({ ok: true });
 }

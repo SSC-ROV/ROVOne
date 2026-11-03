@@ -4,6 +4,7 @@ import { getSessionUser } from "@/lib/auth";
 import { getTaskWithItems } from "@/lib/db";
 import { fmtDue, notifyDiscord } from "@/lib/notify";
 import { logAudit } from "@/lib/audit";
+import { logActivity } from "@/lib/activity";
 import type { Task } from "@/lib/types";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -94,6 +95,16 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     WHERE id = ${taskId}`;
 
   const updated = (await getTaskWithItems(taskId))!;
+
+  // Timeline entries for meaningful changes
+  if (updated.status !== current.status) await logActivity(taskId, user.id, "status", { from: current.status, to: updated.status });
+  if (updated.priority !== current.priority) await logActivity(taskId, user.id, "priority", { from: current.priority, to: updated.priority });
+  if ((updated.due_date ?? null) !== (current.due_date ?? null)) await logActivity(taskId, user.id, "due_date", { from: current.due_date, to: updated.due_date });
+  if ((updated.cycle_id ?? null) !== (current.cycle_id ?? null)) await logActivity(taskId, user.id, "project", { from: current.cycle_id, to: updated.cycle_id });
+  if (updated.title !== current.title) await logActivity(taskId, user.id, "title", { from: current.title, to: updated.title });
+  if ((updated.assignee_id ?? null) !== (current.assignee_id ?? null)) {
+    await logActivity(taskId, user.id, "assignee", { from: current.assignee_id, to: updated.assignee_id, to_name: updated.assignee_name });
+  }
   if (
     body.assignee_id !== undefined &&
     updated.assignee_id &&
