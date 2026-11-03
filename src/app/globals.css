@@ -566,6 +566,10 @@ summary {
   white-space: nowrap;
   overflow: hidden;
   vertical-align: middle;
+  /* Never stretch to the parent's height (touch devices give buttons a 44px min-height). */
+  flex: none;
+  align-self: center;
+  max-height: 22px;
 }
 
 @layer base {

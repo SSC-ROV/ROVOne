@@ -52,6 +52,7 @@ import { TaskSheet } from "@/components/tasks/TaskSheet";
 import { NewTaskSheet, type NewTaskInput } from "@/components/tasks/NewTaskSheet";
 import type { ChecklistItem, Cycle, Me, Member, Task } from "@/lib/types";
 
+const COMPLETABLE_STATUSES = new Set(["active", "late", "approved"]);
 const OPEN_STATUSES = new Set(["active", "late", "approved", "pending_leader", "pending_teacher"]);
 const PREFS_KEY = "rov-tasks-prefs-v2";
 const STATUS_HINT: Record<string, string> = {
@@ -426,6 +427,25 @@ export default function TasksPage() {
     else toast(tt(`已刪除 ${ids.length} 項任務`, `Deleted ${ids.length} task(s)`), "ok");
   }
 
+  async function completeProject(cycle: Cycle) {
+    const open = (tasks ?? []).filter((task) => task.cycle_id === cycle.id && task.status !== "done").length;
+    const ok = await confirm({
+      title: tt(`將「${cycle.title}」標記為完成？`, `Mark "${cycle.title}" as complete?`),
+      message: open
+        ? tt(`還有 ${open} 項任務未完成。完成後專案會移到歷史，無法再加入任務。`, `${open} task${open === 1 ? " is" : "s are"} still open. Completed projects move to history and can't take new tasks.`)
+        : tt("完成後專案會移到歷史，無法再加入任務。", "Completed projects move to history and can't take new tasks."),
+      confirmText: tt("標記完成", "Mark complete"),
+    });
+    if (!ok) return;
+    try {
+      await api(`/api/cycles/${cycle.id}`, { method: "PATCH", body: JSON.stringify({ action: "complete", note: "" }) });
+      toast(tt("專案已完成，辛苦了！", "Project completed — nice work!"), "ok");
+      await load();
+    } catch (err) {
+      toast((err as Error).message, "err");
+    }
+  }
+
   async function confirmDelete(list: Task[]) {
     const ok = await confirm({
       title: list.length === 1 ? tt(`刪除「${list[0].title}」？`, `Delete "${list[0].title}"?`) : tt(`刪除 ${list.length} 項任務？`, `Delete ${list.length} tasks?`),
@@ -719,6 +739,9 @@ export default function TasksPage() {
             const someChecked = ids.some((id) => selected.has(id));
             const groupDone = group.tasks.filter((task) => task.status === "done").length;
             const showSubteam = prefs.groupBy !== "subteam";
+            const groupCycle = prefs.groupBy === "cycle" ? cycles.find((cycle) => String(cycle.id) === group.id) : undefined;
+            const canComplete =
+              !!groupCycle && COMPLETABLE_STATUSES.has(groupCycle.status) && (staff || groupCycle.proposer_id === me.id);
             return (
               <BoardGroup
                 key={`${prefs.groupBy}-${group.id}`}
@@ -728,6 +751,20 @@ export default function TasksPage() {
                 description={prefs.groupBy === "status" ? STATUS_HINT[group.id] : undefined}
                 count={group.tasks.length}
                 meta={group.tasks.length > 0 ? <Progress done={groupDone} total={group.tasks.length} className="hidden w-36 sm:inline-flex" /> : null}
+                actions={
+                  groupCycle && canComplete ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => completeProject(groupCycle)}
+                      className="hover:border-[var(--c-green)] hover:text-[var(--c-green)]"
+                      title={tt("標記專案完成", "Mark project complete")}
+                    >
+                      <CheckCircle2Icon />
+                      <span className="hidden sm:inline">{tt("標記完成", "Mark complete")}</span>
+                    </Button>
+                  ) : null
+                }
                 footer={group.addable ? <AddTaskRow onCreate={(title) => createTask({ ...group.preset, title })} /> : null}
               >
                 {group.tasks.length === 0 ? (

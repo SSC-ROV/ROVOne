@@ -95,7 +95,7 @@ export function ColorCell({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         type="button"
-        className="inline-flex max-w-full min-w-0 cursor-pointer rounded-full border-0 bg-transparent p-0 hover:brightness-125 focus-visible:ring-2 focus-visible:ring-ring"
+        className="inline-flex max-w-full min-w-0 cursor-pointer items-center rounded-full border-0 bg-transparent p-0 hover:brightness-125 focus-visible:ring-2 focus-visible:ring-ring"
         disabled={disabled}
       >
         {face}
