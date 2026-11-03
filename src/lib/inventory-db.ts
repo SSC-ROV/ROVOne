@@ -56,6 +56,10 @@ export function ensureInventorySchema(): Promise<void> {
       await sql`ALTER TABLE parts ADD COLUMN IF NOT EXISTS inventory_id INTEGER`;
       // 分類改為可多選的標籤；舊的單一 category 欄位不再使用
       await sql`ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS tags TEXT[] NOT NULL DEFAULT '{}'`;
+      // 安全：不讓 Supabase Data API（anon/authenticated）存取；應用程式以 postgres 角色連線，不受 RLS 影響
+      for (const t of ["inventory_items", "inventory_locations", "inventory_reports"]) {
+        await sql.unsafe(`ALTER TABLE ${t} ENABLE ROW LEVEL SECURITY`);
+      }
     })().catch((err) => {
       schemaReady = null; // 下次請求再試
       throw err;
