@@ -16,6 +16,7 @@ English-only.
 | Calendar | Month view showing task deadlines and events (meetings / water tests / competitions); click a date for details; leaders can add events |
 | Development Cycles | Members propose cycles (date range + collaborators) → leader approval → teacher approval → active; tasks can belong to cycles; staff see per-member cycle stats and completion |
 | Parts Purchasing | Request → **teacher approval** → ordered → arrived, with estimated / actual spend stats |
+| Inventory | Search where anything is stored (e.g. `M3` → `4-A-14`), room map with the cabinet/bin highlighted, one-tap "low" / "empty" reports, items kept in several places are flagged, "Request restock" pre-fills a Parts request, printable QR labels that open the item page |
 | Equipment | Loan register (who took it, due back, overdue turns red), maintenance status |
 | Dive Logs | What was tested, issues found, fixes applied, items to re-verify — one click to convert into a tracked task |
 | Admin (leader) | Team name, competition date, member accounts / password resets, notifications, iCal subscription |
@@ -261,10 +262,29 @@ Everything is a JSON REST API (`/api/...`) called with the cookie session
 | `/api/cycles` `/api/cycles/[id]` | CRUD | Development cycles (`action: approve/reject/complete/resubmit/claim`) |
 | `/api/parts` `/api/parts/[id]` | CRUD | Parts purchasing |
 | `/api/approve/[token]` | GET/POST | Teacher no-login approval |
+| `/api/inventory` `/api/inventory/[id]` `/api/inventory/[id]/report` | CRUD / POST | Inventory items + locations; report `in_stock` / `low` / `empty` (tables auto-created on first call, or `node scripts/migrate-inventory.mjs`) |
 | `/api/equipment` `/api/equipment/[id]` | CRUD | Equipment loans (`action: borrow/return/maintenance`) |
 | `/api/divelogs` `/api/divelogs/[id]` | CRUD | Dive logs |
 | `/api/members` `/api/settings` `/api/ical?token=` `/api/display?token=` | GET | Members, settings, calendar feed, display board data |
 | `/api/push/...` | — | Web push subscriptions |
+
+### Inventory locations
+
+Location codes are `<cabinet>-<slot>`, counted the same way as the labels in the room:
+
+| Cabinet | Type | Codes |
+|---|---|---|
+| 1, 6 | 3 shelves (top → bottom) | `1-1` … `1-3` |
+| 2, 3 | 4 shelves | `2-1` … `2-4` |
+| 5 | 5 shelves | `5-1` … `5-5` |
+| 7 | L-shaped drawers: left leg 1–3 top → bottom, bottom run 4–18 left → right | `7-1` … `7-18` |
+| 8 | single space | `8-1` |
+| 4 | bins, 5 wide × 20 tall | `4-A-1` … `4-E-20` (column A–E left → right, row 1 = top) |
+| 9, 11 | bins, 4 × 4 | `9-A-1` … `9-D-4` |
+| 10 | bins, 2 × 4 | `10-A-1` … `10-B-4` |
+
+The layout lives in `src/lib/inventory.ts` (`CABINETS`) and the floor plan in
+`src/components/inventory/RoomMap.tsx`.
 
 ### Sign-in methods
 
