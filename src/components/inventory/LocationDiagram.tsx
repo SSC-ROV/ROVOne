@@ -13,11 +13,11 @@ export default function LocationDiagram({ locations, className = "" }: { locatio
   const cabinets = [...new Set(locations.map((l) => parseLocation(l)?.cabinet).filter(Boolean) as string[])].filter((c) => c !== "7");
   return (
     <div className={`flex items-start gap-3 rounded-[8px] border border-border bg-background p-2 ${className}`}>
-      <div className="w-full max-w-[220px] min-w-0 flex-1">
+      <div className="w-full max-w-[420px] min-w-0 flex-1">
         <RoomMap highlight={locations} />
       </div>
       {cabinets.slice(0, 2).map((c) => (
-        <div key={c} className="w-[64px] shrink-0 [&_svg]:max-h-[120px]">
+        <div key={c} className="w-[72px] shrink-0 sm:w-[110px] [&_svg]:max-h-[160px] sm:[&_svg]:max-h-[260px]">
           <CabinetFrontView cabinetId={c} highlight={locations} />
         </div>
       ))}

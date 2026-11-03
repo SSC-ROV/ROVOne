@@ -433,7 +433,7 @@ export default function InventoryPage() {
                             </button>
                           </div>
                         </div>
-                        <LocationDiagram locations={i.locations} className="w-fit max-w-full sm:shrink-0" />
+                        <LocationDiagram locations={i.locations} className="w-full max-w-[560px] sm:w-[560px] sm:shrink" />
                       </div>
                     )}
                   </div>
