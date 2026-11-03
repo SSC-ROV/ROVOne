@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { MapIcon, MapPinIcon, PencilIcon, QrCodeIcon, SearchIcon, XIcon } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { tt } from "@/lib/i18n-core";
@@ -25,7 +25,7 @@ import RoomMap, { type CabinetBadge } from "@/components/inventory/RoomMap";
 import InventoryTabs from "@/components/inventory/InventoryTabs";
 import LocationEditor from "@/components/inventory/LocationEditor";
 import LocationDiagram from "@/components/inventory/LocationDiagram";
-import { LocationChip, MultiLocationFlag, StatusPill, timeAgo } from "@/components/inventory/shared";
+import { LocationChip, MultiLocationFlag, StatusPill, reportToast, timeAgo, type ReportResponse } from "@/components/inventory/shared";
 
 type Filter = "all" | InventoryStatus | "multi";
 
@@ -41,6 +41,10 @@ export default function InventoryPage() {
   const [showMap, setShowMap] = useState(true);
   const [editingId, setEditingId] = useState<number | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const listId = useId();
+  const [suggestOpen, setSuggestOpen] = useState(false);
+  const [active, setActive] = useState(-1);
+  const [pickedId, setPickedId] = useState<number | null>(null);
 
   async function load() {
     const res = await api<{ items: InventoryItem[] }>("/api/inventory");
@@ -93,6 +97,24 @@ export default function InventoryPage() {
     });
   }, [items, filter, category, cabinet, q]);
 
+  // 搜尋框下拉建議：輸入 M3 → M3 螺絲、M3 螺帽…
+  const suggestions = useMemo(() => {
+    if (!items || !q.trim()) return [];
+    return items.filter((i) => matchesSearch(i, q)).slice(0, 8);
+  }, [items, q]);
+  const showSuggest = suggestOpen && suggestions.length > 0;
+
+  function pickSuggestion(item: InventoryItem) {
+    setQ(item.name);
+    setSuggestOpen(false);
+    setActive(-1);
+    setPickedId(item.id);
+    requestAnimationFrame(() => {
+      document.getElementById(`inv-item-${item.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+    setTimeout(() => setPickedId((id) => (id === item.id ? null : id)), 2000);
+  }
+
   const badges = useMemo(() => {
     const out: Record<string, CabinetBadge> = {};
     for (const i of items ?? []) {
@@ -131,9 +153,9 @@ export default function InventoryPage() {
     const snapshot = items;
     setItems((prev) => prev!.map((x) => (x.id === item.id ? { ...x, status, status_at: new Date().toISOString(), status_by_name: tt("你", "You") } : x)));
     try {
-      await api(`/api/inventory/${item.id}/report`, { method: "POST", body: JSON.stringify({ status }) });
+      const res = await api<ReportResponse>(`/api/inventory/${item.id}/report`, { method: "POST", body: JSON.stringify({ status }) });
       const label = INVENTORY_STATUSES.find((s) => s.key === status)!.label;
-      toast(tt(`已回報「${item.name}」${label}`, `Reported ${item.name} as ${label.toLowerCase()}`));
+      toast(reportToast(item.name, label, res));
       load().catch(() => {});
     } catch (err) {
       setItems(snapshot);
@@ -174,16 +196,80 @@ export default function InventoryPage() {
             ref={searchRef}
             id="inv-search"
             type="search"
+            role="combobox"
+            aria-expanded={showSuggest}
+            aria-controls={listId}
+            aria-autocomplete="list"
+            aria-activedescendant={showSuggest && active >= 0 ? `${listId}-${active}` : undefined}
+            autoComplete="off"
             className="h-12 w-full rounded-full border [&::-webkit-search-cancel-button]:hidden border-border bg-card pr-11 pl-11 text-base text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
             placeholder={tt("搜尋名稱、規格或位置，例如：M3、熱縮管、4-A-14", "Search name, size or location, e.g. M3, heat shrink, 4-A-14")}
             value={q}
-            onChange={(e) => setQ(e.target.value)}
+            onChange={(e) => {
+              setQ(e.target.value);
+              setActive(-1);
+              setSuggestOpen(true);
+            }}
+            onFocus={() => setSuggestOpen(true)}
+            onBlur={() => setTimeout(() => setSuggestOpen(false), 120)}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowDown") {
+                e.preventDefault();
+                setSuggestOpen(true);
+                setActive((i) => Math.min(i + 1, suggestions.length - 1));
+              } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setActive((i) => Math.max(i - 1, -1));
+              } else if (e.key === "Enter") {
+                e.preventDefault();
+                if (showSuggest && active >= 0) pickSuggestion(suggestions[active]);
+                else setSuggestOpen(false);
+              } else if (e.key === "Escape") {
+                setSuggestOpen(false);
+              }
+            }}
             aria-label={tt("搜尋庫存", "Search inventory")}
           />
           {q && (
-            <button type="button" aria-label={tt("清除搜尋", "Clear search")} className="absolute top-1/2 right-3 -translate-y-1/2 rounded-full p-1 text-muted-foreground hover:bg-muted" onClick={() => setQ("")}>
+            <button type="button" aria-label={tt("清除搜尋", "Clear search")} className="absolute top-1/2 right-3 -translate-y-1/2 rounded-full p-1 text-muted-foreground hover:bg-muted" onClick={() => { setQ(""); searchRef.current?.focus(); }}>
               <XIcon className="size-4" />
             </button>
+          )}
+          {showSuggest && (
+            <ul
+              id={listId}
+              role="listbox"
+              aria-label={tt("搜尋建議", "Suggestions")}
+              className="absolute inset-x-0 top-full z-30 mt-1.5 max-h-80 overflow-y-auto rounded-[12px] border border-border bg-popover p-1 text-popover-foreground shadow-lg"
+            >
+              {suggestions.map((s, idx) => {
+                const sub = [s.spec, s.category].filter(Boolean).join(" · ");
+                return (
+                  <li
+                    key={s.id}
+                    id={`${listId}-${idx}`}
+                    role="option"
+                    aria-selected={idx === active}
+                    className={`flex cursor-pointer items-center gap-3 rounded-[8px] px-3 py-2 ${idx === active ? "bg-muted" : "hover:bg-muted/60"}`}
+                    onMouseEnter={() => setActive(idx)}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      pickSuggestion(s);
+                    }}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium">{s.name}</div>
+                      {sub && <div className="truncate text-xs text-muted-foreground">{sub}</div>}
+                    </div>
+                    {s.locations[0] && <LocationChip code={s.locations[0]} />}
+                    {s.locations.length > 1 && (
+                      <span className="text-xs text-muted-foreground">+{s.locations.length - 1}</span>
+                    )}
+                    <StatusPill status={s.status} />
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </div>
 
@@ -265,17 +351,28 @@ export default function InventoryPage() {
             {visible.map((i) => {
               const editing = editingId === i.id;
               return (
-                <li key={i.id} className="flex flex-col gap-3 px-3 py-3 sm:px-4 lg:flex-row lg:items-start lg:gap-6">
+                <li
+                  key={i.id}
+                  id={`inv-item-${i.id}`}
+                  className={`flex scroll-mt-24 flex-col gap-3 px-3 py-4 transition-colors duration-500 sm:px-4 lg:flex-row lg:items-start lg:gap-6 ${pickedId === i.id ? "bg-[#cce5ff]/50 dark:bg-[#0073ea]/15" : ""}`}
+                >
                   {/* What */}
-                  <div className="min-w-0 lg:w-64 lg:shrink-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Link href={`/inventory/${i.id}`} className="font-medium hover:underline">{i.name}</Link>
-                      <StatusPill status={i.status} />
+                  <div className="min-w-0 space-y-1 lg:w-56 lg:shrink-0">
+                    <div className="flex items-start justify-between gap-2 lg:block">
+                      <Link href={`/inventory/${i.id}`} className="block text-[15px] leading-snug font-semibold break-words hover:underline">{i.name}</Link>
+                      <div className="shrink-0 lg:mt-1.5">
+                        <StatusPill status={i.status} />
+                      </div>
                     </div>
-                    <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
-                      {i.spec && <span>{i.spec}</span>}
-                      {i.category && <span>· {i.category}</span>}
-                    </div>
+                    {(i.spec || i.category) && (
+                      <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                        {i.spec && <span>{i.spec}</span>}
+                        {i.spec && i.category && <span aria-hidden>·</span>}
+                        {i.category && (
+                          <span className="rounded-full border border-border px-2 py-px">{i.category}</span>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Where */}
@@ -291,40 +388,42 @@ export default function InventoryPage() {
                         }}
                       />
                     ) : (
-                      <>
-                        {i.locations.length === 0 ? (
-                          <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                            <MapPinIcon className="size-4 shrink-0" /> {tt("還沒指定位置", "No location set yet")}
-                          </p>
-                        ) : (
-                          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-4">
-                          <ul className="min-w-0 flex-1 space-y-1">
-                            {i.locations.map((l) => (
-                              <li key={l} className="flex flex-wrap items-center gap-2 text-sm">
-                                <MapPinIcon className="size-4 shrink-0 text-[#0073ea]" />
-                                <LocationChip code={l} />
-                                <span className="text-muted-foreground">{describeLocation(l)}</span>
-                              </li>
-                            ))}
-                          </ul>
-                          <LocationDiagram locations={i.locations} className="w-fit max-w-full sm:shrink-0" />
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
+                        <div className="min-w-0 flex-1 space-y-2">
+                          {i.locations.length === 0 ? (
+                            <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                              <MapPinIcon className="size-4 shrink-0" /> {tt("還沒指定位置", "No location set yet")}
+                            </p>
+                          ) : (
+                            <ul className="space-y-1.5">
+                              {i.locations.map((l) => (
+                                <li key={l} className="flex items-start gap-2 text-sm">
+                                  <MapPinIcon className="mt-0.5 size-4 shrink-0 text-[#0073ea]" />
+                                  <div className="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-2">
+                                    <LocationChip code={l} />
+                                    <span className="text-muted-foreground">{describeLocation(l)}</span>
+                                  </div>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                            <MultiLocationFlag count={i.locations.length} />
+                            <span className="text-xs text-muted-foreground">
+                              {i.locations.length === 0 ? tt("知道它在哪？", "Know where it is?") : tt("不在這裡？", "Not here?")}
+                            </span>
+                            <button
+                              type="button"
+                              className="inline-flex h-7 items-center gap-1 rounded-[4px] border border-border px-2 text-xs font-medium hover:bg-muted"
+                              onClick={() => setEditingId(i.id)}
+                            >
+                              <PencilIcon className="size-3.5" />
+                              {i.locations.length === 0 ? tt("加上位置", "Add location") : tt("編輯位置", "Edit location")}
+                            </button>
                           </div>
-                        )}
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                          <MultiLocationFlag count={i.locations.length} />
-                          <span className="text-xs text-muted-foreground">
-                            {i.locations.length === 0 ? tt("知道它在哪？", "Know where it is?") : tt("不在這裡？", "Not here?")}
-                          </span>
-                          <button
-                            type="button"
-                            className="inline-flex h-7 items-center gap-1 rounded-[4px] border border-border px-2 text-xs font-medium hover:bg-muted"
-                            onClick={() => setEditingId(i.id)}
-                          >
-                            <PencilIcon className="size-3.5" />
-                            {i.locations.length === 0 ? tt("加上位置", "Add location") : tt("編輯位置", "Edit location")}
-                          </button>
                         </div>
-                      </>
+                        <LocationDiagram locations={i.locations} className="w-fit max-w-full sm:shrink-0" />
+                      </div>
                     )}
                   </div>
 
