@@ -331,7 +331,7 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="board-title">{t("管理")}（{t("隊長與老師")}）</h1>
+      <h1 className="board-title">{t("團隊設定")}（{t("隊長與老師")}）</h1>
       {msg && (
         <p className="rounded-lg border border-emerald-500/30 bg-green-50 px-3 py-2 text-sm text-emerald-600">
           {msg}

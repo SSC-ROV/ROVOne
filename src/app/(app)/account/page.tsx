@@ -94,7 +94,7 @@ export default function AccountPage() {
           </div>
         </dl>
         <p className="mt-3 text-xs text-ink-tertiary">
-          {t("名稱與組別請請隊長在「管理」頁調整。")}
+          {t("名稱與組別請請隊長在「團隊設定」頁調整。")}
         </p>
         </CardContent>
       </Card>

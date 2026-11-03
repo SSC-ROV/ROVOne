@@ -98,7 +98,7 @@ export default function DashboardPage() {
 
   return (
     <div className="flex w-full flex-col">
-      <BoardHeader title={t("首頁")} subtitle={settings.team_name} />
+      <BoardHeader title={t("總覽")} subtitle={settings.team_name} />
 
       <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <NumberWidget
@@ -108,9 +108,9 @@ export default function DashboardPage() {
             countdown ? (
               <p className="text-xs text-muted-foreground">{fmtMD(settings.competition_date!)}（{weekdayCn(settings.competition_date!)}）</p>
             ) : isStaff(me.role) ? (
-              <Button variant="link" className="h-auto px-0" nativeButton={false} render={<Link href="/admin" />}>{t("前往「管理」設定 →")}</Button>
+              <Button variant="link" className="h-auto px-0" nativeButton={false} render={<Link href="/admin" />}>{t("前往「團隊設定」→")}</Button>
             ) : (
-              <p className="text-xs text-muted-foreground">{t("請隊長或老師於「管理」頁設定")}</p>
+              <p className="text-xs text-muted-foreground">{t("請隊長或老師於「團隊設定」頁設定")}</p>
             )
           }
         />

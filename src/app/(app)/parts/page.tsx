@@ -215,7 +215,7 @@ export default function PartsPage() {
   return (
     <div className="space-y-4">
       <BoardHeader
-        title={t("零件採買")}
+        title={t("採購申請")}
         subtitle={t("需求 → 老師審批 → 下單 → 到貨，一頁追蹤")}
         action={
           <>
@@ -296,7 +296,7 @@ export default function PartsPage() {
         </form>
       )}
 
-      <BoardGroup title={t("零件採買")} color="#579bfc" count={filtered.length}>
+      <BoardGroup title={t("採購申請")} color="#579bfc" count={filtered.length}>
         {filtered.length === 0 && <PageEmpty>{t("沒有符合的零件申請")}</PageEmpty>}
         {filtered.length > 0 && (
           <table className="board-table">

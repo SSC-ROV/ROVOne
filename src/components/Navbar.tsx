@@ -52,15 +52,15 @@ export default function Navbar({
   }
 
   const links = [
-    { href: "/", label: t("首頁"), icon: HomeIcon },
-    { href: "/work", label: t("工作"), icon: LayoutListIcon },
-    { href: "/calendar", label: t("日曆"), icon: CalendarIcon },
+    { href: "/", label: t("總覽"), icon: HomeIcon },
+    { href: "/work", label: t("任務"), icon: LayoutListIcon },
+    { href: "/calendar", label: t("行事曆"), icon: CalendarIcon },
     { href: "/cycles", label: t("開發週期"), icon: RefreshCwIcon },
-    { href: "/parts", label: t("零件採買"), icon: ShoppingCartIcon },
+    { href: "/parts", label: t("採購申請"), icon: ShoppingCartIcon },
     { href: "/inventory", label: t("庫存"), icon: PackageSearchIcon },
-    { href: "/equipment", label: t("租借設備"), icon: WrenchIcon },
-    { href: "/divelogs", label: t("水測日誌"), icon: WavesIcon },
-    ...(isStaff(user.role) ? [{ href: "/admin", label: t("管理"), icon: ShieldIcon }] : []),
+    { href: "/equipment", label: t("設備借用"), icon: WrenchIcon },
+    { href: "/divelogs", label: t("水測紀錄"), icon: WavesIcon },
+    ...(isStaff(user.role) ? [{ href: "/admin", label: t("團隊設定"), icon: ShieldIcon }] : []),
   ];
 
   const mark = teamName.trim().slice(0, 1).toUpperCase() || "R";

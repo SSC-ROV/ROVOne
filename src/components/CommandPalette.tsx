@@ -93,14 +93,14 @@ export default function CommandPalette() {
   const hits = (() => {
     const needle = q.trim().toLowerCase();
     const pages: Hit[] = [
-      { key: "home", label: t("首頁"), hint: t("頁面"), run: () => go("/") },
-      { key: "work", label: t("工作"), hint: t("頁面"), run: () => go("/work") },
-      { key: "cal", label: t("日曆"), hint: t("頁面"), run: () => go("/calendar") },
+      { key: "home", label: t("總覽"), hint: t("頁面"), run: () => go("/") },
+      { key: "work", label: t("任務"), hint: t("頁面"), run: () => go("/work") },
+      { key: "cal", label: t("行事曆"), hint: t("頁面"), run: () => go("/calendar") },
       { key: "cycles", label: t("開發週期"), hint: t("頁面"), run: () => go("/cycles") },
-      { key: "parts", label: t("零件採買"), hint: t("頁面"), run: () => go("/parts") },
+      { key: "parts", label: t("採購申請"), hint: t("頁面"), run: () => go("/parts") },
       { key: "inventory", label: t("庫存"), hint: t("頁面"), run: () => go("/inventory") },
-      { key: "equip", label: t("租借設備"), hint: t("頁面"), run: () => go("/equipment") },
-      { key: "logs", label: t("水測日誌"), hint: t("頁面"), run: () => go("/divelogs") },
+      { key: "equip", label: t("設備借用"), hint: t("頁面"), run: () => go("/equipment") },
+      { key: "logs", label: t("水測紀錄"), hint: t("頁面"), run: () => go("/divelogs") },
       { key: "account", label: t("帳號"), hint: t("頁面"), run: () => go("/account") },
     ];
     const taskHits: Hit[] = tasks.map((task) => ({
@@ -112,13 +112,13 @@ export default function CommandPalette() {
     const partHits: Hit[] = parts.map((part) => ({
       key: `p${part.id}`,
       label: part.name,
-      hint: t("零件採買"),
+      hint: t("採購申請"),
       run: () => go("/parts"),
     }));
     const equipHits: Hit[] = equipment.map((item) => ({
       key: `e${item.id}`,
       label: item.name,
-      hint: t("租借設備"),
+      hint: t("設備借用"),
       run: () => go("/equipment"),
     }));
     const cycleHits: Hit[] = cycles.map((cycle) => ({

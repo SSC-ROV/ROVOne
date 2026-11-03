@@ -179,7 +179,7 @@ export default function WorkPage() {
   return (
     <div className="flex w-full flex-col">
       <BoardHeader
-        title={t("工作")}
+        title={t("任務")}
         views={
           <Tabs value={view} onValueChange={setView}>
             <TabsList>
