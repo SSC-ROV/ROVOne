@@ -34,6 +34,7 @@ import { ContextMenu, type ContextMenuState } from "@/components/ui/context-menu
 import { Label, StatusIcon } from "@/components/board/ColorCell";
 import { AvatarStack, peopleSummary } from "@/components/board/PersonCell";
 import TaskModal from "@/components/TaskModal";
+import { SubscribeButton } from "@/components/calendar/SubscribeButton";
 import { PageError, PageLoading } from "@/components/PageState";
 import type { EventType, Me, Member, Task, TeamEvent } from "@/lib/types";
 
@@ -347,11 +348,14 @@ export default function CalendarPage() {
           </Button>
         </div>
         <Button variant="outline" size="sm" onClick={goToday}>{t("今天")}</Button>
-        {staff && (
-          <Button className="ml-auto" onClick={() => openNew(sel)}>
-            <PlusIcon /> {tt("新增活動", "New event")}
-          </Button>
-        )}
+        <div className="ml-auto flex items-center gap-2">
+          <SubscribeButton />
+          {staff && (
+            <Button onClick={() => openNew(sel)}>
+              <PlusIcon /> {tt("新增活動", "New event")}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Legend + tip */}
