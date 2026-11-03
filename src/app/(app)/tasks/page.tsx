@@ -56,7 +56,8 @@ import { NewTaskSheet, type NewTaskInput } from "@/components/tasks/NewTaskSheet
 import type { ChecklistItem, Cycle, Me, Member, Task } from "@/lib/types";
 
 const OPEN_STATUSES = new Set(["active", "late", "approved", "pending_leader", "pending_teacher"]);
-const PREFS_KEY = "rov-tasks-prefs";
+const PREFS_KEY = "rov-tasks-prefs-v2";
+const LEGACY_PREFS_KEY = "rov-tasks-prefs";
 
 type View = "table" | "board";
 type GroupBy = "cycle" | "status" | "assignee" | "priority" | "subteam" | "due" | "none";
@@ -81,13 +82,19 @@ type Group = {
 };
 
 const EMPTY_FILTERS: Filters = { query: "", assignees: [], statuses: [], priorities: [], subteams: [], cycles: [], due: [] };
-const DEFAULT_PREFS: Prefs = { view: "table", groupBy: "cycle", sort: "manual", hideDone: false, cycleId: "" };
+const DEFAULT_PREFS: Prefs = { view: "table", groupBy: "subteam", sort: "manual", hideDone: false, cycleId: "" };
 
 function readPrefs(): Prefs {
   if (typeof window === "undefined") return DEFAULT_PREFS;
   try {
     const raw = window.localStorage.getItem(PREFS_KEY);
-    return raw ? { ...DEFAULT_PREFS, ...(JSON.parse(raw) as Partial<Prefs>) } : DEFAULT_PREFS;
+    if (raw) return { ...DEFAULT_PREFS, ...(JSON.parse(raw) as Partial<Prefs>) };
+    // Carry over older prefs, but let the new subteam grouping default take effect.
+    const legacy = window.localStorage.getItem(LEGACY_PREFS_KEY);
+    if (!legacy) return DEFAULT_PREFS;
+    const { groupBy: _ignored, ...rest } = JSON.parse(legacy) as Partial<Prefs>;
+    void _ignored;
+    return { ...DEFAULT_PREFS, ...rest };
   } catch {
     return DEFAULT_PREFS;
   }
@@ -479,7 +486,7 @@ export default function TasksPage() {
   const openTask = tasks.find((task) => task.id === openId) ?? null;
   const narrowing = !sameFilters(filters, EMPTY_FILTERS);
   const hiddenByToggle = prefs.hideDone && !filters.statuses.length;
-  const shownGroups = groups.filter((group) => group.tasks.length > 0 || (!narrowing && !hiddenByToggle && group.addable && (prefs.groupBy === "cycle" || prefs.groupBy === "status")));
+  const shownGroups = groups.filter((group) => group.tasks.length > 0 || (!narrowing && !hiddenByToggle && group.addable && (prefs.groupBy === "cycle" || prefs.groupBy === "status" || prefs.groupBy === "subteam")));
 
   const statusOptions = STATUSES.map((item) => ({ value: item.key, label: item.label, color: item.color }));
   const priorityOptions = PRIORITIES.map((item) => ({ value: item.key, label: item.label, color: item.color }));
@@ -1029,8 +1036,8 @@ function AddTaskRow({ onCreate, compact }: { onCreate: (title: string) => Promis
     <form
       className={
         compact
-          ? "flex h-9 items-center gap-2 rounded-[8px] px-2 text-muted-foreground hover:bg-card focus-within:bg-card focus-within:ring-1 focus-within:ring-ring"
-          : "flex h-9 items-center gap-2 border-t border-border px-3 text-muted-foreground focus-within:bg-muted/40"
+          ? "group/add flex h-10 items-center gap-2 rounded-[8px] border border-dashed border-[#0073ea]/50 bg-[#0073ea]/5 px-2 text-[#0073ea] transition-colors hover:border-[#0073ea] hover:bg-[#0073ea]/10 focus-within:border-solid focus-within:border-[#0073ea] focus-within:bg-card"
+          : "group/add m-2 flex h-10 items-center gap-2 rounded-[8px] border border-dashed border-[#0073ea]/50 bg-[#0073ea]/5 px-2 text-[#0073ea] transition-colors hover:border-[#0073ea] hover:bg-[#0073ea]/10 focus-within:border-solid focus-within:border-[#0073ea] focus-within:bg-card"
       }
       onSubmit={async (event) => {
         event.preventDefault();
@@ -1042,7 +1049,9 @@ function AddTaskRow({ onCreate, compact }: { onCreate: (title: string) => Promis
         if (ok) setDraft("");
       }}
     >
-      <PlusIcon className="size-4 shrink-0 text-[#0073ea]" aria-hidden />
+      <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#0073ea] text-white" aria-hidden>
+        <PlusIcon className="size-4" />
+      </span>
       <input
         value={draft}
         disabled={busy}
@@ -1053,10 +1062,24 @@ function AddTaskRow({ onCreate, compact }: { onCreate: (title: string) => Promis
             event.currentTarget.blur();
           }
         }}
-        placeholder={tt("新增任務，按 Enter 加入", "Add task, press Enter")}
+        placeholder={tt("新增任務⋯", "Add a task…")}
         aria-label={tt("新增任務", "Add task")}
-        className="h-8 min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+        className="h-8 min-w-0 flex-1 bg-transparent text-sm font-medium text-foreground outline-none placeholder:text-[#0073ea] placeholder:opacity-90 focus:placeholder:text-muted-foreground"
       />
+      {draft.trim() ? (
+        <button
+          type="submit"
+          disabled={busy}
+          className="flex h-7 shrink-0 items-center gap-1 rounded-[6px] bg-[#0073ea] px-2.5 text-xs font-semibold text-white hover:bg-[#0060c0] disabled:opacity-60"
+        >
+          {tt("新增", "Add")}
+          <kbd className="rounded-[3px] bg-white/20 px-1 font-sans text-[10px]">↵</kbd>
+        </button>
+      ) : (
+        <kbd className="hidden shrink-0 rounded-[4px] border border-[#0073ea]/40 px-1.5 py-0.5 font-sans text-[10px] text-[#0073ea] group-focus-within/add:inline-block">
+          Enter ↵
+        </kbd>
+      )}
     </form>
   );
 }
