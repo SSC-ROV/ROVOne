@@ -80,7 +80,7 @@ export default function LocationEditor({
         )}
       </div>
 
-      <LocationDiagram locations={preview} className="max-w-md" />
+      <LocationDiagram locations={preview} />
 
       <div className="flex flex-wrap items-center gap-2">
         {pending ? (
