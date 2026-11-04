@@ -9,6 +9,7 @@ import { api } from "@/lib/api-client";
 import { tt } from "@/lib/i18n-core";
 import { BTN, INPUT_CLS, PART_STATUSES, groupColor, subteamLabel } from "@/lib/ui";
 import { fmtMD } from "@/lib/date";
+import { isValidBuyLink } from "@/lib/inventory";
 import { useDialogs } from "@/components/ui/Dialogs";
 import { PageError, PageLoading } from "@/components/PageState";
 import { CheckIcon, CircleDotIcon, ExternalLinkIcon, LayersIcon, LinkIcon, PanelRightOpenIcon, PlusIcon, Trash2Icon, XIcon } from "lucide-react";
@@ -104,6 +105,8 @@ export default function PartsPage() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
+    if (!link.trim()) { toast(t("請填寫購買連結"), "err"); return; }
+    if (!isValidBuyLink(link)) { toast(t("購買連結需以 http:// 或 https:// 開頭"), "err"); return; }
     setBusy(true);
     try {
       await api("/api/parts", {
@@ -467,8 +470,8 @@ export default function PartsPage() {
                   <Choice value={subteam} onChange={setSubteam} options={subteams.map((s) => ({ value: s.key, label: s.label }))} className="w-full" ariaLabel={t("組別")} />
                 </FormField>
               </div>
-              <FormField label={t("購買連結（選填）")}>
-                <Input className="h-9" value={link} onChange={(e) => setLink(e.target.value)} />
+              <FormField label={tt("購買連結 *", "Buy link *")}>
+                <Input className="h-9" type="url" required placeholder="https://" value={link} onChange={(e) => setLink(e.target.value)} />
               </FormField>
               <FormField label={t("用途（給老師看的說明）")}>
                 <textarea
@@ -480,7 +483,7 @@ export default function PartsPage() {
             </div>
             <div className="flex items-center gap-3 border-t border-border px-5 py-3">
               <Button type="button" variant="ghost" className="ml-auto" onClick={() => setShowForm(false)}>{t("取消")}</Button>
-              <Button type="submit" disabled={busy || !name.trim()}>{busy ? t("送出中…") : t("送出申請")}</Button>
+              <Button type="submit" disabled={busy || !name.trim() || !link.trim()}>{busy ? t("送出中…") : t("送出申請")}</Button>
             </div>
           </form>
         </SheetContent>
