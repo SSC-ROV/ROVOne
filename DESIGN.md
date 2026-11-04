@@ -69,6 +69,7 @@ All colours are CSS variables in `src/app/globals.css`, defined once per theme. 
 | --- | --- |
 | Todo / open | green |
 | In progress | yellow |
+| Blocked | orange |
 | Done | purple |
 | Overdue, destructive | red |
 | Priority high | orange |
@@ -85,13 +86,13 @@ The system UI stack, with Noto Sans TC next so Chinese renders in the same roles
 
 ## Components
 
-**Status icon.** Drawn in `StatusIcon` (`src/components/board/ColorCell.tsx`): an open ring with a centre dot for Todo (green), a half-filled ring for In progress (yellow), and a filled circle with a check for Done (purple). Used before task titles, in group and column headers, in the timeline and on the calendar.
+**Status icon.** Drawn in `StatusIcon` (`src/components/board/ColorCell.tsx`): an open ring with a centre dot for Todo (green), a half-filled ring for In progress (yellow), a ring with a bar for Blocked (orange), and a filled circle with a check for Done (purple). Used before task titles, in group and column headers, in the timeline and on the calendar.
 
 **Label.** `Label` / `.gh-label`: a 20px pill with a 1px border at 45% of the colour, a 14% fill, and text mixed toward the foreground. Status, priority, subteam and event type all use it. Clicking an editable label opens a small menu with a checkmark on the current value — never a bordered dropdown button inside a cell.
 
 **Table.** One bordered card per group. The header shows chevron, icon or ring, bold name, a count pill, and an optional description. Rows are 37px with grid lines. The first column shows the row number, which turns into a checkbox on hover or when selected, then the status icon, the title and `#id`. An "Open" button slides in on row hover.
 
-**Board.** Three status columns on the canvas colour with a 1px border; each header has the status icon, name, count pill and a one-line description. Cards show the status icon, project and `#id`, the assignee avatar, the title, and labels. Cards lift by 1px and gain a shadow on hover.
+**Board.** Four status columns (Todo, In progress, Blocked, Done) on the canvas colour with a 1px border; each header has the status icon, name, count pill and a one-line description. Cards show the status icon, project and `#id`, the assignee avatar, the title, and labels. Cards lift by 1px and gain a shadow on hover.
 
 **Task detail.** A wide right-hand sheet laid out like an issue: title + number, a solid state badge, project chip and "opened … ago"; a description card; subtasks; an activity timeline (comments as bordered cards with an avatar on the rail, changes as one-line entries with an icon); and a comment box (Ctrl + Enter to send). The right sidebar has Assignee, Labels, a Project box with Status / Priority / Due / Subteam / Project fields, linked calendar events, and the completion date.
 
