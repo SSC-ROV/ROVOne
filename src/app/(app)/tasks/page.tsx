@@ -59,6 +59,7 @@ const PREFS_KEY = "rov-tasks-prefs-v2";
 const STATUS_HINT: Record<string, string> = {
   get todo() { return tt("尚未開始", "This item hasn't been started"); },
   get doing() { return tt("正在進行", "This is actively being worked on"); },
+  get blocked() { return tt("在等其他事情", "This is waiting on something"); },
   get done() { return tt("已經完成", "This has been completed"); },
 };
 const LEGACY_PREFS_KEY = "rov-tasks-prefs";
@@ -573,7 +574,7 @@ export default function TasksPage() {
   // Quick views: one click applies a preset filter; clicking again clears it.
   const views: { key: string; label: string; value: number; icon: ReactNode; alert?: boolean; preset: Filters }[] = [
     { key: "all", label: tt("全部", "All"), value: tasks.length, icon: <ClipboardListIcon />, preset: EMPTY_FILTERS },
-    { key: "mine", label: tt("我的待辦", "My open"), value: stats.mine, icon: <UserIcon />, preset: { ...EMPTY_FILTERS, assignees: ["me"], statuses: ["todo", "doing"] } },
+    { key: "mine", label: tt("我的待辦", "My open"), value: stats.mine, icon: <UserIcon />, preset: { ...EMPTY_FILTERS, assignees: ["me"], statuses: ["todo", "doing", "blocked"] } },
     { key: "doing", label: tt("進行中", "In progress"), value: stats.doing, icon: <CircleDotIcon />, preset: { ...EMPTY_FILTERS, statuses: ["doing"] } },
     { key: "week", label: tt("七天內到期", "Due this week"), value: stats.week, icon: <CalendarClockIcon />, preset: { ...EMPTY_FILTERS, due: ["today", "soon"] } },
     { key: "overdue", label: tt("已逾期", "Overdue"), value: stats.overdue, icon: <AlertTriangleIcon />, alert: stats.overdue > 0, preset: { ...EMPTY_FILTERS, due: ["overdue"] } },
@@ -983,7 +984,7 @@ export default function TasksPage() {
           )}
         </div>
       ) : (
-        <div className="grid items-start gap-3 md:grid-cols-3">
+        <div className="grid items-start gap-3 md:grid-cols-2 xl:grid-cols-4">
           {STATUSES.map((column) => {
             const columnTasks = sortTasks(filtered.filter((task) => task.status === column.key));
             return (
@@ -1017,7 +1018,7 @@ export default function TasksPage() {
                       <button
                         type="button"
                         className="text-[var(--c-blue)] hover:underline"
-                        onClick={() => setFilters((prev) => ({ ...prev, statuses: ["todo", "doing", "done"] }))}
+                        onClick={() => setFilters((prev) => ({ ...prev, statuses: ["todo", "doing", "blocked", "done"] }))}
                       >
                         {tt("已完成的任務已隱藏，點此顯示", "Done tasks are hidden. Show them")}
                       </button>

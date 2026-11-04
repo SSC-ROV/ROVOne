@@ -6,9 +6,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 
 export type ColorOption = { value: string; label: string; color: string };
 
-const STATUS_COLOR: Record<string, string> = { todo: "var(--c-green)", doing: "var(--c-yellow)", done: "var(--c-purple)" };
+const STATUS_COLOR: Record<string, string> = { todo: "var(--c-green)", doing: "var(--c-yellow)", blocked: "var(--c-orange)", done: "var(--c-purple)" };
 
-/** Task state icon: open ring (todo), half-filled ring (in progress), filled check (done). */
+/** Task state icon: open ring (todo), half-filled ring (in progress), ring with a bar (blocked), filled check (done). */
 export function StatusIcon({ status, size = 16, className = "" }: { status: string; size?: number; className?: string }) {
   const color = STATUS_COLOR[status] ?? "var(--c-gray)";
   return (
@@ -21,7 +21,13 @@ export function StatusIcon({ status, size = 16, className = "" }: { status: stri
       ) : (
         <>
           <circle cx="8" cy="8" r="6.25" fill="none" stroke="currentColor" strokeWidth="1.5" />
-          {status === "doing" ? <path d="M8 4a4 4 0 0 1 0 8z" fill="currentColor" /> : <circle cx="8" cy="8" r="1.6" fill="currentColor" />}
+          {status === "doing" ? (
+            <path d="M8 4a4 4 0 0 1 0 8z" fill="currentColor" />
+          ) : status === "blocked" ? (
+            <path d="M5 8h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          ) : (
+            <circle cx="8" cy="8" r="1.6" fill="currentColor" />
+          )}
         </>
       )}
     </svg>

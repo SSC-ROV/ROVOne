@@ -45,7 +45,7 @@ export interface Cycle {
   count_for_leader: boolean;
 }
 export type Subteam = "mech" | "elec" | "sw" | "pilot" | "general";
-export type TaskStatus = "todo" | "doing" | "done";
+export type TaskStatus = "todo" | "doing" | "blocked" | "done";
 export type Priority = "high" | "medium" | "low";
 export type EventType = "meeting" | "watertest" | "competition" | "other";
 

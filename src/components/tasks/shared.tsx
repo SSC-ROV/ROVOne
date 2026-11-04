@@ -71,9 +71,16 @@ export function DueCell({
   const [open, setOpen] = useState(false);
   const state = dueState(task, today);
   const face = (
-    <span className={`inline-flex items-center gap-1.5 text-sm tabular-nums ${DUE_TONE[state]}`}>
-      <CalendarIcon className="size-3.5 shrink-0 opacity-70" aria-hidden />
-      <span>{state === "done" && task.due_date ? fmtMD(task.due_date) : dueText(task.due_date, today)}</span>
+    <span
+      // One 20px line that wraps: when the column is too narrow, the secondary date drops to a hidden
+      // second line instead of squeezing the main label.
+      className={`flex h-5 min-w-0 max-w-full flex-wrap items-center gap-x-1.5 overflow-hidden whitespace-nowrap text-sm leading-5 tabular-nums ${DUE_TONE[state]}`}
+      title={task.due_date ?? undefined}
+    >
+      <span className="flex min-w-0 max-w-full items-center gap-1.5">
+        <CalendarIcon className="size-3.5 shrink-0 opacity-70" aria-hidden />
+        <span className="truncate">{state === "done" && task.due_date ? fmtMD(task.due_date) : dueText(task.due_date, today)}</span>
+      </span>
       {task.due_date && state !== "later" && state !== "done" && (
         <span className="text-xs font-normal text-muted-foreground no-underline">{fmtMD(task.due_date)}</span>
       )}
@@ -89,7 +96,7 @@ export function DueCell({
         </div>
       );
     }
-    return <span className={className}>{face}</span>;
+    return <span className={`flex min-w-0 max-w-full ${className}`}>{face}</span>;
   }
   const pick = (value: string | null) => {
     onChange(value);
@@ -114,7 +121,7 @@ export function DueCell({
       ) : (
         <PopoverTrigger
           type="button"
-          className={`inline-flex h-7 items-center rounded-[4px] px-1.5 hover:bg-muted ${className}`}
+          className={`flex h-7 min-w-0 max-w-full items-center rounded-[4px] px-1.5 hover:bg-muted ${className}`}
           aria-label={tt("截止日", "Due date")}
         >
           {face}
@@ -362,9 +369,9 @@ export function DateCell({
 }) {
   const [open, setOpen] = useState(false);
   const face = (
-    <span className={`inline-flex items-center gap-1.5 text-sm tabular-nums ${value ? "text-foreground" : "text-muted-foreground"}`}>
+    <span className={`flex min-w-0 max-w-full items-center gap-1.5 overflow-hidden whitespace-nowrap text-sm tabular-nums ${value ? "text-foreground" : "text-muted-foreground"}`} title={value ?? undefined}>
       <CalendarIcon className="size-3.5 shrink-0 opacity-70" aria-hidden />
-      <span>{value ? fmtMD(value) : rowLabel ? tt("未設定", "No date") : "—"}</span>
+      <span className="truncate">{value ? fmtMD(value) : rowLabel ? tt("未設定", "No date") : "—"}</span>
     </span>
   );
   const rowClass = "grid min-h-9 w-full grid-cols-[5.5rem_1fr] items-center gap-x-2 px-2 text-left text-sm";
@@ -398,7 +405,7 @@ export function DateCell({
           {face}
         </PopoverTrigger>
       ) : (
-        <PopoverTrigger type="button" className="inline-flex h-7 items-center rounded-[4px] px-1.5 hover:bg-muted" aria-label={label}>
+        <PopoverTrigger type="button" className="flex h-7 min-w-0 max-w-full items-center rounded-[4px] px-1.5 hover:bg-muted" aria-label={label}>
           {face}
         </PopoverTrigger>
       )}
