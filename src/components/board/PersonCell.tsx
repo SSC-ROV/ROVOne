@@ -13,14 +13,23 @@ export function personColor(name: string) {
   return COLORS[hash];
 }
 
-/** "Jude (Liu Pak Hei Jude Asher)" → "Jude". Names without a nickname are returned as is. */
+/**
+ * "Jude (Liu Pak Hei Jude Asher)" → "Jude".
+ * "(Teacher) Mr CHAN Yuk Wang, Eric" → "Mr CHAN Yuk Wang, Eric" (leading role tag dropped).
+ * Other names are returned as is.
+ */
 export function shortName(name: string) {
-  const match = /^(.+?)\s*\(.+\)$/.exec(name.trim());
-  return match ? match[1] : name.trim();
+  const trimmed = name.trim();
+  const withoutPrefix = trimmed.replace(/^\([^)]*\)\s*/, "") || trimmed;
+  const match = /^(.+?)\s*\(.+\)$/.exec(withoutPrefix);
+  return match ? match[1] : withoutPrefix;
 }
 
 export function initials(name: string) {
-  const parts = shortName(name).split(/\s+/).filter(Boolean);
+  const parts = shortName(name)
+    .split(/[\s,]+/)
+    .map((part) => part.replace(/^[^\p{L}\p{N}]+/u, ""))
+    .filter(Boolean);
   if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   return parts[0]?.slice(0, 1).toUpperCase() || "?";
 }
@@ -70,7 +79,7 @@ export function PersonCell({
 }) {
   const [open, setOpen] = useState(false);
   const face = (
-    <span className="inline-flex min-w-0 items-center gap-2" title={name ?? undefined}>
+    <span className="flex min-w-0 max-w-full items-center gap-2" title={name ?? undefined}>
       <Avatar name={name} />
       <span className={`truncate text-sm ${name ? "" : "text-muted-foreground"}`}>{name ? shortName(name) : "—"}</span>
     </span>
@@ -209,7 +218,7 @@ export function PeopleCell({
   onChange?: (ids: number[]) => void;
 }) {
   const face = (
-    <span className="inline-flex min-w-0 items-center gap-2" title={names.join(", ") || undefined}>
+    <span className="flex min-w-0 max-w-full items-center gap-2" title={names.join(", ") || undefined}>
       <AvatarStack names={names} />
       <span className={`truncate text-sm ${names.length ? "" : "text-muted-foreground"}`}>{names.length ? peopleSummary(names) : "—"}</span>
     </span>
