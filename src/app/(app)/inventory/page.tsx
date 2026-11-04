@@ -278,7 +278,10 @@ export default function InventoryPage() {
                     }}
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-medium">{s.name}</div>
+                      <div className="truncate text-sm font-medium">
+                        {s.name}
+                        {s.spec && <span className="font-normal text-muted-foreground"> · {s.spec}</span>}
+                      </div>
                       {sub && <div className="truncate text-xs text-muted-foreground">{sub}</div>}
                     </div>
                     {s.locations[0] && <LocationChip code={s.locations[0]} />}
