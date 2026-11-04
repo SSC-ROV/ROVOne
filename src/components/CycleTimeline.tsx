@@ -16,10 +16,12 @@ const BAR_CLS: Record<string, string> = {
 };
 
 /** 專案時間軸：所有成員可見，長條位置＝專案起訖；多個專案並行是正常運作模式 */
-export default function CycleTimeline({ cycles, today }: { cycles: Cycle[]; today: string }) {
+export default function CycleTimeline({ cycles, today, bare = false }: { cycles: Cycle[]; today: string; /** Inside a dashboard widget: no card or heading. */ bare?: boolean }) {
   const { t } = useI18n();
   const shown = cycles.filter((c) => TRACKED.includes(c.status));
-  if (shown.length === 0) return null;
+  if (shown.length === 0) {
+    return bare ? <p className="flex h-full items-center justify-center text-sm text-muted-foreground">{t("目前沒有進行中的專案")}</p> : null;
+  }
 
   const minStart = shown.reduce((m, c) => (c.start_date < m ? c.start_date : m), shown[0].start_date);
   const maxEnd = shown.reduce((m, c) => (c.end_date > m ? c.end_date : m), shown[0].end_date);
@@ -35,17 +37,19 @@ export default function CycleTimeline({ cycles, today }: { cycles: Cycle[]; toda
   }
 
   return (
-    <div className="rounded-xl border border-hairline bg-surface-1 p-5">
+    <div className={bare ? "" : "rounded-xl border border-hairline bg-surface-1 p-5"}>
       <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-bold">{t("專案時間軸")}</h2>
+        {!bare && <h2 className="font-bold">{t("專案時間軸")}</h2>}
         <span className="text-xs text-ink-tertiary">
           {fmtMD(minStart)} ~ {fmtMD(maxEnd)}
           <span className="ml-2 text-[var(--c-red)]">│ {t("今天")} {fmtMD(today)}</span>
         </span>
       </div>
-      <p className="mb-3 text-xs text-ink-tertiary">
-        {t("每個長條＝一個專案的起訖；多個專案同時並行沒有問題")}
-      </p>
+      {!bare && (
+        <p className="mb-3 text-xs text-ink-tertiary">
+          {t("每個長條＝一個專案的起訖；多個專案同時並行沒有問題")}
+        </p>
+      )}
       <div className="flex gap-2">
         {/* 左側名稱欄 */}
         <div className="w-32 shrink-0">

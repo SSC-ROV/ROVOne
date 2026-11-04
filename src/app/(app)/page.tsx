@@ -1,41 +1,61 @@
 "use client";
-import { isStaff } from "@/lib/roles";
 
-
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { CheckIcon, LayoutTemplateIcon, PencilIcon, PlusIcon, RotateCcwIcon } from "lucide-react";
 import { api } from "@/lib/api-client";
-import { addDaysStr, daysBetween, fmtMD, todayStr, weekdayCn } from "@/lib/date";
-import { STATUSES, cycleStatus, groupColor } from "@/lib/ui";
+import { todayStr } from "@/lib/date";
+import { tt } from "@/lib/i18n-core";
 import { useI18n } from "@/lib/i18n";
-import CycleTimeline from "@/components/CycleTimeline";
-import { PageEmpty, PageError, PageLoading } from "@/components/PageState";
-import { BoardGroup } from "@/components/board/BoardGroup";
+import { useSubteams } from "@/lib/subteams";
+import { PageError, PageLoading } from "@/components/PageState";
 import { BoardHeader } from "@/components/board/BoardHeader";
-import { Label, StatusCell } from "@/components/board/ColorCell";
-import { PeopleCell, PersonCell } from "@/components/board/PersonCell";
 import { Button } from "@/components/ui/button";
+import { useDialogs } from "@/components/ui/Dialogs";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { WidgetBody, type DashData } from "@/components/dashboard/widgets";
+import { TemplatesDialog, WidgetFrame, WidgetLibrary } from "@/components/dashboard/DashboardEditor";
+import {
+  TEMPLATES,
+  buildTemplate,
+  newWidgetId,
+  widgetDef,
+  type DashboardLayout,
+  type TemplateKey,
+  type WidgetConfig,
+  type WidgetSize,
+} from "@/lib/dashboard/catalog";
 import type { Cycle, Me, Part, Settings, Task, TeamEvent } from "@/lib/types";
 
 export default function DashboardPage() {
   const { t } = useI18n();
+  const { subteams } = useSubteams();
+  const { confirm, toast } = useDialogs();
   const [me, setMe] = useState<Me | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [cycles, setCycles] = useState<Cycle[] | null>(null);
   const [events, setEvents] = useState<TeamEvent[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [parts, setParts] = useState<Part[]>([]);
+  /** Saved layout; null = never customized (show the Overview template). */
+  const [saved, setSaved] = useState<DashboardLayout | null | undefined>(undefined);
+  const [draft, setDraft] = useState<DashboardLayout | null>(null);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const scrollTo = useRef<string | null>(null);
 
   useEffect(() => {
     (async () => {
-      const [u, s, c, e, taskRes, partRes] = await Promise.all([
+      const [u, s, c, e, taskRes, partRes, dash] = await Promise.all([
         api<{ user: Me | null }>("/api/auth/me"),
         api<Settings>("/api/settings"),
         api<{ cycles: Cycle[] }>("/api/cycles"),
         api<{ events: TeamEvent[] }>("/api/events"),
         api<{ tasks: Task[] }>("/api/tasks"),
         api<{ parts: Part[] }>("/api/parts"),
+        api<{ layout: DashboardLayout | null }>("/api/dashboard").catch(() => ({ layout: null })),
       ]);
       if (!u.user) {
         window.location.href = "/login";
@@ -47,201 +67,248 @@ export default function DashboardPage() {
       setEvents(e.events);
       setTasks(taskRes.tasks);
       setParts(partRes.parts);
+      setSaved(dash.layout);
     })().catch((err: Error) => setError(err.message));
   }, []);
 
+  const editing = draft != null;
+  const fallback = useMemo(() => buildTemplate("overview", subteams), [subteams]);
+  const layout = draft ?? saved ?? fallback;
+
+  // Bring a newly added widget into view.
+  useEffect(() => {
+    if (!scrollTo.current) return;
+    document.getElementById(`w-${scrollTo.current}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    scrollTo.current = null;
+  }, [draft]);
+
   if (error) return <PageError message={t(error)} />;
-  if (!cycles || !me || !settings) return <PageLoading label={t("載入中…")} />;
+  if (!cycles || !me || !settings || saved === undefined) return <PageLoading label={t("載入中…")} />;
 
-  const today = todayStr();
-  const isTeacher = me.role === "teacher";
-  // 老師看全隊；其他成員看自己參與的專案
-  const mine = isTeacher
-    ? cycles
-    : cycles.filter(
-        (c) => c.proposer_id === me.id || c.members.some((m) => m.id === me.id)
-      );
-  const upcoming = events
-    .filter((e) => e.date >= today)
-    .sort((a, b) => (a.date < b.date ? -1 : 1))
-    .slice(0, 4);
-  const weekEnd = addDaysStr(today, 6);
-  const openTasks = tasks.filter((task) => task.status !== "done");
-  const overdue = openTasks.filter((task) => task.due_date && task.due_date < today);
-  const dueWeek = openTasks.filter(
-    (task) => task.due_date && task.due_date >= today && task.due_date <= weekEnd
-  );
-  const later = openTasks.filter((task) => !overdue.includes(task) && !dueWeek.includes(task));
-  const statusOptions = STATUSES.map((item) => ({ value: item.key, label: item.label, color: item.color }));
-  const pendingCycles = cycles.filter((c) => {
-    if (me.role === "teacher") return c.status === "pending_leader" || c.status === "pending_teacher";
-    if (me.role === "leader") return c.status === "pending_leader";
-    return false;
-  });
-  const pendingParts = isStaff(me.role) ? parts.filter((p) => p.status === "pending") : [];
+  const subteamName = (key: string) => {
+    const s = subteams.find((x) => x.key === key);
+    return s ? s.label : key;
+  };
+  const data: DashData = { me, settings, cycles, events, tasks, parts, today: todayStr(), subteamLabel: subteamName };
+  const subteamOptions = subteams.map((s) => ({ key: s.key, label: s.label }));
 
-  let countdown: { label: string; days: number } | null = null;
-  if (settings.competition_date) {
-    const diff = daysBetween(today, settings.competition_date);
-    countdown = {
-      label:
-        diff > 0 ? t("距離比賽還有") : diff === 0 ? t("比賽就是今天！") : t("比賽已結束"),
-      days: Math.abs(diff),
-    };
+  async function persist(next: DashboardLayout) {
+    setSaving(true);
+    try {
+      const res = await api<{ layout: DashboardLayout }>("/api/dashboard", { method: "PUT", body: JSON.stringify({ layout: next }) });
+      setSaved(res.layout);
+      return true;
+    } catch (err) {
+      toast(t((err as Error).message), "err");
+      return false;
+    } finally {
+      setSaving(false);
+    }
   }
 
-  const buckets = [
-    { title: t("逾期"), tasks: overdue, color: "#df2f4a" },
-    { title: t("本週"), tasks: dueWeek, color: "#fdab3d" },
-    { title: t("之後"), tasks: later, color: groupColor(0) },
-  ];
+  const update = (fn: (widgets: WidgetConfig[]) => WidgetConfig[]) =>
+    setDraft((d) => (d ? { ...d, widgets: fn(d.widgets) } : d));
+
+  function addWidget(type: string, size: WidgetSize) {
+    const def = widgetDef(type);
+    if (!def) return;
+    const id = newWidgetId();
+    scrollTo.current = id;
+    update((ws) => [...ws, { id, type: def.type as WidgetConfig["type"], size, settings: {} }]);
+    setLibraryOpen(false);
+  }
+
+  function move(id: string, delta: number) {
+    update((ws) => {
+      const i = ws.findIndex((w) => w.id === id);
+      const j = i + delta;
+      if (i < 0 || j < 0 || j >= ws.length) return ws;
+      const next = [...ws];
+      [next[i], next[j]] = [next[j], next[i]];
+      return next;
+    });
+  }
+
+  function dropOn(targetId: string) {
+    if (!dragId || dragId === targetId) return;
+    update((ws) => {
+      const from = ws.findIndex((w) => w.id === dragId);
+      const to = ws.findIndex((w) => w.id === targetId);
+      if (from < 0 || to < 0) return ws;
+      const next = [...ws];
+      const [item] = next.splice(from, 1);
+      next.splice(to, 0, item);
+      return next;
+    });
+  }
+
+  async function pickTemplate(key: TemplateKey) {
+    const tpl = TEMPLATES.find((x) => x.key === key)!;
+    const ok = await confirm({
+      title: tt(`套用「${tpl.zh}」範本？`, `Use the ${tpl.en} template?`),
+      message: tt("目前的儀表板會被這個範本取代。", "Your current dashboard will be replaced by this template."),
+      confirmText: tt("套用", "Use template"),
+    });
+    if (!ok) return;
+    const next = buildTemplate(key, subteams);
+    setTemplatesOpen(false);
+    if (editing) {
+      setDraft(next);
+    } else if (await persist(next)) {
+      toast(tt(`已套用「${tpl.zh}」`, `Switched to ${tpl.en}`));
+    }
+  }
+
+  async function finishEditing() {
+    if (draft && (await persist(draft))) {
+      setDraft(null);
+      setLibraryOpen(false);
+      toast(tt("儀表板已儲存", "Dashboard saved"));
+    }
+  }
+
+  async function resetToTemplate() {
+    const tpl = TEMPLATES.find((x) => x.key === layout.template) ?? TEMPLATES[0];
+    const ok = await confirm({
+      title: tt("重設儀表板？", "Reset the dashboard?"),
+      message: tt(`會回到「${tpl.zh}」範本的原始樣子。`, `This puts back the original ${tpl.en} template.`),
+      confirmText: tt("重設", "Reset"),
+      danger: true,
+    });
+    if (ok) setDraft(buildTemplate(tpl.key, subteams));
+  }
+
+  const chipsFor = (w: WidgetConfig) => {
+    const chips: string[] = [];
+    if (w.settings.subteam) chips.push(subteamName(w.settings.subteam));
+    if (w.settings.mine) chips.push(tt("我的", "Mine"));
+    if (w.settings.groupBy === "person") chips.push(tt("依成員", "By person"));
+    return chips;
+  };
 
   return (
     <div className="flex w-full flex-col">
-      <BoardHeader title={t("總覽")} subtitle={settings.team_name} />
+      <BoardHeader
+        title={t("總覽")}
+        subtitle={settings.team_name}
+        action={
+          editing ? (
+            <>
+              <Button type="button" variant="ghost" onClick={resetToTemplate}>
+                <RotateCcwIcon /> {tt("重設", "Reset")}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setTemplatesOpen(true)}>
+                <LayoutTemplateIcon /> {tt("範本", "Templates")}
+              </Button>
+              <Button type="button" variant="outline" className="lg:hidden" onClick={() => setLibraryOpen(true)}>
+                <PlusIcon /> {tt("新增元件", "Add widget")}
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => { setDraft(null); setLibraryOpen(false); }}>
+                {tt("取消", "Cancel")}
+              </Button>
+              <Button type="button" onClick={finishEditing} disabled={saving}>
+                <CheckIcon /> {saving ? tt("儲存中…", "Saving…") : tt("完成", "Done")}
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button type="button" variant="outline" onClick={() => setTemplatesOpen(true)}>
+                <LayoutTemplateIcon /> {tt("範本", "Templates")}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setDraft(structuredClone(layout))}>
+                <PencilIcon /> {tt("自訂", "Customize")}
+              </Button>
+            </>
+          )
+        }
+      />
 
-      <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <NumberWidget
-          label={countdown ? countdown.label : t("尚未設定比賽日期")}
-          value={countdown ? String(countdown.days) : "—"}
-          hint={
-            countdown ? (
-              <p className="text-xs text-muted-foreground">{fmtMD(settings.competition_date!)}（{weekdayCn(settings.competition_date!)}）</p>
-            ) : isStaff(me.role) ? (
-              <Button variant="link" className="h-auto px-0" nativeButton={false} render={<Link href="/admin" />}>{t("前往「團隊設定」→")}</Button>
-            ) : (
-              <p className="text-xs text-muted-foreground">{t("請隊長或老師於「團隊設定」頁設定")}</p>
-            )
-          }
-        />
-        <NumberWidget label={t("逾期任務")} value={String(overdue.length)} />
-        <NumberWidget label={t("本週到期")} value={String(dueWeek.length)} />
-        <NumberWidget label={t("待你處理")} value={String(pendingCycles.length + pendingParts.length)} />
+      <div className="flex items-start gap-5">
+        <div className="@container min-w-0 flex-1">
+          {editing && (
+            <p className="mb-3 text-sm text-muted-foreground">
+              {tt(
+                "拖曳元件可調整順序；點齒輪可改大小與篩選；點左上角的 − 移除。",
+                "Drag widgets to reorder, use the gear to change size and filters, and the − in the corner to remove."
+              )}
+            </p>
+          )}
+          {layout.widgets.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 rounded-[12px] border border-dashed border-border px-4 py-16 text-center">
+              <p className="text-sm text-muted-foreground">{tt("儀表板是空的。", "Your dashboard is empty.")}</p>
+              <div className="flex gap-2">
+                {!editing && (
+                  <Button type="button" variant="outline" onClick={() => setDraft(structuredClone(layout))}>
+                    <PlusIcon /> {tt("新增元件", "Add widgets")}
+                  </Button>
+                )}
+                <Button type="button" variant="outline" onClick={() => setTemplatesOpen(true)}>
+                  <LayoutTemplateIcon /> {tt("選擇範本", "Pick a template")}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 [grid-auto-flow:dense] [grid-auto-rows:168px] @3xl:grid-cols-12">
+              {layout.widgets.map((w, i) => {
+                const def = widgetDef(w.type);
+                if (!def) return null;
+                const title = w.settings.title || tt(def.zh, def.en);
+                return (
+                  <WidgetFrame
+                    key={w.id}
+                    widget={w}
+                    title={title}
+                    chips={chipsFor(w)}
+                    editing={editing}
+                    index={i}
+                    count={layout.widgets.length}
+                    subteams={subteamOptions}
+                    dragging={dragId === w.id}
+                    onRemove={() => update((ws) => ws.filter((x) => x.id !== w.id))}
+                    onChange={(next) => update((ws) => ws.map((x) => (x.id === w.id ? next : x)))}
+                    onMove={(delta) => move(w.id, delta)}
+                    dragProps={{
+                      draggable: true,
+                      onDragStart: (e) => {
+                        e.dataTransfer.effectAllowed = "move";
+                        e.dataTransfer.setData("text/plain", w.id);
+                        setDragId(w.id);
+                      },
+                      onDragEnter: () => dropOn(w.id),
+                      onDragOver: (e) => e.preventDefault(),
+                      onDrop: (e) => e.preventDefault(),
+                      onDragEnd: () => setDragId(null),
+                    }}
+                  >
+                    <WidgetBody widget={w} data={data} />
+                  </WidgetFrame>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {editing && (
+          <aside className="sticky top-0 hidden h-[calc(100dvh-7.5rem)] w-80 shrink-0 overflow-hidden rounded-[12px] border border-border bg-background lg:block">
+            <WidgetLibrary onAdd={addWidget} />
+          </aside>
+        )}
       </div>
 
-      {isStaff(me.role) && (pendingCycles.length > 0 || pendingParts.length > 0) && (
-        <div className="mb-4 flex flex-wrap gap-2">
-          {pendingCycles.map((c) => (
-            <Link key={c.id} href="/cycles" className="rounded-[4px] bg-[#fdab3d] px-2 py-1 text-sm text-white">
-              {t("待審專案")}：{c.title}
-            </Link>
-          ))}
-          {pendingParts.map((p) => (
-            <Link key={p.id} href="/parts" className="rounded-[4px] bg-[#fdab3d] px-2 py-1 text-sm text-white">
-              {t("待審零件")}：{p.name}
-            </Link>
-          ))}
-        </div>
-      )}
+      <Sheet open={editing && libraryOpen} onOpenChange={setLibraryOpen}>
+        <SheetContent side="right" showCloseButton={false} className="w-full gap-0 p-0 sm:max-w-sm lg:hidden">
+          <SheetTitle className="sr-only">{tt("元件庫", "Components")}</SheetTitle>
+          <WidgetLibrary onAdd={addWidget} onClose={() => setLibraryOpen(false)} />
+        </SheetContent>
+      </Sheet>
 
-      {buckets.map((bucket) => (
-        <BoardGroup key={bucket.title} title={bucket.title} color={bucket.color} count={bucket.tasks.length}>
-          {bucket.tasks.length === 0 ? (
-            <p className="px-4 py-4 text-sm text-muted-foreground">{t("沒有任務")}</p>
-          ) : (
-            <table className="board-table">
-              <thead>
-                <tr>
-                  <th>{t("任務")}</th>
-                  <th>{t("負責人")}</th>
-                  <th className="color-cell">{t("狀態")}</th>
-                  <th>{t("截止日")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {bucket.tasks.slice(0, 8).map((task) => (
-                  <tr key={task.id}>
-                    <td>
-                      <Link href={`/tasks?task=${task.id}`} className="hover:underline">{task.title}</Link>
-                    </td>
-                    <td><PeopleCell names={(task.assignees ?? []).map((person) => person.display_name)} value={task.assignee_ids ?? []} /></td>
-                    <td className="color-cell"><StatusCell value={task.status} options={statusOptions} /></td>
-                    <td className="tabular-nums">{task.due_date ? fmtMD(task.due_date) : "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </BoardGroup>
-      ))}
-
-      <CycleTimeline cycles={cycles} today={today} />
-
-      <section className="mb-6">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="group-title text-foreground">{isTeacher ? t("全隊專案進度") : t("我的專案進度")}</h2>
-          <Button variant="link" nativeButton={false} render={<Link href="/cycles" />}>{t("專案")} →</Button>
-        </div>
-        <div className="flex flex-col gap-2">
-          {mine.filter((c) => c.status === "active" || c.status === "approved" || c.status === "late").length === 0 ? (
-            <PageEmpty>{t("目前沒有參與中的專案，到「專案」提案一個吧")}</PageEmpty>
-          ) : (
-            mine
-              .filter((c) => c.status === "active" || c.status === "approved" || c.status === "late")
-              .map((c) => {
-                const pct = c.task_total > 0 ? Math.round((c.task_done / c.task_total) * 100) : 0;
-                const left = daysBetween(today, c.end_date);
-                return (
-                  <Link key={c.id} href="/cycles" className="rounded-[8px] border border-border p-3 transition-colors hover:bg-muted">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Label color={cycleStatus(c.status).color}>{cycleStatus(c.status).label}</Label>
-                      <span className="font-medium">{c.title}</span>
-                      {isTeacher && c.proposer_name && <PersonCell name={c.proposer_name} />}
-                      <span className="ml-auto text-xs text-muted-foreground tabular-nums">
-                        {fmtMD(c.start_date)} – {fmtMD(c.end_date)}
-                        {c.status === "active" && (
-                          <span className="ml-2">
-                            {left < 0 ? `${t("已超過結束日")} ${-left} ${t("天")}` : `${t("剩")} ${left} ${t("天")}`}
-                          </span>
-                        )}
-                      </span>
-                    </div>
-                    {c.task_total > 0 && (
-                      <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
-                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-                          <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
-                        </div>
-                        <span className="tabular-nums">{c.task_done}/{c.task_total}</span>
-                      </div>
-                    )}
-                  </Link>
-                );
-              })
-          )}
-        </div>
-      </section>
-
-      <section>
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="group-title text-foreground">{t("近期活動")}</h2>
-          <Button variant="link" nativeButton={false} render={<Link href="/calendar" />}>{t("日曆 →")}</Button>
-        </div>
-          {upcoming.length === 0 ? (
-            <p className="py-4 text-center text-sm text-muted-foreground">{t("沒有排定的活動")}</p>
-          ) : (
-            <ul className="flex flex-col gap-2">
-              {upcoming.map((e) => (
-                <li key={e.id} className="flex items-center gap-3 rounded-lg border px-3 py-2 text-sm">
-                  <span className="w-20 shrink-0 text-muted-foreground tabular-nums">
-                    {fmtMD(e.date)}
-                    {e.time && <span className="ml-1">{e.time}</span>}
-                  </span>
-                  <span className="truncate">{e.title}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-      </section>
-    </div>
-  );
-}
-
-function NumberWidget({ label, value, hint }: { label: string; value: string; hint?: React.ReactNode }) {
-  return (
-    <div className="rounded-[8px] border border-border bg-card px-4 py-3">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 text-3xl font-medium tabular-nums text-foreground">{value}</p>
-      {hint}
+      <TemplatesDialog
+        open={templatesOpen}
+        onOpenChange={setTemplatesOpen}
+        current={saved || draft ? layout.template : null}
+        subteams={subteams}
+        onPick={pickTemplate}
+      />
     </div>
   );
 }
