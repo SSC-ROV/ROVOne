@@ -269,6 +269,7 @@ export function TaskSheet({
   const stateBadge = {
     todo: { bg: "var(--c-green)", label: tt("待辦", "Todo") },
     doing: { bg: "var(--c-yellow)", label: tt("進行中", "In progress") },
+    blocked: { bg: "var(--c-orange)", label: tt("卡住", "Blocked") },
     done: { bg: "var(--c-purple)", label: tt("已完成", "Done") },
   }[task.status] ?? { bg: "var(--c-gray)", label: task.status };
 

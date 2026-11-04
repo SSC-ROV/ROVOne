@@ -50,6 +50,7 @@ export const priorityDot = (k: string) =>
 export const STATUSES: { key: TaskStatus; zh: string; en: string; color: string; label: string }[] = [
   { key: "todo", zh: "待辦", en: "Todo", color: "var(--c-green)", get label() { return tt(this.zh, this.en); } },
   { key: "doing", zh: "進行中", en: "In progress", color: "var(--c-yellow)", get label() { return tt(this.zh, this.en); } },
+  { key: "blocked", zh: "卡住", en: "Blocked", color: "var(--c-orange)", get label() { return tt(this.zh, this.en); } },
   { key: "done", zh: "已完成", en: "Done", color: "var(--c-purple)", get label() { return tt(this.zh, this.en); } },
 ];
 
