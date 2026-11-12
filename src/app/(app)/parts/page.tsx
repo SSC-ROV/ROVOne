@@ -92,6 +92,9 @@ export default function PartsPage() {
     const i = subteams.findIndex((s) => s.key === key);
     return i >= 0 ? groupColor(i) : "var(--c-gray)";
   };
+  // 用管理員自訂的組別名稱；找不到才退回內建名稱
+  const subteamName = (key: string) => subteams.find((s) => s.key === key)?.label ?? subteamLabel(key);
+  const canEditSubteam = (p: Part) => staff || (p.requested_by === me.id && p.status === "pending");
   const partOptions = PART_STATUSES.map((s) => ({ value: s.key, label: s.label, color: s.color }));
   const pendingCount = parts.filter((p) => p.status === "pending").length;
   const buying = parts.filter((p) => p.status === "approved" || p.status === "ordered");
@@ -130,6 +133,18 @@ export default function PartsPage() {
       toast(t((err as Error).message), "err");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function changeSubteam(p: Part, next: string) {
+    if (next === p.subteam) return;
+    const snapshot = parts;
+    setParts((prev) => prev!.map((x) => (x.id === p.id ? { ...x, subteam: next as Part["subteam"] } : x)));
+    try {
+      await api(`/api/parts/${p.id}`, { method: "PATCH", body: JSON.stringify({ subteam: next }) });
+    } catch (err) {
+      setParts(snapshot);
+      toast(t((err as Error).message), "err");
     }
   }
 
@@ -368,7 +383,7 @@ export default function PartsPage() {
                           <span className="text-muted-foreground" title={t("預估")}>≈ ${(p.est_price * p.qty).toLocaleString()}</span>
                         )}
                       </td>
-                      <td><Label color={subteamColor(p.subteam)}>{subteamLabel(p.subteam)}</Label></td>
+                      <td><Label color={subteamColor(p.subteam)}>{subteamName(p.subteam)}</Label></td>
                       <td className="tabular-nums text-muted-foreground">{fmtMD(p.created_at.slice(0, 10))}</td>
                       <td>
                         <RowActions
@@ -413,7 +428,19 @@ export default function PartsPage() {
                     ? `${t("實際")} $${openPart.actual_price.toLocaleString()}`
                     : `${t("預估")} $${(openPart.est_price * openPart.qty).toLocaleString()}`}
                 </DetailRow>
-                <DetailRow label={t("組別")}><Label color={subteamColor(openPart.subteam)}>{subteamLabel(openPart.subteam)}</Label></DetailRow>
+                <DetailRow label={t("組別")}>
+                  {canEditSubteam(openPart) ? (
+                    <Choice
+                      value={openPart.subteam}
+                      onChange={(value) => changeSubteam(openPart, value)}
+                      options={subteams.map((s) => ({ value: s.key, label: s.label }))}
+                      className="w-full"
+                      ariaLabel={t("組別")}
+                    />
+                  ) : (
+                    <Label color={subteamColor(openPart.subteam)}>{subteamName(openPart.subteam)}</Label>
+                  )}
+                </DetailRow>
                 <DetailRow label={t("用途")}>{openPart.purpose}</DetailRow>
                 <DetailRow label={t("購買連結")}>
                   {openPart.link && (
