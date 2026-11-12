@@ -9,18 +9,21 @@ import { after } from "next/server";
 
 type Ctx = { params: Promise<{ id: string }> };
 
+const REQUESTER_EDITABLE = new Set(["name", "spec", "link", "qty", "unit", "est_price", "purpose", "subteam"]);
+
 export async function PATCH(req: NextRequest, ctx: Ctx) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "未登入" }, { status: 401 });
   const { id } = await ctx.params;
   const partId = Number(id);
   if (!isStaff(user.role)) {
-    // 申請人可在待批准時單獨修改自己申請的組別
+    // 申請人可在待批准時修改自己申請的內容欄位（狀態、實際價格、審批與採買資訊仍限隊長/老師）
     const patch = (await req.clone().json().catch(() => null)) as Record<string, unknown> | null;
     const [own] = await sql`SELECT requested_by, status FROM parts WHERE id = ${partId}`;
-    const onlySubteam = !!patch && Object.keys(patch).length === 1 && typeof patch.subteam === "string";
+    const onlyRequestFields =
+      !!patch && Object.keys(patch).length > 0 && Object.keys(patch).every((k) => REQUESTER_EDITABLE.has(k));
     const canEditOwn =
-      onlySubteam && own && Number(own.requested_by) === user.id && String(own.status) === "pending";
+      onlyRequestFields && own && Number(own.requested_by) === user.id && String(own.status) === "pending";
     if (!canEditOwn) {
       return NextResponse.json(
         { error: "採買進度由隊長或老師更新；申請中的項目可直接請隊長處理" },

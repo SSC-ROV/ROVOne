@@ -20,7 +20,8 @@ import { Choice, MultiFilter } from "@/components/tasks/shared";
 import { DetailRow, FormField, RowActions, StatusDot, TableEmpty, TableToolbar, TitleCell } from "@/components/board/BoardTable";
 import { BoardGroup } from "@/components/board/BoardGroup";
 import { BoardHeader } from "@/components/board/BoardHeader";
-import { Label, StatusCell } from "@/components/board/ColorCell";
+import { ColorCell, Label, StatusCell } from "@/components/board/ColorCell";
+import { InlineEdit } from "@/components/board/InlineEdit";
 import { PersonCell } from "@/components/board/PersonCell";
 import type { Me, Part, PartStatus } from "@/lib/types";
 
@@ -94,7 +95,13 @@ export default function PartsPage() {
   };
   // 用管理員自訂的組別名稱；找不到才退回內建名稱
   const subteamName = (key: string) => subteams.find((s) => s.key === key)?.label ?? subteamLabel(key);
-  const canEditSubteam = (p: Part) => staff || (p.requested_by === me.id && p.status === "pending");
+  const canEditPart = (p: Part) => staff || (p.requested_by === me.id && p.status === "pending");
+  const subteamPickerOptions = (p: Part) => {
+    const known = subteams.map((s, i) => ({ value: s.key, label: s.label, color: groupColor(i) }));
+    return known.some((o) => o.value === p.subteam)
+      ? known
+      : [{ value: p.subteam, label: subteamName(p.subteam), color: "var(--c-gray)" }, ...known];
+  };
   const partOptions = PART_STATUSES.map((s) => ({ value: s.key, label: s.label, color: s.color }));
   const pendingCount = parts.filter((p) => p.status === "pending").length;
   const buying = parts.filter((p) => p.status === "approved" || p.status === "ordered");
@@ -136,17 +143,39 @@ export default function PartsPage() {
     }
   }
 
-  async function changeSubteam(p: Part, next: string) {
-    if (next === p.subteam) return;
+  async function updatePart(p: Part, patch: Partial<Pick<Part, "name" | "spec" | "link" | "qty" | "unit" | "est_price" | "actual_price" | "purpose" | "subteam">>) {
     const snapshot = parts;
-    setParts((prev) => prev!.map((x) => (x.id === p.id ? { ...x, subteam: next as Part["subteam"] } : x)));
+    setParts((prev) => prev!.map((x) => (x.id === p.id ? { ...x, ...patch } : x)));
     try {
-      await api(`/api/parts/${p.id}`, { method: "PATCH", body: JSON.stringify({ subteam: next }) });
+      await api(`/api/parts/${p.id}`, { method: "PATCH", body: JSON.stringify(patch) });
     } catch (err) {
       setParts(snapshot);
       toast(t((err as Error).message), "err");
     }
   }
+
+  const changeSubteam = (p: Part, next: string) => {
+    if (next !== p.subteam) updatePart(p, { subteam: next as Part["subteam"] });
+  };
+  const changeText = (p: Part, field: "name" | "spec" | "link" | "purpose" | "unit", next: string) => {
+    const value = next.trim();
+    if (field === "name" && !value) return;
+    if (value !== p[field]) updatePart(p, { [field]: value });
+  };
+  const changeQty = (p: Part, next: string) => {
+    const qty = Math.max(1, Math.round(Number(next)) || 1);
+    if (qty !== p.qty) updatePart(p, { qty });
+  };
+  /** The Amount cell shows a total: an estimate is stored per unit, an actual price as the whole total. */
+  const changeAmount = (p: Part, next: string) => {
+    const total = Math.max(0, Number(next) || 0);
+    if (p.actual_price != null) {
+      if (total !== p.actual_price) updatePart(p, { actual_price: total });
+      return;
+    }
+    const unitPrice = Math.round((total / p.qty) * 100) / 100;
+    if (unitPrice !== p.est_price) updatePart(p, { est_price: unitPrice });
+  };
 
   function onPartStatus(p: Part, next: string) {
     if (next === p.status) return;
@@ -375,15 +404,23 @@ export default function PartsPage() {
                       <td className="color-cell">
                         <StatusCell value={p.status} options={partOptions} disabled={!staff} onChange={(value) => onPartStatus(p, value)} />
                       </td>
-                      <td className="tabular-nums">× {p.qty} {t(p.unit)}</td>
+                      <td className="tabular-nums">
+                        <span className="inline-flex items-center gap-1">
+                          ×
+                          <InlineEdit type="number" min={1} value={String(p.qty)} disabled={!canEditPart(p)} ariaLabel={tt("數量", "Qty")} inputClassName="w-16" onCommit={(v) => changeQty(p, v)} />
+                          <InlineEdit value={p.unit} display={t(p.unit)} disabled={!canEditPart(p)} ariaLabel={t("單位")} inputClassName="w-16" onCommit={(v) => changeText(p, "unit", v)} />
+                        </span>
+                      </td>
                       <td className="tabular-nums">
                         {p.actual_price != null ? (
-                          <span title={t("實際")}>${p.actual_price.toLocaleString()}</span>
+                          <InlineEdit type="number" min={0} value={String(p.actual_price)} display={<>${p.actual_price.toLocaleString()}</>} disabled={!staff} ariaLabel={t("實際")} inputClassName="w-24" onCommit={(v) => changeAmount(p, v)} />
                         ) : (
-                          <span className="text-muted-foreground" title={t("預估")}>≈ ${(p.est_price * p.qty).toLocaleString()}</span>
+                          <InlineEdit type="number" min={0} value={String(p.est_price * p.qty)} display={<span className="text-muted-foreground">≈ ${(p.est_price * p.qty).toLocaleString()}</span>} disabled={!canEditPart(p)} ariaLabel={t("預估")} inputClassName="w-24" onCommit={(v) => changeAmount(p, v)} />
                         )}
                       </td>
-                      <td><Label color={subteamColor(p.subteam)}>{subteamName(p.subteam)}</Label></td>
+                      <td className="color-cell">
+                        <ColorCell kind="priority" value={p.subteam} options={subteamPickerOptions(p)} disabled={!canEditPart(p)} onChange={(value) => changeSubteam(p, value)} />
+                      </td>
                       <td className="tabular-nums text-muted-foreground">{fmtMD(p.created_at.slice(0, 10))}</td>
                       <td>
                         <RowActions
@@ -421,15 +458,28 @@ export default function PartsPage() {
                 <DetailRow label={t("狀態")}>
                   <StatusCell value={openPart.status} options={partOptions} disabled={!staff} onChange={(value) => onPartStatus(openPart, value)} />
                 </DetailRow>
-                <DetailRow label={t("規格")}>{openPart.spec}</DetailRow>
-                <DetailRow label={tt("數量", "Qty")}>× {openPart.qty} {t(openPart.unit)}</DetailRow>
+                <DetailRow label={tt("名稱", "Name")}>
+                  <InlineEdit value={openPart.name} disabled={!canEditPart(openPart)} ariaLabel={tt("名稱", "Name")} inputClassName="w-full" onCommit={(v) => changeText(openPart, "name", v)} />
+                </DetailRow>
+                <DetailRow label={t("規格")}>
+                  <InlineEdit value={openPart.spec} disabled={!canEditPart(openPart)} ariaLabel={t("規格")} inputClassName="w-full" onCommit={(v) => changeText(openPart, "spec", v)} />
+                </DetailRow>
+                <DetailRow label={tt("數量", "Qty")}>
+                  <span className="inline-flex items-center gap-1">
+                    ×
+                    <InlineEdit type="number" min={1} value={String(openPart.qty)} disabled={!canEditPart(openPart)} ariaLabel={tt("數量", "Qty")} inputClassName="w-16" onCommit={(v) => changeQty(openPart, v)} />
+                    <InlineEdit value={openPart.unit} display={t(openPart.unit)} disabled={!canEditPart(openPart)} ariaLabel={t("單位")} inputClassName="w-16" onCommit={(v) => changeText(openPart, "unit", v)} />
+                  </span>
+                </DetailRow>
                 <DetailRow label={tt("金額", "Amount")}>
-                  {openPart.actual_price != null
-                    ? `${t("實際")} $${openPart.actual_price.toLocaleString()}`
-                    : `${t("預估")} $${(openPart.est_price * openPart.qty).toLocaleString()}`}
+                  {openPart.actual_price != null ? (
+                    <InlineEdit type="number" min={0} value={String(openPart.actual_price)} display={`${t("實際")} $${openPart.actual_price.toLocaleString()}`} disabled={!staff} ariaLabel={t("實際")} inputClassName="w-28" onCommit={(v) => changeAmount(openPart, v)} />
+                  ) : (
+                    <InlineEdit type="number" min={0} value={String(openPart.est_price * openPart.qty)} display={`${t("預估")} $${(openPart.est_price * openPart.qty).toLocaleString()}`} disabled={!canEditPart(openPart)} ariaLabel={t("預估")} inputClassName="w-28" onCommit={(v) => changeAmount(openPart, v)} />
+                  )}
                 </DetailRow>
                 <DetailRow label={t("組別")}>
-                  {canEditSubteam(openPart) ? (
+                  {canEditPart(openPart) ? (
                     <Choice
                       value={openPart.subteam}
                       onChange={(value) => changeSubteam(openPart, value)}
@@ -441,7 +491,9 @@ export default function PartsPage() {
                     <Label color={subteamColor(openPart.subteam)}>{subteamName(openPart.subteam)}</Label>
                   )}
                 </DetailRow>
-                <DetailRow label={t("用途")}>{openPart.purpose}</DetailRow>
+                <DetailRow label={t("用途")}>
+                  <InlineEdit value={openPart.purpose} disabled={!canEditPart(openPart)} ariaLabel={t("用途")} inputClassName="w-full" onCommit={(v) => changeText(openPart, "purpose", v)} />
+                </DetailRow>
                 <DetailRow label={t("購買連結")}>
                   {openPart.link && (
                     <a href={openPart.link} target="_blank" rel="noreferrer" className="break-all text-[var(--c-blue)] hover:underline">
