@@ -12,14 +12,22 @@ type Ctx = { params: Promise<{ id: string }> };
 export async function PATCH(req: NextRequest, ctx: Ctx) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "未登入" }, { status: 401 });
-  if (!isStaff(user.role)) {
-    return NextResponse.json(
-      { error: "採買進度由隊長或老師更新；申請中的項目可直接請隊長處理" },
-      { status: 403 }
-    );
-  }
   const { id } = await ctx.params;
   const partId = Number(id);
+  if (!isStaff(user.role)) {
+    // 申請人可在待批准時單獨修改自己申請的組別
+    const patch = (await req.clone().json().catch(() => null)) as Record<string, unknown> | null;
+    const [own] = await sql`SELECT requested_by, status FROM parts WHERE id = ${partId}`;
+    const onlySubteam = !!patch && Object.keys(patch).length === 1 && typeof patch.subteam === "string";
+    const canEditOwn =
+      onlySubteam && own && Number(own.requested_by) === user.id && String(own.status) === "pending";
+    if (!canEditOwn) {
+      return NextResponse.json(
+        { error: "採買進度由隊長或老師更新；申請中的項目可直接請隊長處理" },
+        { status: 403 }
+      );
+    }
+  }
   const [existing] = await sql`SELECT status FROM parts WHERE id = ${partId}`;
   if (!existing) return NextResponse.json({ error: "零件不存在" }, { status: 404 });
 
